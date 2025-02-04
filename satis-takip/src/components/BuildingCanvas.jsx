@@ -7,47 +7,64 @@ import ControlPanel from './ControlPanel';
 import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '../services/blockService';
 
 const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addMode }) => {
-  const { camera, size } = useThree();
+  const { camera } = useThree();
 
-  const handleClick = (event) => {
+  const handleGroundClick = (event) => {
     if (!editMode || !addMode) return;
     
     event.stopPropagation();
+    const point = event.point;
     
-    if (event.object && event.object.type === 'Mesh') {
-      const clickedPoint = event.point;
-      const normal = event.face.normal.clone();
-      const normalMatrix = new THREE.Matrix3().getNormalMatrix(event.object.matrixWorld);
-      normal.applyMatrix3(normalMatrix).normalize();
+    onAddBlock([
+      Math.round(point.x - 0.5),
+      0,
+      Math.round(point.z - 0.5)
+    ]);
+  };
 
-      const newPosition = [
-        Math.round(clickedPoint.x) + normal.x,
-        Math.round(clickedPoint.y) + normal.y,
-        Math.round(clickedPoint.z) + normal.z
+  const handleBlockClick = (event) => {
+    if (!editMode || !addMode) return;
+    
+    event.nativeEvent.stopPropagation();
+    
+    const { point, face, blockData } = event;
+    if (!face || !blockData) return;
+
+    const normal = face.normal;
+    
+    // Calculate new block position based on the clicked face normal
+    let newPosition;
+    const epsilon = 0.001; // Smaller epsilon for more precise face detection
+
+    // Determine which face was clicked by comparing normal components
+    if (Math.abs(normal.y) > 1 - epsilon) {
+      // Top/Bottom face
+      newPosition = [
+        blockData.position[0],
+        blockData.position[1] + (normal.y > 0 ? blockData.dimensions.height : -blockData.dimensions.height),
+        blockData.position[2]
       ];
-
-      onAddBlock(newPosition);
-      return;
+    } else if (Math.abs(normal.x) > 1 - epsilon) {
+      // Left/Right face
+      newPosition = [
+        blockData.position[0] + (normal.x > 0 ? blockData.dimensions.width : -blockData.dimensions.width),
+        blockData.position[1],
+        blockData.position[2]
+      ];
+    } else {
+      // Front/Back face
+      newPosition = [
+        blockData.position[0],
+        blockData.position[1],
+        blockData.position[2] + (normal.z > 0 ? blockData.dimensions.depth : -blockData.dimensions.depth)
+      ];
     }
 
-    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2(
-      (event.clientX / size.width) * 2 - 1,
-      -(event.clientY / size.height) * 2 + 1
-    );
+    // Don't allow blocks below ground level
+    if (newPosition[1] < 0) return;
 
-    raycaster.setFromCamera(mouse, camera);
-    const intersectionPoint = new THREE.Vector3();
-    raycaster.ray.intersectPlane(plane, intersectionPoint);
-
-    if (intersectionPoint) {
-      onAddBlock([
-        Math.round(intersectionPoint.x),
-        0,
-        Math.round(intersectionPoint.z)
-      ]);
-    }
+    // Create the new block
+    onAddBlock(newPosition);
   };
 
   return (
@@ -69,7 +86,7 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
         <BuildingBlock
           key={block._id || block.id}
           {...block}
-          onClick={(e) => handleClick(e)}
+          onClick={handleBlockClick}
           onSelect={(e) => editMode && onBlockClick(block._id || block.id, e)}
           isSelected={selectedBlock === (block._id || block.id)}
           editMode={editMode}
@@ -78,7 +95,11 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
       ))}
 
       <OrbitControls makeDefault />
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} onClick={handleClick}>
+      <mesh 
+        position={[0, 0, 0]} 
+        rotation={[-Math.PI / 2, 0, 0]} 
+        onClick={handleGroundClick}
+      >
         <planeGeometry args={[100, 100]} />
         <meshBasicMaterial visible={false} />
       </mesh>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
@@ -8,24 +8,36 @@ import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '../services
 
 const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addMode }) => {
   const { camera } = useThree();
+  const groundRef = useRef();
+  const clickedRef = useRef(false);
 
-  const handleGroundClick = (event) => {
-    if (!editMode || !addMode) return;
+  const handleGroundPointerDown = (event) => {
+    if (!editMode || !addMode || clickedRef.current) return;
+    
+    // Only handle direct ground clicks
+    if (event.object !== groundRef.current) return;
     
     event.stopPropagation();
-    const point = event.point;
+    clickedRef.current = true;
     
+    const point = event.point;
     onAddBlock([
       Math.round(point.x - 0.5),
       0,
       Math.round(point.z - 0.5)
     ]);
+
+    // Reset click state after a short delay
+    setTimeout(() => {
+      clickedRef.current = false;
+    }, 100);
   };
 
-  const handleBlockClick = (event) => {
-    if (!editMode || !addMode) return;
+  const handleBlockPointerDown = (event) => {
+    if (!editMode || !addMode || clickedRef.current) return;
     
     event.nativeEvent.stopPropagation();
+    clickedRef.current = true;
     
     const { point, face, blockData } = event;
     if (!face || !blockData) return;
@@ -65,6 +77,11 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
 
     // Create the new block
     onAddBlock(newPosition);
+
+    // Reset click state after a short delay
+    setTimeout(() => {
+      clickedRef.current = false;
+    }, 100);
   };
 
   return (
@@ -86,7 +103,7 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
         <BuildingBlock
           key={block._id || block.id}
           {...block}
-          onClick={handleBlockClick}
+          onPointerDown={handleBlockPointerDown}
           onSelect={(e) => editMode && onBlockClick(block._id || block.id, e)}
           isSelected={selectedBlock === (block._id || block.id)}
           editMode={editMode}
@@ -96,9 +113,10 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
 
       <OrbitControls makeDefault />
       <mesh 
+        ref={groundRef}
         position={[0, 0, 0]} 
         rotation={[-Math.PI / 2, 0, 0]} 
-        onClick={handleGroundClick}
+        onPointerDown={handleGroundPointerDown}
       >
         <planeGeometry args={[100, 100]} />
         <meshBasicMaterial visible={false} />

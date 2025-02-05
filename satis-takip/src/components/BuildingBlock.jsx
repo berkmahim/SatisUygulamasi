@@ -6,7 +6,7 @@ const BuildingBlock = ({
   position, 
   dimensions = { width: 1, height: 1, depth: 1 },
   color = '#8c8c8c', 
-  onClick, 
+  onPointerDown,
   onSelect, 
   isSelected, 
   editMode, 
@@ -48,7 +48,7 @@ const BuildingBlock = ({
         nativeEvent: e
       };
       
-      onClick(eventData);
+      onPointerDown(eventData);
     } else {
       onSelect && onSelect(e);
     }

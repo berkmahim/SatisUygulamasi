@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
+import { useParams } from 'react-router-dom';
 import BuildingBlock from './BuildingBlock';
 import ControlPanel from './ControlPanel';
 import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '../services/blockService';
@@ -126,6 +127,7 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
 };
 
 const BuildingCanvas = () => {
+  const { id: projectId } = useParams();
   const [blocks, setBlocks] = useState([]);
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -139,14 +141,16 @@ const BuildingCanvas = () => {
   useEffect(() => {
     const fetchBlocks = async () => {
       try {
-        const data = await getAllBlocks();
+        const data = await getAllBlocks(projectId);
         setBlocks(data);
       } catch (error) {
         console.error('Error fetching blocks:', error);
       }
     };
-    fetchBlocks();
-  }, []);
+    if (projectId) {
+      fetchBlocks();
+    }
+  }, [projectId]);
 
   const getSelectedBlockDimensions = () => {
     if (!selectedBlock) return { width: 1, height: 1, depth: 1 };
@@ -220,7 +224,7 @@ const BuildingCanvas = () => {
       };
 
       try {
-        const savedBlock = await createBlock(newBlockData);
+        const savedBlock = await createBlock(projectId, newBlockData);
         setBlocks(prevBlocks => [...prevBlocks, savedBlock]);
       } catch (error) {
         console.error('Error creating block:', error);

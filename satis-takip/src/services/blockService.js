@@ -2,13 +2,13 @@ import axios from 'axios';
 
 const API_URL = 'http://localhost:5000/api/blocks';
 
-export const getAllBlocks = async () => {
-  const response = await axios.get(API_URL);
+export const getAllBlocks = async (projectId) => {
+  const response = await axios.get(`${API_URL}/${projectId}`);
   return response.data;
 };
 
-export const createBlock = async (blockData) => {
-  const response = await axios.post(API_URL, blockData);
+export const createBlock = async (projectId, blockData) => {
+  const response = await axios.post(`${API_URL}/${projectId}`, blockData);
   return response.data;
 };
 

@@ -1,235 +1,132 @@
-# 3D Bina Satış Takip Sistemi
+# Satış Takip Sistemi
 
-Bu proje, 3D bina modellemesi üzerinden daire satış ve takibini yapabileceğiniz modern bir web uygulamasıdır. React ve Three.js kullanılarak geliştirilmiş frontend ve Node.js/Express ile geliştirilmiş backend'den oluşmaktadır.
+İnşaat projelerinin satış ve tahsilat süreçlerini yönetmek için geliştirilmiş web tabanlı bir yönetim sistemi.
 
 ## Özellikler
 
-### Mevcut Özellikler
+### Proje Yönetimi
+- Çoklu proje desteği
+- Her proje için blok ve daire yönetimi
+- Proje bazlı raporlama ve analiz
+- Blok bazlı satış durumu takibi
 
-#### 3D Bina Modelleme
-- Zemin üzerine blok ekleme
-- Blokları üst üste ve yan yana yerleştirme
-- Blokları seçme ve düzenleme
-- Grid sistemi ile kolay konumlandırma
-- Modern 3D görselleştirme
-
-#### Backend API
-- MongoDB veritabanı entegrasyonu
-- RESTful API endpoints
-- Blok CRUD işlemleri
-
-### Planlanan Özellikler
-
-#### Daire Satış Sistemi
-- Dairelerin 3D model üzerinde görüntülenmesi
-- Daire detay sayfaları
-- Satış durumu takibi
-- Fiyatlandırma yönetimi
-
-#### Kullanıcı Yönetimi
-- Rol bazlı yetkilendirme sistemi (Admin, Satış Temsilcisi, Müşteri)
-- Güvenli giriş sistemi
-- Kullanıcı profil yönetimi
-
-#### Ödeme Takibi
+### Satış Yönetimi
+- Müşteri bilgileri yönetimi
+- Daire satış işlemleri
 - Ödeme planı oluşturma
 - Taksit takibi
-- Otomatik ödeme hatırlatıcıları
-- Ödeme raporları
+- Satış sözleşmesi oluşturma
 
-#### Bildirim Sistemi
-- Email bildirimleri
-- Ödeme hatırlatmaları
-- Sistem bildirimleri
-- Özelleştirilebilir bildirim tercihleri
-
-#### Log ve Raporlama
-- Detaylı sistem logları
-- Satış raporları
-- Ödeme raporları
-- Aktivite takibi
-
-## Proje Yönetimi
-- 3D proje görselleştirme
-- Blok ve daire yönetimi
-- Proje detay sayfası
-- Satış durumu takibi
-
-## Müşteri Yönetimi
-- Müşteri bilgileri kayıt
-- Müşteri listeleme ve arama
-- Müşteri detay sayfası
-
-## Satış İşlemleri
-- Daire satış/rezervasyon işlemleri
-- Ödeme planı oluşturma
-  - Peşin
-  - Peşin + Taksit
-  - Taksit
-- Satış listeleme ve filtreleme
-
-## Ödeme Takibi
-- Ödeme planına göre tahsilat takibi
-- Ödeme durumu (Yapıldı/Yapılmadı)
+### Tahsilat Takibi
+- Ödeme planı takibi
+- Tahsilat kaydı
 - Gecikmiş ödemeler takibi
-- Ödeme geçmişi
+- Ödeme durumu raporları
 
-## Raporlama
-- Projeye özgü satış raporları
-  - Haftalık satış raporu
-  - Aylık satış raporu
-  - Yıllık satış raporu
-- Tahsilat raporları
-- Performans analizleri
+### Raporlama
+- Genel satış istatistikleri
+  - Toplam satış sayısı ve tutarı
+  - Tahsil edilen tutar
+  - Bekleyen tahsilat
+  - Gecikmiş ödemeler
+- Aylık satış grafikleri
+- Ödeme durumu dağılımı
+- Proje bazlı satış raporları
+- Blok bazlı doluluk oranları
 
-## Tapu İşlemleri
-- Tapu teslim aşamaları takibi
-  - Evrak kontrol listesi
-  - Noter işlemleri
-  - Tapu dairesi işlemleri
-  - Tapu teslim durumu
-
-## Yapılacaklar
-
-### 1. Ödeme Takip Sistemi Geliştirmeleri
-- [ ] Ödeme planına göre tahsilat durumu gösterimi
-- [ ] Gecikmiş ödemelerin vurgulanması
-- [ ] Ödeme hatırlatma sistemi
-- [ ] Toplu ödeme işlemleri
-
-### 2. Satış Raporlama Sistemi
-- [ ] Haftalık satış raporu sayfası
-  - Satış sayısı ve ciro
-  - Ödeme tiplerine göre dağılım
-  - Blok/daire bazlı satış analizi
-- [ ] Aylık satış raporu sayfası
-  - Aylık performans göstergeleri
-  - Hedef gerçekleştirme oranları
-  - Trend analizi
-- [ ] Yıllık satış raporu sayfası
-  - Yıllık satış özeti
-  - Karşılaştırmalı analizler
-  - Projeksiyon raporları
-
-### 3. Tapu Teslim Süreci Yönetimi
-- [ ] Tapu işlem takip sayfası
-  - Evrak kontrol listesi
-  - Süreç durumu gösterimi
-  - Tapu işlem tarihleri
-- [ ] Tapu teslim kontrolleri
-  - Gerekli evrakların kontrolü
-  - Noter randevu takibi
-  - Tapu dairesi işlem takibi
-- [ ] Tapu teslim raporları
-  - Teslim edilen tapular
-  - Bekleyen işlemler
-  - Süreç analizi
-
-## Kurulum
-
-### Gereksinimler
-- Node.js (v14 veya üzeri)
-- MongoDB
-- npm veya yarn
-
-### Adımlar
-
-1. Projeyi klonlayın:
-```bash
-git clone [repo-url]
-cd satis-takip
-```
-
-2. Bağımlılıkları yükleyin:
-```bash
-# Frontend bağımlılıkları
-npm install
-
-# Backend bağımlılıkları
-cd backend
-npm install
-```
-
-3. Çevre değişkenlerini ayarlayın:
-`.env` dosyası oluşturun ve aşağıdaki değişkenleri ekleyin:
-```env
-MONGODB_URI=your_mongodb_uri
-PORT=5000
-JWT_SECRET=your_jwt_secret
-```
-
-4. Uygulamayı başlatın:
-```bash
-# Development modunda başlatma
-npm run dev
-
-# Sadece frontend
-npm start
-
-# Sadece backend
-npm run server
-```
-
-## API Endpoints
-
-### Blok İşlemleri
-- `GET /api/blocks` - Tüm blokları listele
-- `POST /api/blocks` - Yeni blok ekle
-- `PUT /api/blocks/:id` - Blok güncelle
-- `DELETE /api/blocks/:id` - Blok sil
-
-### Kullanıcı İşlemleri (Planlanan)
-- `POST /api/users/register` - Yeni kullanıcı kaydı
-- `POST /api/users/login` - Kullanıcı girişi
-- `GET /api/users/profile` - Kullanıcı profili
-- `PUT /api/users/profile` - Profil güncelleme
-
-### Daire İşlemleri (Planlanan)
-- `GET /api/apartments` - Daireleri listele
-- `POST /api/apartments` - Daire ekle
-- `PUT /api/apartments/:id` - Daire güncelle
-- `DELETE /api/apartments/:id` - Daire sil
-
-### Satış İşlemleri (Planlanan)
-- `POST /api/sales` - Satış kaydı oluştur
-- `GET /api/sales` - Satışları listele
-- `PUT /api/sales/:id` - Satış güncelle
-- `DELETE /api/sales/:id` - Satış kaydı sil
-
-### Ödeme İşlemleri (Planlanan)
-- `POST /api/payments` - Ödeme kaydı oluştur
-- `GET /api/payments` - Ödemeleri listele
-- `PUT /api/payments/:id` - Ödeme güncelle
+### Kullanıcı Arayüzü
+- Modern ve kullanıcı dostu tasarım
+- Responsive tasarım (mobil uyumlu)
+- Kolay navigasyon
+- Gelişmiş arama ve filtreleme özellikleri
 
 ## Teknolojiler
 
 ### Frontend
 - React
-- Three.js
-- @react-three/fiber
-- @react-three/drei
-- Material-UI
+- Vite
+- TailwindCSS
+- Chart.js
+- Axios
+- React Router
+- React Icons
+- date-fns
 
 ### Backend
 - Node.js
-- Express
+- Express.js
 - MongoDB
 - Mongoose
-- JWT
+- CORS
+- dotenv
+
+## Kurulum
+
+1. Repoyu klonlayın:
+```bash
+git clone https://github.com/yourusername/satis-takip.git
+cd satis-takip
+```
+
+2. Bağımlılıkları yükleyin:
+```bash
+npm install
+```
+
+3. .env dosyasını oluşturun:
+```bash
+cp .env.example .env
+```
+
+4. .env dosyasını düzenleyin:
+```
+MONGO_URI=your_mongodb_connection_string
+PORT=5000
+```
+
+5. Uygulamayı başlatın:
+```bash
+npm run dev
+```
+
+## Kullanım
+
+1. Proje Oluşturma:
+   - "Projeler" sayfasından "Yeni Proje" butonuna tıklayın
+   - Proje bilgilerini girin
+   - Blokları ve daireleri ekleyin
+
+2. Satış İşlemi:
+   - Proje detayından ilgili bloğu seçin
+   - Satılacak daireyi seçin
+   - Müşteri bilgilerini girin
+   - Ödeme planını oluşturun
+   - Satış sözleşmesini oluşturun
+
+3. Tahsilat Takibi:
+   - "Ödemeler" sayfasından tüm ödemeleri görüntüleyin
+   - Yeni tahsilat ekleyin
+   - Gecikmiş ödemeleri takip edin
+
+4. Raporlar:
+   - Genel satış raporları için "Raporlar" sayfasını kullanın
+   - Proje bazlı raporlar için proje detayından "Proje Raporu" butonunu kullanın
+   - Grafikleri ve istatistikleri inceleyin
 
 ## Katkıda Bulunma
 
-1. Bu repository'yi fork edin
-2. Feature branch'i oluşturun (`git checkout -b feature/amazing-feature`)
-3. Değişikliklerinizi commit edin (`git commit -m 'feat: Add some amazing feature'`)
+1. Bu repoyu fork edin
+2. Yeni bir branch oluşturun (`git checkout -b feature/amazing-feature`)
+3. Değişikliklerinizi commit edin (`git commit -m 'Add some amazing feature'`)
 4. Branch'inizi push edin (`git push origin feature/amazing-feature`)
-5. Pull Request oluşturun
+5. Bir Pull Request oluşturun
 
 ## Lisans
 
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için `LICENSE` dosyasına bakın.
+Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakın.
 
 ## İletişim
 
-Proje Sahibi - [email@example.com]
-Proje Linki: [https://github.com/username/repo]
+Proje Sahibi - [@yourusername](https://github.com/yourusername)
+
+Proje Linki: [https://github.com/yourusername/satis-takip](https://github.com/yourusername/satis-takip)

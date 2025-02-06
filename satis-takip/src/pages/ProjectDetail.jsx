@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { FaSearch } from 'react-icons/fa';
 
 const ProjectDetail = () => {
     const { id } = useParams();
@@ -9,6 +10,8 @@ const ProjectDetail = () => {
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
 
     useEffect(() => {
         const fetchProjectDetails = async () => {
@@ -74,6 +77,31 @@ const ProjectDetail = () => {
         }
     };
 
+    // Ödeme durumu seçenekleri
+    const paymentStatusOptions = [
+        { value: 'all', label: 'Tümü' },
+        { value: 'paid', label: 'Ödendi' },
+        { value: 'partial', label: 'Kısmi Ödeme' },
+        { value: 'overdue', label: 'Gecikmiş' },
+        { value: 'pending', label: 'Bekliyor' }
+    ];
+
+    // Arama ve filtreleme fonksiyonu
+    const filteredSales = sales.filter(sale => {
+        const searchText = searchTerm.toLowerCase();
+        const matchesSearch = (
+            sale.block.unitNumber.toLowerCase().includes(searchText) ||
+            sale.customer.firstName.toLowerCase().includes(searchText) ||
+            sale.customer.lastName.toLowerCase().includes(searchText) ||
+            sale.customer.tcNo.toLowerCase().includes(searchText) ||
+            sale.customer.phone.toLowerCase().includes(searchText)
+        );
+
+        const matchesStatus = statusFilter === 'all' || sale.paymentStatus === statusFilter;
+
+        return matchesSearch && matchesStatus;
+    });
+
     if (loading) {
         return <div className="flex justify-center items-center h-screen">Yükleniyor...</div>;
     }
@@ -126,9 +154,35 @@ const ProjectDetail = () => {
                     </div>
                 </div>
 
-                {/* Satışlar */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold mb-4">Satışlar</h2>
+                {/* Satışlar Bölümü */}
+                <div className="bg-white rounded-lg shadow-md p-6 mt-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold">Satışlar</h3>
+                        <div className="flex items-center gap-4">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                {paymentStatusOptions.map(option => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Ara... (Blok No, Müşteri Adı, TC No, Telefon)"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-10 pr-4 py-2 border rounded-lg w-96 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <FaSearch className="absolute left-3 top-3 text-gray-400" />
+                            </div>
+                        </div>
+                    </div>
+                    
                     {sales.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="w-full">
@@ -144,7 +198,7 @@ const ProjectDetail = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {sales.map((sale) => (
+                                    {filteredSales.map((sale) => (
                                         <tr key={sale._id} className="border-t">
                                             <td className="px-4 py-2">{sale.block.unitNumber}</td>
                                             <td className="px-4 py-2">{`${sale.customer.firstName} ${sale.customer.lastName}`}</td>

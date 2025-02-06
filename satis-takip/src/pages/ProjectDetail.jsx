@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const ProjectDetail = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [project, setProject] = useState(null);
     const [sales, setSales] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -25,7 +26,6 @@ const ProjectDetail = () => {
                 // Projeye ait satışları getir
                 const salesResponse = await axios.get(`/api/sales/project/${id}`);
                 console.log('Sales response:', salesResponse.data);
-                // Ensure sales is always an array
                 setSales(Array.isArray(salesResponse.data) ? salesResponse.data : []);
             } catch (error) {
                 console.error('Error fetching project details:', error);
@@ -37,6 +37,10 @@ const ProjectDetail = () => {
 
         fetchProjectDetails();
     }, [id]);
+
+    const handlePaymentClick = (saleId) => {
+        navigate(`/sales/${saleId}/payments`);
+    };
 
     if (loading) {
         return <div className="flex justify-center items-center h-screen">Yükleniyor...</div>;
@@ -104,6 +108,7 @@ const ProjectDetail = () => {
                                         <th className="px-4 py-2 text-left">Toplam Tutar</th>
                                         <th className="px-4 py-2 text-left">Ödeme Planı</th>
                                         <th className="px-4 py-2 text-left">Tarih</th>
+                                        <th className="px-4 py-2 text-center">İşlemler</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -131,6 +136,14 @@ const ProjectDetail = () => {
                                             </td>
                                             <td className="px-4 py-2">
                                                 {new Date(sale.createdAt).toLocaleDateString('tr-TR')}
+                                            </td>
+                                            <td className="px-4 py-2 text-center">
+                                                <button
+                                                    onClick={() => handlePaymentClick(sale._id)}
+                                                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                                                >
+                                                    Ödemeler
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}

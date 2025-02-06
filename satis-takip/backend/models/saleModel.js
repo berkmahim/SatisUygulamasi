@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const paymentSchema = mongoose.Schema({
+const paymentSchema = new mongoose.Schema({
     amount: {
         type: Number,
         required: true
@@ -13,9 +13,13 @@ const paymentSchema = mongoose.Schema({
         type: String,
         required: true
     },
+    installmentNumber: {
+        type: Number,
+        required: true
+    },
     status: {
         type: String,
-        enum: ['pending', 'paid', 'overdue'],
+        enum: ['pending', 'paid', 'overdue', 'partial'],
         default: 'pending'
     },
     paidAmount: {
@@ -24,10 +28,31 @@ const paymentSchema = mongoose.Schema({
     },
     paidDate: {
         type: Date
+    },
+    paymentMethod: {
+        type: String,
+        enum: ['cash', 'bank_transfer', 'credit_card', 'check'],
+        required: function() {
+            return this.status === 'paid' || this.status === 'partial';
+        }
+    },
+    transactionId: {
+        type: String,
+        required: false
+    },
+    notes: {
+        type: String,
+        required: false
+    },
+    remainingAmount: {
+        type: Number,
+        default: function() {
+            return this.amount - (this.paidAmount || 0);
+        }
     }
 });
 
-const saleSchema = mongoose.Schema({
+const saleSchema = new mongoose.Schema({
     block: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Block',
@@ -47,6 +72,16 @@ const saleSchema = mongoose.Schema({
         type: Number,
         required: true
     },
+    totalPaidAmount: {
+        type: Number,
+        default: 0
+    },
+    remainingAmount: {
+        type: Number,
+        default: function() {
+            return this.totalAmount - (this.totalPaidAmount || 0);
+        }
+    },
     paymentPlan: {
         type: String,
         enum: ['cash', 'cash-installment', 'installment'],
@@ -65,78 +100,122 @@ const saleSchema = mongoose.Schema({
     payments: [paymentSchema],
     status: {
         type: String,
-        enum: ['active', 'cancelled'],
+        enum: ['active', 'cancelled', 'completed'],
         default: 'active'
     },
-    createdAt: {
-        type: Date,
-        default: Date.now
+    paymentStatus: {
+        type: String,
+        enum: ['not_started', 'in_progress', 'completed', 'overdue', 'pending', 'partial', 'paid'],
+        default: 'not_started'
     },
-    completedAt: {
+    lastPaymentDate: {
         type: Date
     },
-    cancelledAt: {
+    nextPaymentDate: {
         type: Date
     },
-    notes: String
+    nextPaymentAmount: {
+        type: Number
+    }
 }, {
     timestamps: true
 });
 
-// Ödeme planı oluşturma methodu
-saleSchema.methods.createPaymentPlan = function() {
-    if (this.type !== 'sale') return;
-
+// Ödeme planı oluşturma
+saleSchema.methods.generatePaymentSchedule = function() {
     const payments = [];
     const paymentDate = new Date(this.firstPaymentDate);
 
     if (this.paymentPlan === 'cash') {
-        // Peşin ödeme - tek ödeme planı
+        // Peşin ödeme
         payments.push({
             amount: this.totalAmount,
             dueDate: paymentDate,
-            description: 'Peşin Ödeme'
+            description: 'Peşin Ödeme',
+            installmentNumber: 1,
+            status: 'pending'
         });
     } else if (this.paymentPlan === 'cash-installment') {
-        // Peşin + Vadeli
         // Peşinat ödemesi
         payments.push({
             amount: this.downPayment,
             dueDate: paymentDate,
-            description: 'Peşinat Ödemesi'
+            description: 'Peşinat',
+            installmentNumber: 1,
+            status: 'pending'
         });
 
-        // Kalan tutar için taksitler
+        // Taksitli ödemeler
         const remainingAmount = this.totalAmount - this.downPayment;
         const installmentAmount = remainingAmount / this.installmentCount;
+        let dueDate = new Date(paymentDate);
 
         for (let i = 0; i < this.installmentCount; i++) {
-            const dueDate = new Date(paymentDate);
-            dueDate.setMonth(paymentDate.getMonth() + i + 1);
-            
+            dueDate = new Date(dueDate.setMonth(dueDate.getMonth() + 1));
             payments.push({
                 amount: installmentAmount,
-                dueDate: dueDate,
-                description: `Taksit ${i+1}`
+                dueDate: new Date(dueDate),
+                description: `${i + 2}. Taksit`,
+                installmentNumber: i + 2,
+                status: 'pending'
             });
         }
     } else if (this.paymentPlan === 'installment') {
-        // Vadeli - tüm tutar taksitlere bölünür
+        // Sadece taksitli ödemeler
         const installmentAmount = this.totalAmount / this.installmentCount;
+        let dueDate = new Date(paymentDate);
 
         for (let i = 0; i < this.installmentCount; i++) {
-            const dueDate = new Date(paymentDate);
-            dueDate.setMonth(paymentDate.getMonth() + i);
-            
             payments.push({
                 amount: installmentAmount,
-                dueDate: dueDate,
-                description: `Taksit ${i+1}`
+                dueDate: new Date(dueDate),
+                description: `${i + 1}. Taksit`,
+                installmentNumber: i + 1,
+                status: 'pending'
             });
+            dueDate = new Date(dueDate.setMonth(dueDate.getMonth() + 1));
         }
     }
 
     this.payments = payments;
 };
+
+// Ödeme durumunu güncelle
+saleSchema.methods.updatePaymentStatus = function() {
+    const now = new Date();
+    let totalPaid = 0;
+    let hasOverdue = false;
+    let hasPending = false;
+
+    this.payments.forEach(payment => {
+        totalPaid += payment.paidAmount || 0;
+
+        if (payment.status === 'pending') {
+            hasPending = true;
+            if (payment.dueDate < now) {
+                payment.status = 'overdue';
+                hasOverdue = true;
+            }
+        }
+    });
+
+    // Toplam ödeme durumunu güncelle
+    if (totalPaid >= this.totalAmount) {
+        this.paymentStatus = 'paid';
+    } else if (totalPaid > 0) {
+        this.paymentStatus = hasOverdue ? 'overdue' : 'partial';
+    } else {
+        this.paymentStatus = hasOverdue ? 'overdue' : 'pending';
+    }
+};
+
+// Ödeme kaydedilmeden önce
+saleSchema.pre('save', async function(next) {
+    if (this.isNew) {
+        this.generatePaymentSchedule();
+    }
+    this.updatePaymentStatus();
+    next();
+});
 
 export default mongoose.model('Sale', saleSchema);

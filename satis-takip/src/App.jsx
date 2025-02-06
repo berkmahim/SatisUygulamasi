@@ -8,6 +8,7 @@ import BlockSalePage from './pages/BlockSalePage';
 import PaymentPlanPage from './pages/PaymentPlanPage';
 import ProjectDetail from './pages/ProjectDetail';
 import Header from './components/Header';
+import PaymentTracking from './pages/PaymentTracking';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
             <Route path="/projects/:projectId/blocks/:blockId" element={<BlockDetail />} />
             <Route path="/projects/:projectId/blocks/:blockId/sale" element={<BlockSalePage />} />
             <Route path="/projects/:projectId/blocks/:blockId/payment-plan" element={<PaymentPlanPage />} />
+            <Route path="/sales/:saleId/payments" element={<PaymentTracking />} />
           </Routes>
         </main>
       </Router>

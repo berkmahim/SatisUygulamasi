@@ -3,68 +3,62 @@ import Sale from '../models/saleModel.js';
 import Block from '../models/blockModel.js';
 import Customer from '../models/customerModel.js';
 
-// @desc    Create a new sale or reservation
+// @desc    Create a new sale
 // @route   POST /api/sales
 // @access  Public
 const createSale = asyncHandler(async (req, res) => {
     try {
-        const { 
-            blockId, 
-            customerId, 
-            type, 
-            totalAmount, 
-            paymentPlan,
-            downPayment,
-            installmentCount,
-            firstPaymentDate,
-            payments 
-        } = req.body;
+        console.log('Creating sale with data:', req.body);
 
-        console.log('Creating sale with data:', {
+        const {
             blockId,
             customerId,
             type,
             paymentPlan,
+            totalAmount,
+            downPayment,
+            installmentCount,
             firstPaymentDate
-        });
+        } = req.body;
 
-        // Check if block exists
+        // Blok'u bul ve kontrol et
         const block = await Block.findById(blockId);
         if (!block) {
             return res.status(404).json({ message: 'Block not found' });
         }
-
         console.log('Found block:', block);
 
-        // Create sale
-        const sale = await Sale.create({
+        // Yeni satış oluştur
+        const sale = new Sale({
             block: blockId,
             customer: customerId,
             type,
-            totalAmount,
             paymentPlan,
+            totalAmount,
             downPayment,
             installmentCount,
-            firstPaymentDate,
-            payments
+            firstPaymentDate: new Date(firstPaymentDate)
         });
 
-        console.log('Created sale:', sale);
+        // Ödeme planını oluştur
+        sale.generatePaymentSchedule();
 
-        // Update block status
+        // Satışı kaydet
+        const savedSale = await sale.save();
+        console.log('Sale saved:', savedSale);
+
+        // Blok'u güncelle
         block.status = type === 'sale' ? 'sold' : 'reserved';
         await block.save();
 
-        const populatedSale = await Sale.findById(sale._id)
+        const populatedSale = await Sale.findById(savedSale._id)
             .populate('block', 'unitNumber type projectId')
             .populate('customer', 'firstName lastName tcNo phone');
 
-        console.log('Populated sale:', populatedSale);
-
         res.status(201).json(populatedSale);
     } catch (error) {
-        console.error('Error creating sale:', error);
-        res.status(500).json({ message: 'Server error' });
+        console.warn('Error creating sale:', error);
+        res.status(400).json({ message: error.message });
     }
 });
 

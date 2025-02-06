@@ -4,6 +4,8 @@ import ProjectList from './pages/ProjectList';
 import BuildingCanvas from './components/BuildingCanvas';
 import CustomerList from './pages/CustomerList';
 import BlockDetail from './pages/BlockDetail';
+import BlockSalePage from './pages/BlockSalePage';
+import PaymentPlanPage from './pages/PaymentPlanPage';
 import Header from './components/Header';
 
 function App() {
@@ -17,6 +19,8 @@ function App() {
             <Route path="/projects/:id" element={<BuildingCanvas />} />
             <Route path="/customers" element={<CustomerList />} />
             <Route path="/projects/:projectId/blocks/:blockId" element={<BlockDetail />} />
+            <Route path="/projects/:projectId/blocks/:blockId/sale" element={<BlockSalePage />} />
+            <Route path="/projects/:projectId/blocks/:blockId/payment-plan" element={<PaymentPlanPage />} />
           </Routes>
         </main>
       </Router>

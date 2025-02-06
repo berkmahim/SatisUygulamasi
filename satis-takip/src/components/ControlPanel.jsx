@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const ControlPanel = ({ 
   editMode, 
@@ -13,6 +14,9 @@ const ControlPanel = ({
   onUpdateBlockDetails,
   blocks
 }) => {
+  const { id: projectId } = useParams();
+  const navigate = useNavigate();
+  const [dimensions, setDimensions] = useState(selectedBlockDimensions);
   const [blockDetails, setBlockDetails] = useState({
     unitNumber: '',
     owner: '',
@@ -36,7 +40,20 @@ const ControlPanel = ({
     }
   }, [selectedBlock, blocks]);
 
-  const handleDetailsChange = (field, value) => {
+  const handleDimensionChange = (dimension, value) => {
+    const newDimensions = { ...dimensions, [dimension]: parseInt(value) || 1 };
+    setDimensions(newDimensions);
+    onUpdateBlockDimensions(newDimensions);
+  };
+
+  const handleExpansionDirectionChange = (dimension, direction) => {
+    onUpdateExpansionDirections({
+      ...expansionDirections,
+      [dimension]: direction
+    });
+  };
+
+  const handleBlockDetailsChange = (field, value) => {
     const newDetails = { ...blockDetails, [field]: value };
     setBlockDetails(newDetails);
     if (selectedBlock) {
@@ -45,8 +62,9 @@ const ControlPanel = ({
   };
 
   const handleSellBlock = () => {
-    // Bu fonksiyon daha sonra satış işlemleri için kullanılacak
-    console.log('Blok satış işlemi başlatılıyor...');
+    if (selectedBlock) {
+      navigate(`/projects/${projectId}/blocks/${selectedBlock}/sale`);
+    }
   };
 
   return (
@@ -130,7 +148,7 @@ const ControlPanel = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <select
                   value={expansionDirections.width}
-                  onChange={(e) => onUpdateExpansionDirections({ ...expansionDirections, width: e.target.value })}
+                  onChange={(e) => handleExpansionDirectionChange('width', e.target.value)}
                   style={{
                     padding: '4px',
                     borderRadius: '4px',
@@ -147,10 +165,7 @@ const ControlPanel = ({
                   min="1"
                   max="10"
                   value={selectedBlockDimensions.width}
-                  onChange={(e) => onUpdateBlockDimensions({
-                    ...selectedBlockDimensions,
-                    width: Math.max(1, Math.min(10, Number(e.target.value)))
-                  })}
+                  onChange={(e) => handleDimensionChange('width', e.target.value)}
                   style={{
                     width: '60px',
                     padding: '4px',
@@ -166,7 +181,7 @@ const ControlPanel = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <select
                   value={expansionDirections.height}
-                  onChange={(e) => onUpdateExpansionDirections({ ...expansionDirections, height: e.target.value })}
+                  onChange={(e) => handleExpansionDirectionChange('height', e.target.value)}
                   style={{
                     padding: '4px',
                     borderRadius: '4px',
@@ -183,10 +198,7 @@ const ControlPanel = ({
                   min="1"
                   max="10"
                   value={selectedBlockDimensions.height}
-                  onChange={(e) => onUpdateBlockDimensions({
-                    ...selectedBlockDimensions,
-                    height: Math.max(1, Math.min(10, Number(e.target.value)))
-                  })}
+                  onChange={(e) => handleDimensionChange('height', e.target.value)}
                   style={{
                     width: '60px',
                     padding: '4px',
@@ -202,7 +214,7 @@ const ControlPanel = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <select
                   value={expansionDirections.depth}
-                  onChange={(e) => onUpdateExpansionDirections({ ...expansionDirections, depth: e.target.value })}
+                  onChange={(e) => handleExpansionDirectionChange('depth', e.target.value)}
                   style={{
                     padding: '4px',
                     borderRadius: '4px',
@@ -219,10 +231,7 @@ const ControlPanel = ({
                   min="1"
                   max="10"
                   value={selectedBlockDimensions.depth}
-                  onChange={(e) => onUpdateBlockDimensions({
-                    ...selectedBlockDimensions,
-                    depth: Math.max(1, Math.min(10, Number(e.target.value)))
-                  })}
+                  onChange={(e) => handleDimensionChange('depth', e.target.value)}
                   style={{
                     width: '60px',
                     padding: '4px',
@@ -248,7 +257,7 @@ const ControlPanel = ({
               <label style={{ fontSize: '12px', width: '80px' }}>Birim Tipi:</label>
               <select
                 value={blockDetails.type}
-                onChange={(e) => handleDetailsChange('type', e.target.value)}
+                onChange={(e) => handleBlockDetailsChange('type', e.target.value)}
                 style={{
                   padding: '4px',
                   borderRadius: '4px',
@@ -266,7 +275,7 @@ const ControlPanel = ({
               <input
                 type="text"
                 value={blockDetails.unitNumber}
-                onChange={(e) => handleDetailsChange('unitNumber', e.target.value)}
+                onChange={(e) => handleBlockDetailsChange('unitNumber', e.target.value)}
                 style={{
                   padding: '4px',
                   borderRadius: '4px',
@@ -281,7 +290,7 @@ const ControlPanel = ({
               <input
                 type="text"
                 value={blockDetails.owner}
-                onChange={(e) => handleDetailsChange('owner', e.target.value)}
+                onChange={(e) => handleBlockDetailsChange('owner', e.target.value)}
                 style={{
                   padding: '4px',
                   borderRadius: '4px',
@@ -296,7 +305,7 @@ const ControlPanel = ({
               <input
                 type="number"
                 value={blockDetails.squareMeters}
-                onChange={(e) => handleDetailsChange('squareMeters', Number(e.target.value))}
+                onChange={(e) => handleBlockDetailsChange('squareMeters', Number(e.target.value))}
                 style={{
                   padding: '4px',
                   borderRadius: '4px',
@@ -311,7 +320,7 @@ const ControlPanel = ({
               <input
                 type="text"
                 value={blockDetails.roomCount}
-                onChange={(e) => handleDetailsChange('roomCount', e.target.value)}
+                onChange={(e) => handleBlockDetailsChange('roomCount', e.target.value)}
                 style={{
                   padding: '4px',
                   borderRadius: '4px',

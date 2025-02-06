@@ -26,3 +26,10 @@ export const getCustomerById = async (id) => {
   const response = await axios.get(`${API_URL}/${id}`);
   return response.data;
 };
+
+export const searchCustomers = async (searchTerm) => {
+  const response = await axios.get(`${API_URL}/search`, {
+    params: { term: searchTerm }
+  });
+  return response.data;
+};

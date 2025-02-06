@@ -9,6 +9,44 @@ const getCustomers = asyncHandler(async (req, res) => {
     res.json(customers);
 });
 
+// @desc    Search customers
+// @route   GET /api/customers/search
+// @access  Public
+const searchCustomers = asyncHandler(async (req, res) => {
+    const { term } = req.query;
+
+    if (!term || term.length < 2) {
+        return res.json([]);
+    }
+
+    const searchRegex = new RegExp(term, 'i');
+    const customers = await Customer.find({
+        $or: [
+            { firstName: searchRegex },
+            { lastName: searchRegex },
+            { tcNo: searchRegex },
+            { phone: searchRegex },
+            { email: searchRegex }
+        ]
+    }).limit(10);
+
+    res.json(customers);
+});
+
+// @desc    Get customer by ID
+// @route   GET /api/customers/:id
+// @access  Public
+const getCustomerById = asyncHandler(async (req, res) => {
+    const customer = await Customer.findById(req.params.id);
+    
+    if (customer) {
+        res.json(customer);
+    } else {
+        res.status(404);
+        throw new Error('Müşteri bulunamadı');
+    }
+});
+
 // @desc    Create a customer
 // @route   POST /api/customers
 // @access  Public
@@ -88,24 +126,11 @@ const deleteCustomer = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Get customer by ID
-// @route   GET /api/customers/:id
-// @access  Public
-const getCustomerById = asyncHandler(async (req, res) => {
-    const customer = await Customer.findById(req.params.id);
-    
-    if (customer) {
-        res.json(customer);
-    } else {
-        res.status(404);
-        throw new Error('Müşteri bulunamadı');
-    }
-});
-
 export {
     getCustomers,
+    searchCustomers,
+    getCustomerById,
     createCustomer,
     updateCustomer,
-    deleteCustomer,
-    getCustomerById
+    deleteCustomer
 };

@@ -1,10 +1,11 @@
 import express from 'express';
 import {
     getCustomers,
+    searchCustomers,
+    getCustomerById,
     createCustomer,
     updateCustomer,
-    deleteCustomer,
-    getCustomerById
+    deleteCustomer
 } from '../controllers/customerController.js';
 
 const router = express.Router();
@@ -12,6 +13,9 @@ const router = express.Router();
 router.route('/')
     .get(getCustomers)
     .post(createCustomer);
+
+router.route('/search')
+    .get(searchCustomers);
 
 router.route('/:id')
     .get(getCustomerById)

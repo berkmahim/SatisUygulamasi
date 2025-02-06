@@ -5,6 +5,7 @@ import { connectDB } from './config/db.js';
 import blocksRouter from './routes/blocks.js';
 import projectsRouter from './routes/projects.js';
 import customerRoutes from './routes/customers.js';
+import salesRoutes from './routes/sales.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
 const port = process.env.PORT || 5000;
@@ -21,6 +22,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use('/api/blocks', blocksRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/customers', customerRoutes);
+app.use('/api/sales', salesRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

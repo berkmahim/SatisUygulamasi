@@ -44,6 +44,11 @@ const ControlPanel = ({
     }
   };
 
+  const handleSellBlock = () => {
+    // Bu fonksiyon daha sonra satış işlemleri için kullanılacak
+    console.log('Blok satış işlemi başlatılıyor...');
+  };
+
   return (
     <div style={{
       position: 'absolute',
@@ -335,6 +340,26 @@ const ControlPanel = ({
                 📝
               </span>
               Detayına Git
+            </button>
+            <button
+              onClick={handleSellBlock}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#FFD700',
+                color: 'black',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span className="material-icons" style={{ fontSize: '20px' }}>
+                💰
+              </span>
+              Bloğu Sat
             </button>
           </div>
         </>

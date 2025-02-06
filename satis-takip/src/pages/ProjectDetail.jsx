@@ -42,6 +42,38 @@ const ProjectDetail = () => {
         navigate(`/sales/${saleId}/payments`);
     };
 
+    // Ödeme durumu renkleri
+    const getPaymentStatusColor = (status) => {
+        switch (status) {
+            case 'paid':
+                return 'bg-green-100 text-green-800';
+            case 'partial':
+                return 'bg-blue-100 text-blue-800';
+            case 'overdue':
+                return 'bg-red-100 text-red-800';
+            case 'pending':
+                return 'bg-yellow-100 text-yellow-800';
+            default:
+                return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    // Ödeme durumu metinleri
+    const getPaymentStatusText = (status) => {
+        switch (status) {
+            case 'paid':
+                return 'Ödendi';
+            case 'partial':
+                return 'Kısmi Ödeme';
+            case 'overdue':
+                return 'Gecikmiş';
+            case 'pending':
+                return 'Bekliyor';
+            default:
+                return 'Belirsiz';
+        }
+    };
+
     if (loading) {
         return <div className="flex justify-center items-center h-screen">Yükleniyor...</div>;
     }
@@ -102,42 +134,29 @@ const ProjectDetail = () => {
                             <table className="w-full">
                                 <thead>
                                     <tr className="bg-gray-50">
-                                        <th className="px-4 py-2 text-left">Blok</th>
-                                        <th className="px-4 py-2 text-left">Müşteri</th>
-                                        <th className="px-4 py-2 text-left">Satış Tipi</th>
-                                        <th className="px-4 py-2 text-left">Toplam Tutar</th>
-                                        <th className="px-4 py-2 text-left">Ödeme Planı</th>
-                                        <th className="px-4 py-2 text-left">Tarih</th>
-                                        <th className="px-4 py-2 text-center">İşlemler</th>
+                                        <th className="px-4 py-2">Blok No</th>
+                                        <th className="px-4 py-2">Müşteri</th>
+                                        <th className="px-4 py-2">Telefon</th>
+                                        <th className="px-4 py-2">TC No</th>
+                                        <th className="px-4 py-2">Satış Türü</th>
+                                        <th className="px-4 py-2">Ödeme Durumu</th>
+                                        <th className="px-4 py-2">İşlemler</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {sales.map((sale) => (
                                         <tr key={sale._id} className="border-t">
+                                            <td className="px-4 py-2">{sale.block.unitNumber}</td>
+                                            <td className="px-4 py-2">{`${sale.customer.firstName} ${sale.customer.lastName}`}</td>
+                                            <td className="px-4 py-2">{sale.customer.phone}</td>
+                                            <td className="px-4 py-2">{sale.customer.tcNo}</td>
+                                            <td className="px-4 py-2">{sale.type === 'sale' ? 'Satış' : 'Rezervasyon'}</td>
                                             <td className="px-4 py-2">
-                                                {sale.block?.unitNumber || 'Belirtilmemiş'}
+                                                <span className={`px-2 py-1 rounded text-sm ${getPaymentStatusColor(sale.paymentStatus)}`}>
+                                                    {getPaymentStatusText(sale.paymentStatus)}
+                                                </span>
                                             </td>
                                             <td className="px-4 py-2">
-                                                {sale.customer ? 
-                                                    `${sale.customer.firstName} ${sale.customer.lastName}` : 
-                                                    'Belirtilmemiş'
-                                                }
-                                            </td>
-                                            <td className="px-4 py-2">
-                                                {sale.type === 'sale' ? 'Satış' : 'Rezervasyon'}
-                                            </td>
-                                            <td className="px-4 py-2">
-                                                {sale.totalAmount?.toLocaleString('tr-TR')} TL
-                                            </td>
-                                            <td className="px-4 py-2">
-                                                {sale.paymentPlan === 'cash' && 'Peşin'}
-                                                {sale.paymentPlan === 'cash-installment' && 'Peşin + Taksit'}
-                                                {sale.paymentPlan === 'installment' && 'Taksit'}
-                                            </td>
-                                            <td className="px-4 py-2">
-                                                {new Date(sale.createdAt).toLocaleDateString('tr-TR')}
-                                            </td>
-                                            <td className="px-4 py-2 text-center">
                                                 <button
                                                     onClick={() => handlePaymentClick(sale._id)}
                                                     className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"

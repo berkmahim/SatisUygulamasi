@@ -209,31 +209,29 @@ const getSales = asyncHandler(async (req, res) => {
 // @desc    Get sales by project ID
 // @route   GET /api/sales/project/:projectId
 // @access  Public
-const getSalesByProject = asyncHandler(async (req, res) => {
+const getSalesByProject = async (req, res) => {
     try {
-        const projectId = req.params.projectId;
-        console.log('Getting sales for project:', projectId);
-
-        // First get all blocks for this project
-        const blocks = await Block.find({ projectId });
-        console.log('Found blocks:', blocks);
-
+        // Önce projeye ait blokları bul
+        const blocks = await Block.find({ projectId: req.params.projectId });
         const blockIds = blocks.map(block => block._id);
-        console.log('Block IDs:', blockIds);
 
-        // Then find all sales for these blocks
+        // Bu bloklara ait satışları getir
         const sales = await Sale.find({ block: { $in: blockIds } })
-            .populate('block', 'unitNumber type projectId')
+            .populate('block', 'unitNumber type')
             .populate('customer', 'firstName lastName tcNo phone');
 
-        console.log('Found sales:', sales);
+        // Her satış için ödeme durumunu güncelle
+        for (let sale of sales) {
+            sale.updatePaymentStatus();
+            await sale.save();
+        }
 
         res.json(sales);
     } catch (error) {
         console.error('Error getting sales by project:', error);
         res.status(500).json({ message: 'Server error' });
     }
-});
+};
 
 export {
     createSale,

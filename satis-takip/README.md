@@ -49,6 +49,82 @@ Bu proje, 3D bina modellemesi üzerinden daire satış ve takibini yapabileceği
 - Ödeme raporları
 - Aktivite takibi
 
+## Proje Yönetimi
+- 3D proje görselleştirme
+- Blok ve daire yönetimi
+- Proje detay sayfası
+- Satış durumu takibi
+
+## Müşteri Yönetimi
+- Müşteri bilgileri kayıt
+- Müşteri listeleme ve arama
+- Müşteri detay sayfası
+
+## Satış İşlemleri
+- Daire satış/rezervasyon işlemleri
+- Ödeme planı oluşturma
+  - Peşin
+  - Peşin + Taksit
+  - Taksit
+- Satış listeleme ve filtreleme
+
+## Ödeme Takibi
+- Ödeme planına göre tahsilat takibi
+- Ödeme durumu (Yapıldı/Yapılmadı)
+- Gecikmiş ödemeler takibi
+- Ödeme geçmişi
+
+## Raporlama
+- Projeye özgü satış raporları
+  - Haftalık satış raporu
+  - Aylık satış raporu
+  - Yıllık satış raporu
+- Tahsilat raporları
+- Performans analizleri
+
+## Tapu İşlemleri
+- Tapu teslim aşamaları takibi
+  - Evrak kontrol listesi
+  - Noter işlemleri
+  - Tapu dairesi işlemleri
+  - Tapu teslim durumu
+
+## Yapılacaklar
+
+### 1. Ödeme Takip Sistemi Geliştirmeleri
+- [ ] Ödeme planına göre tahsilat durumu gösterimi
+- [ ] Gecikmiş ödemelerin vurgulanması
+- [ ] Ödeme hatırlatma sistemi
+- [ ] Toplu ödeme işlemleri
+
+### 2. Satış Raporlama Sistemi
+- [ ] Haftalık satış raporu sayfası
+  - Satış sayısı ve ciro
+  - Ödeme tiplerine göre dağılım
+  - Blok/daire bazlı satış analizi
+- [ ] Aylık satış raporu sayfası
+  - Aylık performans göstergeleri
+  - Hedef gerçekleştirme oranları
+  - Trend analizi
+- [ ] Yıllık satış raporu sayfası
+  - Yıllık satış özeti
+  - Karşılaştırmalı analizler
+  - Projeksiyon raporları
+
+### 3. Tapu Teslim Süreci Yönetimi
+- [ ] Tapu işlem takip sayfası
+  - Evrak kontrol listesi
+  - Süreç durumu gösterimi
+  - Tapu işlem tarihleri
+- [ ] Tapu teslim kontrolleri
+  - Gerekli evrakların kontrolü
+  - Noter randevu takibi
+  - Tapu dairesi işlem takibi
+- [ ] Tapu teslim raporları
+  - Teslim edilen tapular
+  - Bekleyen işlemler
+  - Süreç analizi
+
 ## Kurulum
 
 ### Gereksinimler

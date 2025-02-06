@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import ProjectList from './pages/ProjectList';
 import BuildingCanvas from './components/BuildingCanvas';
 import CustomerList from './pages/CustomerList';
+import BlockDetail from './pages/BlockDetail';
 import Header from './components/Header';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
             <Route path="/" element={<ProjectList />} />
             <Route path="/projects/:id" element={<BuildingCanvas />} />
             <Route path="/customers" element={<CustomerList />} />
+            <Route path="/projects/:projectId/blocks/:blockId" element={<BlockDetail />} />
           </Routes>
         </main>
       </Router>

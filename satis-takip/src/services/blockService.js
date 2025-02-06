@@ -21,3 +21,8 @@ export const deleteBlock = async (id) => {
   const response = await axios.delete(`${API_URL}/${id}`);
   return response.data;
 };
+
+export const getBlockById = async (id) => {
+  const response = await axios.get(`${API_URL}/detail/${id}`);
+  return response.data;
+};

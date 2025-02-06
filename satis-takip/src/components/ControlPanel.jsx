@@ -316,6 +316,26 @@ const ControlPanel = ({
                 placeholder="Örn: 2+1"
               />
             </div>
+            <button
+              onClick={() => window.location.href = `/projects/${blocks.find(b => (b._id || b.id) === selectedBlock).projectId}/blocks/${selectedBlock}`}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span className="material-icons" style={{ fontSize: '20px' }}>
+                📝
+              </span>
+              Detayına Git
+            </button>
           </div>
         </>
       )}

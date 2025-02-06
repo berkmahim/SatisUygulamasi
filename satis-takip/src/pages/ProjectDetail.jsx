@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { FaSearch } from 'react-icons/fa';
 
@@ -122,9 +122,22 @@ const ProjectDetail = () => {
         <div className="container mx-auto px-4 py-8">
             <div className="max-w-5xl mx-auto">
                 {/* Proje Başlığı */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-                    <p className="mt-2 text-gray-600">{project.location}</p>
+                <div className="flex justify-between items-center mb-4">
+                    <h1 className="text-2xl font-bold">{project.name}</h1>
+                    <div className="space-x-2">
+                        <Link
+                            to={`/reports/projects/${id}`}
+                            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                        >
+                            Proje Raporu
+                        </Link>
+                        <Link
+                            to={`/projects/${id}/blocks/new`}
+                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                        >
+                            Yeni Blok Ekle
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Proje Detayları */}

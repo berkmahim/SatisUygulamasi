@@ -9,6 +9,8 @@ import PaymentPlanPage from './pages/PaymentPlanPage';
 import ProjectDetail from './pages/ProjectDetail';
 import Header from './components/Header';
 import PaymentTracking from './pages/PaymentTracking';
+import SalesReport from './pages/SalesReport';
+import ProjectReport from './pages/ProjectReport';
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
             <Route path="/projects/:projectId/blocks/:blockId/sale" element={<BlockSalePage />} />
             <Route path="/projects/:projectId/blocks/:blockId/payment-plan" element={<PaymentPlanPage />} />
             <Route path="/sales/:saleId/payments" element={<PaymentTracking />} />
+            <Route path="/reports/sales" element={<SalesReport />} />
+            <Route path="/reports/projects/:projectId" element={<ProjectReport />} />
           </Routes>
         </main>
       </Router>

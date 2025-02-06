@@ -1,32 +1,35 @@
-import 'dotenv/config';
 import express from 'express';
+import dotenv from 'dotenv';
 import cors from 'cors';
-import { connectDB } from './config/db.js';
-import blocksRouter from './routes/blocks.js';
-import projectsRouter from './routes/projects.js';
-import customerRoutes from './routes/customers.js';
-import salesRoutes from './routes/sales.js';
-import paymentRoutes from './routes/payments.js';
+import connectDB from './config/db.js';
+import projectRoutes from './routes/projectRoutes.js';
+import blockRoutes from './routes/blockRoutes.js';
+import customerRoutes from './routes/customerRoutes.js';
+import saleRoutes from './routes/saleRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 
-const port = process.env.PORT || 5000;
-
+dotenv.config();
 connectDB();
 
 const app = express();
+const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 
 // Routes
-app.use('/api/blocks', blocksRouter);
-app.use('/api/projects', projectsRouter);
+app.use('/api/projects', projectRoutes);
+app.use('/api/blocks', blockRoutes);
 app.use('/api/customers', customerRoutes);
-app.use('/api/sales', salesRoutes);
+app.use('/api/sales', saleRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/reports', reportRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(port, () => console.log(`Server is running on port ${port}`));
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});

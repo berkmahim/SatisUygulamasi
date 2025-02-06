@@ -7,72 +7,86 @@ import Customer from '../models/customerModel.js';
 // @route   POST /api/sales
 // @access  Public
 const createSale = asyncHandler(async (req, res) => {
-    const {
-        blockId,
-        customerId,
-        type,
-        totalAmount,
-        paymentPlan,
-        downPayment,
-        installmentCount,
-        firstPaymentDate,
-        notes
-    } = req.body;
+    try {
+        const { 
+            blockId, 
+            customerId, 
+            type, 
+            totalAmount, 
+            paymentPlan,
+            downPayment,
+            installmentCount,
+            firstPaymentDate,
+            payments 
+        } = req.body;
 
-    // Validate block and customer existence
-    const block = await Block.findById(blockId);
-    const customer = await Customer.findById(customerId);
+        console.log('Creating sale with data:', {
+            blockId,
+            customerId,
+            type,
+            paymentPlan,
+            firstPaymentDate
+        });
 
-    if (!block || !customer) {
-        res.status(404);
-        throw new Error('Block or customer not found');
+        // Check if block exists
+        const block = await Block.findById(blockId);
+        if (!block) {
+            return res.status(404).json({ message: 'Block not found' });
+        }
+
+        console.log('Found block:', block);
+
+        // Create sale
+        const sale = await Sale.create({
+            block: blockId,
+            customer: customerId,
+            type,
+            totalAmount,
+            paymentPlan,
+            downPayment,
+            installmentCount,
+            firstPaymentDate,
+            payments
+        });
+
+        console.log('Created sale:', sale);
+
+        // Update block status
+        block.status = type === 'sale' ? 'sold' : 'reserved';
+        await block.save();
+
+        const populatedSale = await Sale.findById(sale._id)
+            .populate('block', 'unitNumber type projectId')
+            .populate('customer', 'firstName lastName tcNo phone');
+
+        console.log('Populated sale:', populatedSale);
+
+        res.status(201).json(populatedSale);
+    } catch (error) {
+        console.error('Error creating sale:', error);
+        res.status(500).json({ message: 'Server error' });
     }
-
-    // Check if block is already sold or reserved
-    const existingSale = await Sale.findOne({
-        blockId,
-        status: 'active'
-    });
-
-    if (existingSale) {
-        res.status(400);
-        throw new Error('Block is already sold or reserved');
-    }
-
-    // Create sale/reservation
-    const sale = new Sale({
-        blockId,
-        customerId,
-        type,
-        totalAmount,
-        paymentPlan,
-        downPayment,
-        installmentCount,
-        notes
-    });
-
-    // Generate payment plan if it's a sale
-    if (type === 'sale' && firstPaymentDate) {
-        sale.createPaymentPlan(firstPaymentDate);
-    }
-
-    const createdSale = await sale.save();
-    res.status(201).json(createdSale);
 });
 
 // @desc    Get sale by ID
 // @route   GET /api/sales/:id
 // @access  Public
 const getSaleById = asyncHandler(async (req, res) => {
-    const sale = await Sale.findById(req.params.id)
-        .populate('blockId')
-        .populate('customerId');
+    try {
+        const sale = await Sale.findById(req.params.id)
+            .populate('block', 'unitNumber type projectId')
+            .populate('customer', 'firstName lastName tcNo phone');
 
-    if (sale) {
+        if (!sale) {
+            return res.status(404).json({ message: 'Sale not found' });
+        }
+
+        console.log('Found sale:', sale);
+
         res.json(sale);
-    } else {
-        res.status(404);
-        throw new Error('Sale not found');
+    } catch (error) {
+        console.error('Error getting sale:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 
@@ -87,6 +101,8 @@ const updatePaymentPlan = asyncHandler(async (req, res) => {
         throw new Error('Sale not found');
     }
 
+    console.log('Found sale:', sale);
+
     // Update payment dates
     const { payments } = req.body;
     if (payments && Array.isArray(payments)) {
@@ -96,6 +112,7 @@ const updatePaymentPlan = asyncHandler(async (req, res) => {
         }));
         
         const updatedSale = await sale.save();
+        console.log('Updated sale:', updatedSale);
         res.json(updatedSale);
     } else {
         res.status(400);
@@ -114,6 +131,8 @@ const recordPayment = asyncHandler(async (req, res) => {
         throw new Error('Sale not found');
     }
 
+    console.log('Found sale:', sale);
+
     const payment = sale.payments.id(req.params.paymentId);
     if (!payment) {
         res.status(404);
@@ -125,6 +144,8 @@ const recordPayment = asyncHandler(async (req, res) => {
     payment.paidDate = paidDate;
     payment.isPaid = paidAmount >= payment.amount;
 
+    console.log('Updated payment:', payment);
+
     // Check if all payments are completed
     const allPaymentsMade = sale.payments.every(p => p.isPaid);
     if (allPaymentsMade) {
@@ -132,7 +153,10 @@ const recordPayment = asyncHandler(async (req, res) => {
         sale.completedAt = new Date();
     }
 
+    console.log('Updated sale:', sale);
+
     const updatedSale = await sale.save();
+    console.log('Saved sale:', updatedSale);
     res.json(updatedSale);
 });
 
@@ -147,10 +171,15 @@ const cancelSale = asyncHandler(async (req, res) => {
         throw new Error('Sale not found');
     }
 
+    console.log('Found sale:', sale);
+
     sale.status = 'cancelled';
     sale.cancelledAt = new Date();
 
+    console.log('Updated sale:', sale);
+
     const updatedSale = await sale.save();
+    console.log('Saved sale:', updatedSale);
     res.json(updatedSale);
 });
 
@@ -158,20 +187,58 @@ const cancelSale = asyncHandler(async (req, res) => {
 // @route   GET /api/sales
 // @access  Public
 const getSales = asyncHandler(async (req, res) => {
-    const { blockId, customerId, type, status } = req.query;
-    
-    const filter = {};
-    if (blockId) filter.blockId = blockId;
-    if (customerId) filter.customerId = customerId;
-    if (type) filter.type = type;
-    if (status) filter.status = status;
+    try {
+        const { blockId, customerId, type, status } = req.query;
+        
+        const filter = {};
+        if (blockId) filter.block = blockId;
+        if (customerId) filter.customer = customerId;
+        if (type) filter.type = type;
+        if (status) filter.status = status;
 
-    const sales = await Sale.find(filter)
-        .populate('blockId')
-        .populate('customerId')
-        .sort('-createdAt');
+        console.log('Getting sales with filter:', filter);
 
-    res.json(sales);
+        const sales = await Sale.find(filter)
+            .populate('block', 'unitNumber type projectId')
+            .populate('customer', 'firstName lastName tcNo phone')
+            .sort('-createdAt');
+
+        console.log('Found sales:', sales);
+
+        res.json(sales);
+    } catch (error) {
+        console.error('Error getting sales:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @desc    Get sales by project ID
+// @route   GET /api/sales/project/:projectId
+// @access  Public
+const getSalesByProject = asyncHandler(async (req, res) => {
+    try {
+        const projectId = req.params.projectId;
+        console.log('Getting sales for project:', projectId);
+
+        // First get all blocks for this project
+        const blocks = await Block.find({ projectId });
+        console.log('Found blocks:', blocks);
+
+        const blockIds = blocks.map(block => block._id);
+        console.log('Block IDs:', blockIds);
+
+        // Then find all sales for these blocks
+        const sales = await Sale.find({ block: { $in: blockIds } })
+            .populate('block', 'unitNumber type projectId')
+            .populate('customer', 'firstName lastName tcNo phone');
+
+        console.log('Found sales:', sales);
+
+        res.json(sales);
+    } catch (error) {
+        console.error('Error getting sales by project:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
 });
 
 export {
@@ -180,5 +247,6 @@ export {
     updatePaymentPlan,
     recordPayment,
     cancelSale,
-    getSales
+    getSales,
+    getSalesByProject
 };

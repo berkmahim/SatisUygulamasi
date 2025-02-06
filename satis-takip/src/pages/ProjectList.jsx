@@ -111,16 +111,22 @@ const ProjectList = () => {
           {projects.map((project) => (
             <div key={project._id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">{project.name}</h2>
-                <p className="text-gray-600 mb-2">{project.location}</p>
-                <p className="text-gray-700">{project.description}</p>
+                <div className="flex flex-col">
+                  <Link
+                    to={`/projects/${project._id}`}
+                    className="text-lg font-semibold text-blue-600 hover:text-blue-800"
+                  >
+                    {project.name}
+                  </Link>
+                  <p className="text-gray-600">{project.location}</p>
+                </div>
               </div>
               <div className="px-6 py-4 bg-gray-50 flex justify-between items-center">
                 <Link
-                  to={`/projects/${project._id}`}
-                  className="text-blue-500 hover:text-blue-600 font-medium"
+                  to={`/projects/${project._id}/building`}
+                  className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                 >
-                  3D Modeli Görüntüle
+                  3D Görünüm
                 </Link>
                 <div className="flex gap-3">
                   <button

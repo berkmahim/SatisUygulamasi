@@ -5,7 +5,8 @@ import {
     updatePaymentPlan,
     recordPayment,
     cancelSale,
-    getSales
+    getSales,
+    getSalesByProject
 } from '../controllers/saleController.js';
 
 const router = express.Router();
@@ -13,6 +14,9 @@ const router = express.Router();
 router.route('/')
     .post(createSale)
     .get(getSales);
+
+router.route('/project/:projectId')
+    .get(getSalesByProject);
 
 router.route('/:id')
     .get(getSaleById);

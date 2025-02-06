@@ -9,65 +9,65 @@ const paymentSchema = mongoose.Schema({
         type: Date,
         required: true
     },
-    isPaid: {
-        type: Boolean,
-        default: false
+    description: {
+        type: String,
+        required: true
     },
-    paidDate: {
-        type: Date
+    status: {
+        type: String,
+        enum: ['pending', 'paid', 'overdue'],
+        default: 'pending'
     },
     paidAmount: {
         type: Number,
         default: 0
+    },
+    paidDate: {
+        type: Date
     }
 });
 
 const saleSchema = mongoose.Schema({
-    blockId: {
+    block: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'Block'
+        ref: 'Block',
+        required: true
     },
-    customerId: {
+    customer: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'Customer'
+        ref: 'Customer',
+        required: true
     },
     type: {
         type: String,
-        required: true,
-        enum: ['reservation', 'sale']
-    },
-    status: {
-        type: String,
-        required: true,
-        enum: ['active', 'completed', 'cancelled'],
-        default: 'active'
+        enum: ['sale', 'reservation'],
+        required: true
     },
     totalAmount: {
         type: Number,
-        required: function() { return this.type === 'sale'; }
+        required: true
     },
     paymentPlan: {
         type: String,
         enum: ['cash', 'cash-installment', 'installment'],
-        required: function() { return this.type === 'sale'; }
+        required: true
     },
     downPayment: {
-        type: Number,
-        required: function() {
-            return this.type === 'sale' && this.paymentPlan === 'cash-installment';
-        }
+        type: Number
     },
     installmentCount: {
-        type: Number,
-        required: function() {
-            return this.type === 'sale' && 
-                   (this.paymentPlan === 'cash-installment' || 
-                    this.paymentPlan === 'installment');
-        }
+        type: Number
+    },
+    firstPaymentDate: {
+        type: Date,
+        required: true
     },
     payments: [paymentSchema],
+    status: {
+        type: String,
+        enum: ['active', 'cancelled'],
+        default: 'active'
+    },
     createdAt: {
         type: Date,
         default: Date.now
@@ -84,24 +84,26 @@ const saleSchema = mongoose.Schema({
 });
 
 // Ödeme planı oluşturma methodu
-saleSchema.methods.createPaymentPlan = function(firstPaymentDate) {
+saleSchema.methods.createPaymentPlan = function() {
     if (this.type !== 'sale') return;
 
     const payments = [];
-    const paymentDate = new Date(firstPaymentDate);
+    const paymentDate = new Date(this.firstPaymentDate);
 
     if (this.paymentPlan === 'cash') {
         // Peşin ödeme - tek ödeme planı
         payments.push({
             amount: this.totalAmount,
-            dueDate: paymentDate
+            dueDate: paymentDate,
+            description: 'Peşin Ödeme'
         });
     } else if (this.paymentPlan === 'cash-installment') {
         // Peşin + Vadeli
         // Peşinat ödemesi
         payments.push({
             amount: this.downPayment,
-            dueDate: paymentDate
+            dueDate: paymentDate,
+            description: 'Peşinat Ödemesi'
         });
 
         // Kalan tutar için taksitler
@@ -114,7 +116,8 @@ saleSchema.methods.createPaymentPlan = function(firstPaymentDate) {
             
             payments.push({
                 amount: installmentAmount,
-                dueDate: dueDate
+                dueDate: dueDate,
+                description: `Taksit ${i+1}`
             });
         }
     } else if (this.paymentPlan === 'installment') {
@@ -127,7 +130,8 @@ saleSchema.methods.createPaymentPlan = function(firstPaymentDate) {
             
             payments.push({
                 amount: installmentAmount,
-                dueDate: dueDate
+                dueDate: dueDate,
+                description: `Taksit ${i+1}`
             });
         }
     }

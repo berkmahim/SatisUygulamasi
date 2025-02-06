@@ -6,6 +6,7 @@ import CustomerList from './pages/CustomerList';
 import BlockDetail from './pages/BlockDetail';
 import BlockSalePage from './pages/BlockSalePage';
 import PaymentPlanPage from './pages/PaymentPlanPage';
+import ProjectDetail from './pages/ProjectDetail';
 import Header from './components/Header';
 
 function App() {
@@ -16,7 +17,8 @@ function App() {
         <main>
           <Routes>
             <Route path="/" element={<ProjectList />} />
-            <Route path="/projects/:id" element={<BuildingCanvas />} />
+            <Route path="/projects/:id" element={<ProjectDetail />} />
+            <Route path="/projects/:id/building" element={<BuildingCanvas />} />
             <Route path="/customers" element={<CustomerList />} />
             <Route path="/projects/:projectId/blocks/:blockId" element={<BlockDetail />} />
             <Route path="/projects/:projectId/blocks/:blockId/sale" element={<BlockSalePage />} />

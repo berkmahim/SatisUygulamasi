@@ -9,6 +9,8 @@
 - Her proje için blok ve daire yönetimi
 - Proje bazlı raporlama ve analiz
 - Blok bazlı satış durumu takibi
+- 3D proje görselleştirme
+- Blok ve daire durumlarının renk kodlaması
 
 ### Satış Yönetimi
 - Müşteri bilgileri yönetimi
@@ -16,12 +18,16 @@
 - Ödeme planı oluşturma
 - Taksit takibi
 - Satış sözleşmesi oluşturma
+- Toplu taksit ödeme
+- Otomatik ödeme hatırlatıcıları
 
 ### Tahsilat Takibi
 - Ödeme planı takibi
 - Tahsilat kaydı
 - Gecikmiş ödemeler takibi
 - Ödeme durumu raporları
+- Türk Lirası formatında para birimi desteği
+- Kısmi ödeme ve fazla ödeme yönetimi
 
 ### Raporlama
 - Genel satış istatistikleri
@@ -33,24 +39,29 @@
 - Ödeme durumu dağılımı
 - Proje bazlı satış raporları
 - Blok bazlı doluluk oranları
+- Excel export özelliği
+- Özelleştirilebilir rapor filtreleri
 
 ### Kullanıcı Arayüzü
 - Modern ve kullanıcı dostu tasarım
 - Responsive tasarım (mobil uyumlu)
 - Kolay navigasyon
 - Gelişmiş arama ve filtreleme özellikleri
+- Ant Design bileşenleri
+- Tema desteği (Açık/Koyu mod)
 
 ## Teknolojiler
 
 ### Frontend
-- React
+- React 18
 - Vite
-- TailwindCSS
+- Ant Design 5
 - Chart.js
 - Axios
 - React Router
 - React Icons
 - date-fns
+- Three.js (3D görselleştirme)
 
 ### Backend
 - Node.js
@@ -59,6 +70,8 @@
 - Mongoose
 - CORS
 - dotenv
+- node-cron (zamanlanmış görevler)
+- multer (dosya yükleme)
 
 ## Kurulum
 
@@ -112,6 +125,92 @@ npm run dev
    - Genel satış raporları için "Raporlar" sayfasını kullanın
    - Proje bazlı raporlar için proje detayından "Proje Raporu" butonunu kullanın
    - Grafikleri ve istatistikleri inceleyin
+
+## Öneriler ve Yapılacaklar
+
+### Öncelikli İyileştirmeler
+1. **Ödeme Sistemi İyileştirmeleri**
+   - Otomatik ödeme planı hesaplayıcı
+   - Toplu ödeme alırken taksit seçimi
+   - Ödeme geçmişi görüntüleme
+   - Ödeme makbuzu oluşturma ve yazdırma
+
+2. **Müşteri Yönetimi**
+   - Müşteri portalı oluşturma
+   - Müşteri iletişim geçmişi
+   - Otomatik e-posta/SMS bildirimleri
+   - Müşteri dosya yönetimi
+
+3. **Raporlama Geliştirmeleri**
+   - Dashboard özelleştirme
+   - Detaylı finansal raporlar
+   - PDF rapor çıktısı
+   - Özelleştirilebilir grafik seçenekleri
+
+### Teknik İyileştirmeler
+1. **Performans**
+   - API önbellekleme
+   - Sayfalama optimizasyonu
+   - Resim optimizasyonu
+   - Lazy loading implementasyonu
+
+2. **Güvenlik**
+   - JWT authentication
+   - Role-based access control
+   - API rate limiting
+   - Input validasyon geliştirmeleri
+
+3. **Kullanıcı Deneyimi**
+   - Gelişmiş hata yönetimi
+   - Yükleme durumu göstergeleri
+   - Form validasyon mesajları
+   - Kullanıcı tercihleri saklama
+
+### Yeni Özellikler
+1. **Proje Yönetimi**
+   - Proje ilerleme takibi
+   - Maliyet yönetimi
+   - Takvim entegrasyonu
+   - Doküman yönetimi
+
+2. **Satış Araçları**
+   - WhatsApp entegrasyonu
+   - CRM özellikleri
+   - Potansiyel müşteri takibi
+   - Satış hedefi takibi
+
+3. **Mobil Uygulama**
+   - React Native ile mobil uygulama
+   - Offline çalışma modu
+   - Push notifications
+   - Mobil ödeme alma
+
+4. **Entegrasyonlar**
+   - Banka entegrasyonları
+   - E-fatura entegrasyonu
+   - Google Calendar entegrasyonu
+   - Excel toplu veri aktarımı
+
+### Bakım ve Test
+1. **Test Kapsamı**
+   - Unit testler
+   - E2E testler
+   - Yük testleri
+   - Kullanıcı kabul testleri
+
+2. **Dökümantasyon**
+   - API dökümantasyonu
+   - Kullanıcı kılavuzu
+   - Geliştirici dökümantasyonu
+   - Deployment kılavuzu
+
+3. **DevOps**
+   - CI/CD pipeline
+   - Docker containerization
+   - Otomatik yedekleme
+   - Monitoring ve logging
+
+Bu öneriler, projenin mevcut durumu ve potansiyel gelişim alanları göz önünde bulundurularak hazırlanmıştır. Öncelik sırası ve implementasyon detayları, projenin ihtiyaçlarına göre ayarlanabilir.
 
 ## Katkıda Bulunma
 

@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import { 
     DollarOutlined, CalendarOutlined, 
-    CheckCircleOutlined, ClockCircleOutlined 
+    CheckCircleOutlined, ClockCircleOutlined, WarningOutlined 
 } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -39,13 +39,94 @@ const PaymentTracking = () => {
         }
     };
 
+    const formatCurrency = (value) => {
+        if (!value && value !== 0) return '';
+
+        // Convert to string and handle decimal places
+        let numStr = typeof value === 'number' ? value.toString() : value;
+        
+        // Remove existing formatting
+        numStr = numStr.replace(/[^\d,]/g, '');
+        
+        // Split by comma and take only first two parts
+        const parts = numStr.split(',');
+        let integerPart = parts[0];
+        let decimalPart = parts[1] || '';
+
+        // Add thousand separators to integer part
+        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        
+        // Limit decimal places to 2
+        decimalPart = decimalPart.slice(0, 2);
+        
+        // Combine parts
+        return `${integerPart}${decimalPart ? ',' + decimalPart : ''}`;
+    };
+
+    const handleAmountChange = (e) => {
+        const formattedValue = formatCurrency(e.target.value);
+        form.setFieldsValue({ paidAmount: formattedValue });
+    };
+
+    const calculatePaymentStatus = (payment) => {
+        const paid = payment.paidAmount || 0;
+        const total = payment.amount || 0;
+        const remaining = total - paid;
+        const dueDate = new Date(payment.dueDate);
+        const today = new Date();
+
+        if (Math.abs(remaining) < 0.01) { // Tam ödeme (küçük yuvarlama farkları için tolerans)
+            return 'paid';
+        } else if (remaining < 0) { // Fazla ödeme
+            return 'overpaid';
+        } else if (paid > 0) { // Kısmi ödeme
+            return dueDate < today ? 'overdue' : 'partial';
+        } else { // Hiç ödeme yapılmamış
+            return dueDate < today ? 'overdue' : 'pending';
+        }
+    };
+
+    const getStatusTag = (status) => {
+        const statusConfig = {
+            paid: { color: 'success', text: 'Ödendi', icon: <CheckCircleOutlined /> },
+            partial: { color: 'processing', text: 'Kısmi Ödeme', icon: <ClockCircleOutlined /> },
+            overdue: { color: 'error', text: 'Gecikmiş', icon: <ClockCircleOutlined /> },
+            pending: { color: 'warning', text: 'Bekliyor', icon: <ClockCircleOutlined /> },
+            overpaid: { color: 'error', text: 'Fazla Ödeme', icon: <WarningOutlined /> }
+        };
+
+        const config = statusConfig[status] || { color: 'default', text: 'Belirsiz', icon: null };
+        return <Tag color={config.color} icon={config.icon}>{config.text}</Tag>;
+    };
+
     const handlePaymentSubmit = async (values) => {
         if (!selectedPayment) return;
 
         try {
+            // Convert formatted number to decimal
+            const numStr = values.paidAmount.replace(/\./g, '').replace(',', '.');
+            const paidAmount = parseFloat(numStr);
+
+            if (isNaN(paidAmount)) {
+                message.error('Geçerli bir tutar giriniz');
+                return;
+            }
+
+            if (paidAmount <= 0) {
+                message.error('Ödeme tutarı 0\'dan büyük olmalıdır');
+                return;
+            }
+
+            // Taksit tutarını kontrol et
+            const remainingAmount = selectedPayment.amount - (selectedPayment.paidAmount || 0);
+            if (paidAmount > remainingAmount) {
+                message.error('Kalan tutardan fazla ödeme yapılamaz');
+                return;
+            }
+
             await axios.post(`/api/payments/${saleId}`, {
                 paymentId: selectedPayment.id,
-                paidAmount: parseFloat(values.paidAmount.replace(/[.,]/g, '')),
+                paidAmount: paidAmount,
                 paymentMethod: values.paymentMethod,
                 notes: values.notes || undefined,
                 paidDate: new Date()
@@ -68,18 +149,6 @@ const PaymentTracking = () => {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         }).format(amount);
-    };
-
-    const getStatusTag = (status) => {
-        const statusConfig = {
-            paid: { color: 'success', text: 'Ödendi', icon: <CheckCircleOutlined /> },
-            partial: { color: 'processing', text: 'Kısmi Ödeme', icon: <ClockCircleOutlined /> },
-            overdue: { color: 'error', text: 'Gecikmiş', icon: <ClockCircleOutlined /> },
-            pending: { color: 'warning', text: 'Bekliyor', icon: <ClockCircleOutlined /> }
-        };
-
-        const config = statusConfig[status] || { color: 'default', text: 'Belirsiz', icon: null };
-        return <Tag color={config.color} icon={config.icon}>{config.text}</Tag>;
     };
 
     const columns = [
@@ -121,25 +190,34 @@ const PaymentTracking = () => {
             title: 'Kalan',
             dataIndex: 'remainingAmount',
             key: 'remainingAmount',
-            render: (amount) => formatAmount(amount),
+            render: (_, record) => {
+                const remaining = record.amount - (record.paidAmount || 0);
+                return formatAmount(remaining);
+            },
         },
         {
             title: 'Durum',
             dataIndex: 'status',
             key: 'status',
-            render: (status) => getStatusTag(status),
+            render: (_, record) => getStatusTag(calculatePaymentStatus(record)),
         },
         {
             title: 'İşlem',
             key: 'action',
-            render: (_, record) => (
-                record.status !== 'paid' && (
+            render: (_, record) => {
+                const status = calculatePaymentStatus(record);
+                if (status === 'paid' || status === 'overpaid') {
+                    return null;
+                }
+                return (
                     <Button 
                         type="primary"
                         onClick={() => {
                             setSelectedPayment(record);
+                            const remaining = record.amount - (record.paidAmount || 0);
+                            const formattedAmount = formatCurrency(remaining.toString().replace('.', ','));
                             form.setFieldsValue({
-                                paidAmount: record.remainingAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
+                                paidAmount: formattedAmount,
                                 paymentMethod: 'cash',
                                 notes: ''
                             });
@@ -154,8 +232,8 @@ const PaymentTracking = () => {
                     >
                         Ödeme Al
                     </Button>
-                )
-            ),
+                );
+            },
         },
     ];
 
@@ -229,46 +307,48 @@ const PaymentTracking = () => {
                         <Card title="Ödeme Yap">
                             <Form
                                 form={form}
-                                layout="vertical"
                                 onFinish={handlePaymentSubmit}
+                                layout="vertical"
                             >
                                 <Form.Item
                                     name="paidAmount"
                                     label="Ödeme Tutarı"
                                     rules={[
-                                        { required: true, message: 'Lütfen ödeme tutarını girin' },
+                                        { required: true, message: 'Lütfen ödeme tutarını giriniz' },
                                         {
-                                            validator: async (_, value) => {
-                                                if (!value) return;
-                                                const numericValue = parseFloat(value.replace(/[.,]/g, ''));
-                                                if (numericValue > selectedPayment.remainingAmount) {
-                                                    throw new Error('Kalan tutardan fazla ödeme yapılamaz');
+                                            validator: (_, value) => {
+                                                if (!value) return Promise.resolve();
+                                                
+                                                const numStr = value.replace(/\./g, '').replace(',', '.');
+                                                const amount = parseFloat(numStr);
+
+                                                if (isNaN(amount) || amount <= 0) {
+                                                    return Promise.reject('Geçerli bir tutar giriniz');
                                                 }
-                                            },
-                                        },
+                                                if (amount > selectedPayment.remainingAmount) {
+                                                    return Promise.reject('Kalan tutardan fazla ödeme yapılamaz');
+                                                }
+                                                return Promise.resolve();
+                                            }
+                                        }
                                     ]}
                                 >
                                     <Input
-                                        onChange={(e) => {
-                                            let value = e.target.value;
-                                            value = value.replace(/[^0-9,]/g, '');
-                                            value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                                            form.setFieldsValue({ paidAmount: value });
-                                        }}
+                                        onChange={handleAmountChange}
+                                        placeholder="0,00"
+                                        suffix="₺"
                                     />
                                 </Form.Item>
 
                                 <Form.Item
                                     name="paymentMethod"
                                     label="Ödeme Yöntemi"
-                                    rules={[{ required: true, message: 'Lütfen ödeme yöntemini seçin' }]}
-                                    initialValue="cash"
+                                    rules={[{ required: true, message: 'Lütfen ödeme yöntemini seçiniz' }]}
                                 >
                                     <Select>
                                         <Option value="cash">Nakit</Option>
-                                        <Option value="bank_transfer">Havale/EFT</Option>
                                         <Option value="credit_card">Kredi Kartı</Option>
-                                        <Option value="check">Çek</Option>
+                                        <Option value="bank_transfer">Havale/EFT</Option>
                                     </Select>
                                 </Form.Item>
 
@@ -280,17 +360,9 @@ const PaymentTracking = () => {
                                 </Form.Item>
 
                                 <Form.Item>
-                                    <Space>
-                                        <Button type="primary" htmlType="submit">
-                                            Ödemeyi Kaydet
-                                        </Button>
-                                        <Button onClick={() => {
-                                            setSelectedPayment(null);
-                                            form.resetFields();
-                                        }}>
-                                            İptal
-                                        </Button>
-                                    </Space>
+                                    <Button type="primary" htmlType="submit">
+                                        Ödemeyi Kaydet
+                                    </Button>
                                 </Form.Item>
                             </Form>
                         </Card>

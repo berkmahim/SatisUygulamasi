@@ -152,9 +152,117 @@ const getOverduePayments = async (req, res) => {
     }
 };
 
+// @desc    Record bulk payments for a sale
+// @route   POST /api/payments/:saleId/bulk
+// @access  Public
+const recordBulkPayments = async (req, res) => {
+    try {
+        const { saleId } = req.params;
+        const payments = req.body;
+
+        const sale = await Sale.findById(saleId)
+            .populate('payments')
+            .populate('customer')
+            .populate('block');
+
+        if (!sale) {
+            return res.status(404).json({ message: 'Satış bulunamadı' });
+        }
+
+        // Her bir ödeme için işlem yap
+        for (const payment of payments) {
+            const installment = sale.payments.find(p => p._id.toString() === payment.installmentId);
+            
+            if (!installment) {
+                return res.status(400).json({ message: 'Geçersiz taksit' });
+            }
+
+            if (payment.paidAmount > (installment.amount - (installment.paidAmount || 0))) {
+                return res.status(400).json({ message: 'Ödeme tutarı kalan tutardan büyük olamaz' });
+            }
+
+            // Ödeme kaydını güncelle
+            installment.paidAmount = (installment.paidAmount || 0) + payment.paidAmount;
+            installment.paidDate = payment.paidDate;
+            installment.paymentMethod = payment.paymentMethod;
+            installment.status = installment.paidAmount >= installment.amount ? 'paid' : 'partial';
+            
+            await installment.save();
+        }
+
+        // Satışın toplam ödeme durumunu güncelle
+        const totalAmount = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+        const totalPaid = sale.payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+        
+        sale.paymentStatus = totalPaid >= totalAmount ? 'paid' : 'partial';
+        await sale.save();
+
+        res.json({ message: 'Ödemeler başarıyla kaydedildi' });
+    } catch (error) {
+        console.error('Toplu ödeme hatası:', error);
+        res.status(500).json({ message: 'Ödemeler kaydedilirken bir hata oluştu' });
+    }
+};
+
+// @desc    Update payment plan
+// @route   PUT /api/payments/:saleId/plan
+// @access  Public
+const updatePaymentPlan = async (req, res) => {
+    try {
+        const sale = await Sale.findById(req.params.saleId);
+        if (!sale) {
+            return res.status(404).json({ message: 'Satış bulunamadı' });
+        }
+
+        const {
+            totalAmount,
+            downPayment,
+            installmentCount,
+            firstPaymentDate,
+            paymentPlan
+        } = req.body;
+
+        // Sadece ödenmemiş taksitleri güncelle
+        const unpaidPayments = sale.payments.filter(p => p.status !== 'paid');
+        if (unpaidPayments.length === 0) {
+            return res.status(400).json({ message: 'Tüm ödemeler yapılmış, plan güncellenemez' });
+        }
+
+        // Ödeme planı tipini güncelle
+        if (paymentPlan) {
+            sale.paymentPlan = paymentPlan;
+        }
+
+        // Toplam tutarı güncelle
+        if (totalAmount) {
+            const paidAmount = sale.payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0);
+            if (totalAmount < paidAmount) {
+                return res.status(400).json({ message: 'Yeni toplam tutar, ödenmiş tutardan küçük olamaz' });
+            }
+            sale.totalAmount = totalAmount;
+        }
+
+        // Peşinat ve taksit sayısını güncelle
+        if (downPayment !== undefined) sale.downPayment = downPayment;
+        if (installmentCount) sale.installmentCount = installmentCount;
+        if (firstPaymentDate) sale.firstPaymentDate = firstPaymentDate;
+
+        // Ödeme planını yeniden oluştur
+        sale.generatePaymentSchedule();
+        await sale.save();
+
+        res.json({ message: 'Ödeme planı başarıyla güncellendi', sale });
+    } catch (error) {
+        console.error('Error updating payment plan:', error);
+        res.status(500).json({ message: 'Ödeme planı güncellenirken bir hata oluştu' });
+    }
+};
+
 export {
     recordPayment,
     getPaymentDetails,
     updatePaymentDueDate,
-    getOverduePayments
+    getOverduePayments,
+    recordBulkPayments,
+    updatePaymentPlan
 };

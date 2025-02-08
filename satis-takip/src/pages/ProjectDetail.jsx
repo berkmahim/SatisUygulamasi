@@ -12,6 +12,8 @@ const ProjectDetail = () => {
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [selectedSale, setSelectedSale] = useState(null);
 
     useEffect(() => {
         const fetchProjectDetails = async () => {
@@ -43,6 +45,11 @@ const ProjectDetail = () => {
 
     const handlePaymentClick = (saleId) => {
         navigate(`/sales/${saleId}/payments`);
+    };
+
+    const handleCancelSale = (sale) => {
+        setSelectedSale(sale);
+        setShowCancelModal(true);
     };
 
     // Ödeme durumu renkleri
@@ -230,6 +237,14 @@ const ProjectDetail = () => {
                                                 >
                                                     Ödemeler
                                                 </button>
+                                                {sale.paymentStatus === 'pending' && (
+                                                    <button
+                                                        onClick={() => handleCancelSale(sale)}
+                                                        className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 ml-2"
+                                                    >
+                                                        Satışı İptal Et
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -241,6 +256,21 @@ const ProjectDetail = () => {
                     )}
                 </div>
             </div>
+            {selectedSale && (
+                <CancelSaleModal
+                    visible={showCancelModal}
+                    onCancel={() => {
+                        setShowCancelModal(false);
+                        setSelectedSale(null);
+                    }}
+                    saleId={selectedSale._id}
+                    onSuccess={() => {
+                        setShowCancelModal(false);
+                        setSelectedSale(null);
+                        fetchProjectDetails();
+                    }}
+                />
+            )}
         </div>
     );
 };

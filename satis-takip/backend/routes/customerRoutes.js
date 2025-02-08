@@ -1,25 +1,20 @@
 import express from 'express';
 import {
-    getCustomers,
-    searchCustomers,
-    getCustomerById,
     createCustomer,
+    getCustomers,
+    getCustomerById,
+    searchCustomers,
     updateCustomer,
     deleteCustomer
 } from '../controllers/customerController.js';
 
 const router = express.Router();
 
-router.route('/')
-    .get(getCustomers)
-    .post(createCustomer);
-
-router.route('/search')
-    .get(searchCustomers);
-
-router.route('/:id')
-    .get(getCustomerById)
-    .put(updateCustomer)
-    .delete(deleteCustomer);
+router.post('/', createCustomer);
+router.get('/', getCustomers);
+router.get('/search', searchCustomers);
+router.get('/:id', getCustomerById);
+router.put('/:id', updateCustomer);
+router.delete('/:id', deleteCustomer);
 
 export default router;

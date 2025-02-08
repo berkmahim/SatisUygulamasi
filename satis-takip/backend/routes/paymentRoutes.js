@@ -3,7 +3,9 @@ import {
     recordPayment,
     getPaymentDetails,
     updatePaymentDueDate,
-    getOverduePayments
+    getOverduePayments,
+    recordBulkPayments,
+    updatePaymentPlan
 } from '../controllers/paymentController.js';
 
 const router = express.Router();
@@ -16,6 +18,12 @@ router.get('/:saleId', getPaymentDetails);
 
 // Ödeme tarihini güncelleme
 router.put('/:saleId/due-date', updatePaymentDueDate);
+
+// Ödeme planını güncelleme
+router.put('/:saleId/plan', updatePaymentPlan);
+
+// Toplu ödeme kaydetme
+router.post('/:saleId/bulk', recordBulkPayments);
 
 // Gecikmiş ödemeleri getirme
 router.get('/overdue', getOverduePayments);

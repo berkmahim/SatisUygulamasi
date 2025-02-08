@@ -177,6 +177,54 @@ const cancelSale = asyncHandler(async (req, res) => {
     res.json(updatedSale);
 });
 
+// @desc    Cancel a sale and process refund
+// @route   POST /api/sales/:id/cancel
+// @access  Public
+const cancelSaleAndRefund = asyncHandler(async (req, res) => {
+    try {
+        const sale = await Sale.findById(req.params.id);
+        if (!sale) {
+            res.status(404);
+            throw new Error('Satış bulunamadı');
+        }
+
+        const { refundAmount, refundReason, refundDate } = req.body;
+
+        // Toplam ödenen tutarı kontrol et
+        const totalPaid = sale.payments.reduce((sum, payment) => sum + (payment.paidAmount || 0), 0);
+        if (refundAmount > totalPaid) {
+            res.status(400);
+            throw new Error('İade tutarı, toplam ödenen tutardan büyük olamaz');
+        }
+
+        // Satışı iptal et
+        sale.status = 'cancelled';
+        sale.cancellationDetails = {
+            cancelledAt: new Date(),
+            reason: refundReason,
+            refundAmount: refundAmount,
+            refundDate: refundDate || new Date()
+        };
+
+        // Bloğu tekrar satışa çıkar
+        const block = await Block.findById(sale.block);
+        if (block) {
+            block.status = 'available';
+            await block.save();
+        }
+
+        await sale.save();
+
+        res.json({
+            message: 'Satış başarıyla iptal edildi ve iade işlemi kaydedildi',
+            sale
+        });
+    } catch (error) {
+        console.error('Error cancelling sale:', error);
+        res.status(error.status || 500).json({ message: error.message });
+    }
+});
+
 // @desc    Get all sales
 // @route   GET /api/sales
 // @access  Public
@@ -203,6 +251,22 @@ const getSales = asyncHandler(async (req, res) => {
     } catch (error) {
         console.error('Error getting sales:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @desc    Get cancelled sales
+// @route   GET /api/sales/cancelled
+// @access  Public
+const getCancelledSales = asyncHandler(async (req, res) => {
+    try {
+        const cancelledSales = await Sale.find({ status: 'cancelled' })
+            .populate('block', 'blockNumber projectId')
+            .populate('customer', 'firstName lastName');
+
+        res.json(cancelledSales);
+    } catch (error) {
+        console.error('Error getting cancelled sales:', error);
+        res.status(500).json({ message: 'Cancelled sales could not be retrieved' });
     }
 });
 
@@ -240,5 +304,7 @@ export {
     recordPayment,
     cancelSale,
     getSales,
-    getSalesByProject
+    getSalesByProject,
+    cancelSaleAndRefund,
+    getCancelledSales
 };

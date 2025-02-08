@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/customers';
+const API_URL = '/api/customers';
 
 export const getAllCustomers = async () => {
   const response = await axios.get(API_URL);
@@ -12,13 +12,13 @@ export const createCustomer = async (customerData) => {
   return response.data;
 };
 
-export const updateCustomer = async (id, customerData) => {
-  const response = await axios.put(`${API_URL}/${id}`, customerData);
+export const updateCustomer = async (customerId, customerData) => {
+  const response = await axios.put(`${API_URL}/${customerId}`, customerData);
   return response.data;
 };
 
-export const deleteCustomer = async (id) => {
-  const response = await axios.delete(`${API_URL}/${id}`);
+export const deleteCustomer = async (customerId) => {
+  const response = await axios.delete(`${API_URL}/${customerId}`);
   return response.data;
 };
 

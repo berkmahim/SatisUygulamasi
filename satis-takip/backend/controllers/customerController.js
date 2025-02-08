@@ -1,5 +1,6 @@
 import asyncHandler from 'express-async-handler';
 import Customer from '../models/customerModel.js';
+import Sale from '../models/saleModel.js';
 
 // @desc    Get all customers
 // @route   GET /api/customers
@@ -75,62 +76,92 @@ const createCustomer = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Update a customer
+// @desc    Update customer
 // @route   PUT /api/customers/:id
 // @access  Public
-const updateCustomer = asyncHandler(async (req, res) => {
-    const customer = await Customer.findById(req.params.id);
+const updateCustomer = async (req, res) => {
+    try {
+        const customer = await Customer.findById(req.params.id);
+        if (!customer) {
+            return res.status(404).json({ message: 'Müşteri bulunamadı' });
+        }
 
-    if (customer) {
-        const { email, tcNo } = req.body;
-        
-        // Check if email or tcNo already exists for other customers
-        if (email !== customer.email || tcNo !== customer.tcNo) {
-            const existingCustomer = await Customer.findOne({
-                _id: { $ne: req.params.id },
-                $or: [{ tcNo }, { email }]
-            });
-            
+        const {
+            firstName,
+            lastName,
+            tcNo,
+            email,
+            phone,
+            address
+        } = req.body;
+
+        // TC No veya email değişiyorsa, benzersiz olduğunu kontrol et
+        if (tcNo && tcNo !== customer.tcNo) {
+            const existingCustomer = await Customer.findOne({ tcNo });
             if (existingCustomer) {
-                res.status(400);
-                throw new Error('Bu TC No veya Email ile kayıtlı başka bir müşteri bulunmaktadır');
+                return res.status(400).json({ message: 'Bu TC Kimlik No ile kayıtlı başka bir müşteri var' });
             }
         }
 
-        customer.firstName = req.body.firstName || customer.firstName;
-        customer.lastName = req.body.lastName || customer.lastName;
-        customer.tcNo = req.body.tcNo || customer.tcNo;
-        customer.email = req.body.email || customer.email;
-        customer.phone = req.body.phone || customer.phone;
+        if (email && email !== customer.email) {
+            const existingCustomer = await Customer.findOne({ email });
+            if (existingCustomer) {
+                return res.status(400).json({ message: 'Bu email ile kayıtlı başka bir müşteri var' });
+            }
+        }
+
+        // Müşteri bilgilerini güncelle
+        customer.firstName = firstName || customer.firstName;
+        customer.lastName = lastName || customer.lastName;
+        customer.tcNo = tcNo || customer.tcNo;
+        customer.email = email || customer.email;
+        customer.phone = phone || customer.phone;
+        customer.address = address || customer.address;
 
         const updatedCustomer = await customer.save();
         res.json(updatedCustomer);
-    } else {
-        res.status(404);
-        throw new Error('Müşteri bulunamadı');
+    } catch (error) {
+        console.error('Error updating customer:', error);
+        res.status(500).json({ message: 'Müşteri güncellenirken bir hata oluştu' });
     }
-});
+};
 
-// @desc    Delete a customer
+// @desc    Delete customer
 // @route   DELETE /api/customers/:id
 // @access  Public
-const deleteCustomer = asyncHandler(async (req, res) => {
-    const customer = await Customer.findById(req.params.id);
+const deleteCustomer = async (req, res) => {
+    try {
+        const customer = await Customer.findById(req.params.id);
+        if (!customer) {
+            return res.status(404).json({ message: 'Müşteri bulunamadı' });
+        }
 
-    if (customer) {
-        await customer.deleteOne();
-        res.json({ message: 'Müşteri silindi' });
-    } else {
-        res.status(404);
-        throw new Error('Müşteri bulunamadı');
+        // Müşterinin aktif satışı var mı kontrol et
+        const activeSales = await Sale.find({ 
+            customer: customer._id,
+            status: { $nin: ['cancelled'] }
+        });
+
+        if (activeSales.length > 0) {
+            return res.status(400).json({ 
+                message: 'Bu müşterinin aktif satışları var. Önce satışları iptal etmelisiniz.',
+                sales: activeSales
+            });
+        }
+
+        await customer.remove();
+        res.json({ message: 'Müşteri başarıyla silindi' });
+    } catch (error) {
+        console.error('Error deleting customer:', error);
+        res.status(500).json({ message: 'Müşteri silinirken bir hata oluştu' });
     }
-});
+};
 
 export {
-    getCustomers,
-    searchCustomers,
-    getCustomerById,
     createCustomer,
+    getCustomers,
+    getCustomerById,
+    searchCustomers,
     updateCustomer,
     deleteCustomer
 };

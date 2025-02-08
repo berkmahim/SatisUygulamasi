@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/sales';
+const API_URL = '/api/sales';
 
 export const createSale = async (saleData) => {
     const response = await axios.post(API_URL, saleData);
@@ -32,5 +32,15 @@ export const cancelSale = async (id) => {
 
 export const getSales = async (filters = {}) => {
     const response = await axios.get(API_URL, { params: filters });
+    return response.data;
+};
+
+export const cancelSaleWithRefund = async (saleId, refundData) => {
+    const response = await axios.post(`${API_URL}/${saleId}/cancel`, refundData);
+    return response.data;
+};
+
+export const getCancelledSales = async () => {
+    const response = await axios.get(`${API_URL}/cancelled`);
     return response.data;
 };

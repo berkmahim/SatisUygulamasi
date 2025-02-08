@@ -3,31 +3,22 @@ import {
     createSale,
     getSaleById,
     updatePaymentPlan,
-    recordPayment,
-    cancelSale,
     getSales,
-    getSalesByProject
+    cancelSale,
+    getSalesByProject,
+    cancelSaleAndRefund,
+    getCancelledSales
 } from '../controllers/saleController.js';
 
 const router = express.Router();
 
-router.route('/')
-    .post(createSale)
-    .get(getSales);
-
-router.route('/project/:projectId')
-    .get(getSalesByProject);
-
-router.route('/:id')
-    .get(getSaleById);
-
-router.route('/:id/payment-plan')
-    .put(updatePaymentPlan);
-
-router.route('/:id/payments/:paymentId')
-    .put(recordPayment);
-
-router.route('/:id/cancel')
-    .put(cancelSale);
+router.post('/', createSale);
+router.get('/', getSales);
+router.get('/cancelled', getCancelledSales);
+router.get('/project/:projectId', getSalesByProject);
+router.get('/:id', getSaleById);
+router.put('/:id/payment-plan', updatePaymentPlan);
+router.post('/:id/cancel', cancelSaleAndRefund);
+router.delete('/:id', cancelSale);
 
 export default router;

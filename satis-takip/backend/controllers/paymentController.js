@@ -83,7 +83,8 @@ const getPaymentDetails = async (req, res) => {
                 remainingAmount: payment.amount - (payment.paidAmount || 0),
                 status: payment.status,
                 paymentMethod: payment.paymentMethod,
-                notes: payment.notes
+                notes: payment.notes,
+                isAdvancePayment: payment.installmentNumber === 1
             }))
         });
     } catch (error) {

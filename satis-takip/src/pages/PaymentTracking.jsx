@@ -188,7 +188,10 @@ const PaymentTracking = () => {
                                             {payment.description}
                                             <br />
                                             <span className="text-sm text-gray-500">
-                                                Taksit {payment.installmentNumber} / {paymentDetails.payments.length}
+                                                {payment.isAdvancePayment ? 
+                                                    'Peşinat' : 
+                                                    `Taksit ${payment.installmentNumber - 1} / ${paymentDetails.payments.length - 1}`
+                                                }
                                             </span>
                                         </td>
                                         <td className="px-4 py-2">

@@ -155,7 +155,7 @@ saleSchema.methods.generatePaymentSchedule = function() {
             payments.push({
                 amount: installmentAmount,
                 dueDate: new Date(dueDate),
-                description: `${i + 2}. Taksit`,
+                description: `${i + 1}. Taksit`,
                 installmentNumber: i + 2,
                 status: 'pending'
             });

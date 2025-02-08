@@ -1,0 +1,80 @@
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  height: 64px;
+  margin-right: 24px;
+}
+
+.desktop-menu {
+  display: flex;
+  align-items: center;
+}
+
+.desktop-menu .ant-menu {
+  flex: 1;
+  justify-content: flex-end;
+  border: none;
+  background: transparent;
+}
+
+.desktop-menu .ant-btn {
+  margin-left: 16px;
+}
+
+.mobile-menu {
+  display: none;
+}
+
+.mobile-menu .ant-btn {
+  color: inherit;
+}
+
+/* Tablet and mobile styles */
+@media (max-width: 1024px) {
+  .desktop-menu {
+    display: none !important;
+  }
+
+  .mobile-menu {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .logo {
+    height: 48px;
+    margin-right: 16px;
+  }
+}
+
+/* Dark mode adjustments */
+:root[data-theme='dark'] .mobile-menu .ant-btn,
+:root[data-theme='dark'] .desktop-menu .ant-btn {
+  color: #fff;
+}
+
+/* Drawer styles */
+.ant-drawer .ant-menu {
+  border: none;
+  background: transparent;
+}
+
+/* Tablet menu adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .header-container {
+    padding: 0 24px;
+  }
+  
+  .logo {
+    height: 56px;
+  }
+}

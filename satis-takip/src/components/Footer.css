@@ -1,0 +1,49 @@
+.app-footer {
+  padding: 24px 0;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.company-name {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.company-description {
+  display: block;
+  opacity: 0.65;
+}
+
+.footer-links {
+  text-align: center;
+}
+
+.social-link {
+  font-size: 16px;
+}
+
+.social-link .anticon {
+  font-size: 20px;
+  margin-right: 4px;
+}
+
+.copyright {
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .footer-links,
+  .copyright {
+    text-align: center;
+  }
+
+  .company-name,
+  .company-description {
+    text-align: center;
+  }
+}

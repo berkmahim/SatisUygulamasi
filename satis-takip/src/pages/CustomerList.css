@@ -1,0 +1,9 @@
+.button-text {
+    display: inline;
+}
+
+@media (max-width: 768px) {
+    .button-text {
+        display: none;
+    }
+}

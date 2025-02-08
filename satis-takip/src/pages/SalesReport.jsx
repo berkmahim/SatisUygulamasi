@@ -8,13 +8,23 @@ import {
     LineElement,
     BarElement,
     ArcElement,
-    Title,
+    Title as ChartTitle,
     Tooltip,
     Legend
 } from 'chart.js';
 import { Line, Bar, Pie } from 'react-chartjs-2';
 import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { 
+    Card, Row, Col, Statistic, Typography, Spin, Alert, 
+    Table, Space 
+} from 'antd';
+import { 
+    DollarOutlined, CheckCircleOutlined, 
+    ClockCircleOutlined, WarningOutlined 
+} from '@ant-design/icons';
+
+const { Title, Text } = Typography;
 
 // Chart.js bileşenlerini kaydet
 ChartJS.register(
@@ -24,7 +34,7 @@ ChartJS.register(
     LineElement,
     BarElement,
     ArcElement,
-    Title,
+    ChartTitle,
     Tooltip,
     Legend
 );
@@ -87,8 +97,8 @@ const SalesReport = () => {
             {
                 label: 'Aylık Satış Tutarı',
                 data: monthlySales.map(item => item.amount),
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                borderColor: '#1890ff',
+                backgroundColor: 'rgba(24, 144, 255, 0.5)',
             }
         ]
     };
@@ -108,118 +118,186 @@ const SalesReport = () => {
             {
                 data: Object.values(paymentStatus),
                 backgroundColor: [
-                    'rgba(75, 192, 192, 0.5)',
-                    'rgba(54, 162, 235, 0.5)',
-                    'rgba(255, 99, 132, 0.5)',
-                    'rgba(255, 206, 86, 0.5)',
+                    '#52c41a',  // success
+                    '#1890ff',  // processing
+                    '#f5222d',  // error
+                    '#faad14',  // warning
                 ],
                 borderColor: [
-                    'rgba(75, 192, 192, 1)',
-                    'rgba(54, 162, 235, 1)',
-                    'rgba(255, 99, 132, 1)',
-                    'rgba(255, 206, 86, 1)',
+                    '#52c41a',
+                    '#1890ff',
+                    '#f5222d',
+                    '#faad14',
                 ],
                 borderWidth: 1,
             },
         ],
     };
 
+    const projectColumns = [
+        {
+            title: 'Proje',
+            dataIndex: 'name',
+            key: 'name',
+            responsive: ['sm'],
+        },
+        {
+            title: 'Toplam Satış',
+            dataIndex: 'totalSales',
+            key: 'totalSales',
+            align: 'right',
+            render: value => formatCurrency(value),
+            responsive: ['md'],
+        },
+        {
+            title: 'Tahsilat',
+            dataIndex: 'collected',
+            key: 'collected',
+            align: 'right',
+            render: value => formatCurrency(value),
+        },
+        {
+            title: 'Kalan',
+            dataIndex: 'remaining',
+            key: 'remaining',
+            align: 'right',
+            render: value => formatCurrency(value),
+            responsive: ['lg'],
+        }
+    ];
+
     if (loading) {
-        return <div className="flex justify-center items-center h-screen">Yükleniyor...</div>;
+        return (
+            <div style={{ textAlign: 'center', padding: '50px' }}>
+                <Spin size="large" />
+            </div>
+        );
     }
 
     if (error) {
-        return <div className="text-red-500 text-center p-4">{error}</div>;
+        return (
+            <Alert
+                message="Hata"
+                description={error}
+                type="error"
+                showIcon
+                style={{ maxWidth: 600, margin: '50px auto' }}
+            />
+        );
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-2xl font-bold mb-8">Satış Raporu</h1>
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Title level={2}>Satış Raporu</Title>
 
-            {/* Genel İstatistikler */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold mb-2">Toplam Satış</h3>
-                    <p className="text-3xl font-bold text-blue-600">{statistics.totalSales}</p>
-                    <p className="text-gray-500">{formatCurrency(statistics.totalAmount)}</p>
-                </div>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold mb-2">Tahsil Edilen</h3>
-                    <p className="text-3xl font-bold text-green-600">{formatCurrency(statistics.totalCollected)}</p>
-                </div>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold mb-2">Bekleyen Tahsilat</h3>
-                    <p className="text-3xl font-bold text-yellow-600">{formatCurrency(statistics.totalPending)}</p>
-                </div>
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold mb-2">Gecikmiş Ödemeler</h3>
-                    <p className="text-3xl font-bold text-red-600">{formatCurrency(statistics.totalOverdue)}</p>
-                </div>
-            </div>
+            {/* İstatistik Kartları */}
+            <Row gutter={[16, 16]}>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Toplam Satış"
+                            value={statistics.totalAmount}
+                            precision={2}
+                            formatter={value => formatCurrency(value)}
+                            prefix={<DollarOutlined />}
+                            suffix={<Text type="secondary" style={{ fontSize: 14 }}>
+                                ({statistics.totalSales} adet)
+                            </Text>}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Tahsil Edilen"
+                            value={statistics.totalCollected}
+                            precision={2}
+                            formatter={value => formatCurrency(value)}
+                            prefix={<CheckCircleOutlined />}
+                            valueStyle={{ color: '#52c41a' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Bekleyen Tahsilat"
+                            value={statistics.totalPending}
+                            precision={2}
+                            formatter={value => formatCurrency(value)}
+                            prefix={<ClockCircleOutlined />}
+                            valueStyle={{ color: '#faad14' }}
+                        />
+                    </Card>
+                </Col>
+                <Col xs={24} sm={12} lg={6}>
+                    <Card>
+                        <Statistic
+                            title="Gecikmiş Ödemeler"
+                            value={statistics.totalOverdue}
+                            precision={2}
+                            formatter={value => formatCurrency(value)}
+                            prefix={<WarningOutlined />}
+                            valueStyle={{ color: '#f5222d' }}
+                        />
+                    </Card>
+                </Col>
+            </Row>
 
             {/* Grafikler */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Aylık Satış Grafiği */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold mb-4">Aylık Satış Grafiği</h3>
-                    <Line
-                        data={monthlySalesData}
-                        options={{
-                            responsive: true,
-                            plugins: {
-                                legend: {
-                                    position: 'top',
-                                },
-                                title: {
-                                    display: false
-                                }
-                            }
-                        }}
-                    />
-                </div>
+            <Row gutter={[16, 16]}>
+                <Col xs={24} lg={12}>
+                    <Card title="Aylık Satış Grafiği">
+                        <div style={{ height: '300px' }}>
+                            <Line
+                                data={monthlySalesData}
+                                options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            position: 'top',
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    </Card>
+                </Col>
+                <Col xs={24} lg={12}>
+                    <Card title="Ödeme Durumu Dağılımı">
+                        <div style={{ height: '300px' }}>
+                            <Pie
+                                data={paymentStatusData}
+                                options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            position: 'top',
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    </Card>
+                </Col>
+            </Row>
 
-                {/* Ödeme Durumu Dağılımı */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h3 className="text-lg font-semibold mb-4">Ödeme Durumu Dağılımı</h3>
-                    <Pie
-                        data={paymentStatusData}
-                        options={{
-                            responsive: true,
-                            plugins: {
-                                legend: {
-                                    position: 'top',
-                                }
-                            }
-                        }}
-                    />
-                </div>
-
-                {/* Proje Bazlı Satışlar */}
-                <div className="bg-white rounded-lg shadow-md p-6 col-span-2">
-                    <h3 className="text-lg font-semibold mb-4">Proje Bazlı Satışlar</h3>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-gray-50">
-                                    <th className="px-4 py-2">Proje</th>
-                                    <th className="px-4 py-2">Satış Sayısı</th>
-                                    <th className="px-4 py-2">Toplam Tutar</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {projectSales && Object.values(projectSales).map((project) => (
-                                    <tr key={project.projectId} className="border-t">
-                                        <td className="px-4 py-2">{project.name}</td>
-                                        <td className="px-4 py-2 text-center">{project.count}</td>
-                                        <td className="px-4 py-2 text-right">{formatCurrency(project.amount)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+            {/* Proje Bazlı Satışlar Tablosu */}
+            <Card title="Proje Bazlı Satışlar">
+                <Table
+                    columns={projectColumns}
+                    dataSource={Object.entries(projectSales).map(([name, data]) => ({
+                        key: name,
+                        name,
+                        ...data
+                    }))}
+                    scroll={{ x: 'max-content' }}
+                    pagination={false}
+                />
+            </Card>
+        </Space>
     );
 };
 

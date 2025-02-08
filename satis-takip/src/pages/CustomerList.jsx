@@ -1,12 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, message, Popconfirm } from 'antd';
-import { getAllCustomers, updateCustomer, deleteCustomer } from '../services/customerService';
+import { 
+    Table, Button, Modal, Form, Input, message, Popconfirm, 
+    Card, Typography, Space, Row, Col, Input as AntInput 
+} from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import { getAllCustomers, updateCustomer, deleteCustomer, createCustomer } from '../services/customerService';
+import './CustomerList.css';
+
+const { Title } = Typography;
+const { Search } = AntInput;
 
 const CustomerList = () => {
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const [searchText, setSearchText] = useState('');
     const [form] = Form.useForm();
 
     useEffect(() => {
@@ -27,20 +36,31 @@ const CustomerList = () => {
     const handleEdit = (customer) => {
         setSelectedCustomer(customer);
         form.setFieldsValue(customer);
-        setEditModalVisible(true);
+        setModalVisible(true);
     };
 
-    const handleUpdate = async (values) => {
+    const handleAdd = () => {
+        setSelectedCustomer(null);
+        form.resetFields();
+        setModalVisible(true);
+    };
+
+    const handleSubmit = async (values) => {
         try {
-            await updateCustomer(selectedCustomer._id, values);
-            message.success('Müşteri başarıyla güncellendi');
-            setEditModalVisible(false);
+            if (selectedCustomer) {
+                await updateCustomer(selectedCustomer._id, values);
+                message.success('Müşteri başarıyla güncellendi');
+            } else {
+                await createCustomer(values);
+                message.success('Müşteri başarıyla eklendi');
+            }
+            setModalVisible(false);
             fetchCustomers();
         } catch (error) {
             if (error.response?.data?.message) {
                 message.error(error.response.data.message);
             } else {
-                message.error('Müşteri güncellenirken bir hata oluştu');
+                message.error(selectedCustomer ? 'Müşteri güncellenirken bir hata oluştu' : 'Müşteri eklenirken bir hata oluştu');
             }
         }
     };
@@ -59,69 +79,126 @@ const CustomerList = () => {
         }
     };
 
+    const getFilteredCustomers = () => {
+        if (!searchText) return customers;
+        
+        const searchLower = searchText.toLowerCase();
+        return customers.filter(customer => 
+            customer.firstName.toLowerCase().includes(searchLower) ||
+            customer.lastName.toLowerCase().includes(searchLower) ||
+            customer.tcNo.includes(searchText) ||
+            customer.email.toLowerCase().includes(searchLower)
+        );
+    };
+
     const columns = [
         {
             title: 'Ad',
             dataIndex: 'firstName',
             key: 'firstName',
+            responsive: ['sm'],
         },
         {
             title: 'Soyad',
             dataIndex: 'lastName',
             key: 'lastName',
+            responsive: ['sm'],
+        },
+        {
+            title: 'Ad Soyad',
+            key: 'fullName',
+            responsive: ['xs'],
+            render: (_, record) => `${record.firstName} ${record.lastName}`,
         },
         {
             title: 'TC No',
             dataIndex: 'tcNo',
             key: 'tcNo',
+            responsive: ['md'],
         },
         {
             title: 'Email',
             dataIndex: 'email',
             key: 'email',
+            responsive: ['lg'],
         },
         {
             title: 'İşlemler',
             key: 'actions',
+            fixed: 'right',
+            width: 120,
             render: (_, record) => (
-                <span>
-                    <Button type="link" onClick={() => handleEdit(record)}>
-                        Düzenle
-                    </Button>
+                <Space>
+                    <Button 
+                        type="text" 
+                        icon={<EditOutlined />} 
+                        onClick={() => handleEdit(record)}
+                    />
                     <Popconfirm
                         title="Müşteriyi silmek istediğinizden emin misiniz?"
                         onConfirm={() => handleDelete(record._id)}
                         okText="Evet"
                         cancelText="Hayır"
                     >
-                        <Button type="link" danger>
-                            Sil
-                        </Button>
+                        <Button 
+                            type="text" 
+                            danger 
+                            icon={<DeleteOutlined />}
+                        />
                     </Popconfirm>
-                </span>
+                </Space>
             ),
         },
     ];
 
     return (
-        <div style={{ padding: '24px' }}>
-            <h2>Müşteri Listesi</h2>
+        <Card>
+            <Row gutter={[16, 16]} align="middle" style={{ marginBottom: 16 }}>
+                <Col flex="auto">
+                    <Title level={2} style={{ margin: 0 }}>Müşteri Listesi</Title>
+                </Col>
+                <Col flex="none">
+                    <Space>
+                        <Search
+                            placeholder="Müşteri ara..."
+                            allowClear
+                            onChange={e => setSearchText(e.target.value)}
+                            style={{ width: 200 }}
+                        />
+                        <Button 
+                            type="primary" 
+                            icon={<PlusOutlined />}
+                            onClick={handleAdd}
+                        >
+                            <span className="button-text">Yeni Müşteri</span>
+                        </Button>
+                    </Space>
+                </Col>
+            </Row>
+
             <Table
                 columns={columns}
-                dataSource={customers}
+                dataSource={getFilteredCustomers()}
                 rowKey="_id"
                 loading={loading}
+                scroll={{ x: 'max-content' }}
+                pagination={{
+                    position: ['bottomCenter'],
+                    showSizeChanger: true,
+                    showTotal: (total, range) => `${range[0]}-${range[1]} / ${total} müşteri`,
+                }}
             />
 
             <Modal
-                title="Müşteri Düzenle"
-                visible={editModalVisible}
-                onCancel={() => setEditModalVisible(false)}
+                title={selectedCustomer ? "Müşteri Düzenle" : "Yeni Müşteri Ekle"}
+                open={modalVisible}
+                onCancel={() => setModalVisible(false)}
                 footer={null}
+                destroyOnClose
             >
                 <Form
                     form={form}
-                    onFinish={handleUpdate}
+                    onFinish={handleSubmit}
                     layout="vertical"
                 >
                     <Form.Item
@@ -141,9 +218,13 @@ const CustomerList = () => {
                     <Form.Item
                         name="tcNo"
                         label="TC No"
-                        rules={[{ required: true, message: 'Lütfen TC No giriniz' }]}
+                        rules={[
+                            { required: true, message: 'Lütfen TC No giriniz' },
+                            { len: 11, message: 'TC No 11 haneli olmalıdır' },
+                            { pattern: /^[0-9]*$/, message: 'TC No sadece rakam içermelidir' }
+                        ]}
                     >
-                        <Input />
+                        <Input maxLength={11} />
                     </Form.Item>
                     <Form.Item
                         name="email"
@@ -155,14 +236,19 @@ const CustomerList = () => {
                     >
                         <Input />
                     </Form.Item>
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit">
-                            Güncelle
-                        </Button>
+                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+                        <Space>
+                            <Button onClick={() => setModalVisible(false)}>
+                                İptal
+                            </Button>
+                            <Button type="primary" htmlType="submit">
+                                {selectedCustomer ? 'Güncelle' : 'Ekle'}
+                            </Button>
+                        </Space>
                     </Form.Item>
                 </Form>
             </Modal>
-        </div>
+        </Card>
     );
 };
 

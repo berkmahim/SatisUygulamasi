@@ -158,6 +158,70 @@ const BuildingCanvas = () => {
     return block?.dimensions || { width: 1, height: 1, depth: 1 };
   };
 
+  // Checks if two blocks are overlapping
+  const areBlocksOverlapping = (block1, block2) => {
+    const [x1, y1, z1] = block1.position;
+    const [x2, y2, z2] = block2.position;
+    const d1 = block1.dimensions;
+    const d2 = block2.dimensions;
+
+    return (
+      x1 < x2 + d2.width && x1 + d1.width > x2 &&
+      y1 < y2 + d2.height && y1 + d1.height > y2 &&
+      z1 < z2 + d2.depth && z1 + d1.depth > z2
+    );
+  };
+
+  // Check if one block is directly above another
+  const isBlockDirectlyAbove = (upperBlock, lowerBlock) => {
+    const [x1, y1, z1] = upperBlock.position;
+    const [x2, y2, z2] = lowerBlock.position;
+    const d1 = upperBlock.dimensions;
+    const d2 = lowerBlock.dimensions;
+
+    // Check if blocks overlap in X and Z axes
+    const overlapX = x1 < (x2 + d2.width) && (x1 + d1.width) > x2;
+    const overlapZ = z1 < (z2 + d2.depth) && (z1 + d1.depth) > z2;
+
+    // Check if the upper block is actually above the lower block
+    const isAbove = y1 >= y2;
+
+    return overlapX && overlapZ && isAbove;
+  };
+
+  // Calculate how much a block needs to be moved based on dimension change
+  const calculateOverlapDisplacement = (modifiedBlock, otherBlock, oldDimensions) => {
+    const [x1, y1, z1] = modifiedBlock.position;
+    const [x2, y2, z2] = otherBlock.position;
+    const d1 = modifiedBlock.dimensions;
+
+    // Determine which dimension changed and its direction
+    const widthChange = d1.width - oldDimensions.width;
+    const heightChange = d1.height - oldDimensions.height;
+    const depthChange = d1.depth - oldDimensions.depth;
+
+    // For height changes, we want to move all blocks that are above
+    if (heightChange !== 0 && isBlockDirectlyAbove(otherBlock, modifiedBlock)) {
+      return { axis: 'y', amount: Math.abs(heightChange) };
+    }
+
+    // For width changes, only move blocks to the right that are overlapping
+    if (widthChange !== 0 && areBlocksOverlapping(modifiedBlock, otherBlock)) {
+      if (x2 > x1) {
+        return { axis: 'x', amount: Math.abs(widthChange) };
+      }
+    }
+
+    // For depth changes, only move blocks to the front that are overlapping
+    if (depthChange !== 0 && areBlocksOverlapping(modifiedBlock, otherBlock)) {
+      if (z2 > z1) {
+        return { axis: 'z', amount: Math.abs(depthChange) };
+      }
+    }
+
+    return null;
+  };
+
   const calculateNewPosition = (oldPosition, oldDimensions, newDimensions) => {
     const widthDiff = newDimensions.width - oldDimensions.width;
     const heightDiff = newDimensions.height - oldDimensions.height;
@@ -185,6 +249,101 @@ const BuildingCanvas = () => {
     }
 
     return [newX, newY, newZ];
+  };
+
+  // Find all blocks that need to be moved upward
+  const findBlocksToMove = (baseBlock) => {
+    const blocksToMove = [];
+
+    // Get all blocks that are above the modified block
+    blocks.forEach(block => {
+      if ((block._id || block.id) !== (baseBlock._id || baseBlock.id)) {
+        const [x1, y1, z1] = block.position;
+        const d1 = block.dimensions;
+        const [x2, y2, z2] = baseBlock.position;
+        const d2 = baseBlock.dimensions;
+
+        // Check if the block is within the X-Z bounds of the modified block
+        const overlapX = x1 < (x2 + d2.width) && (x1 + d1.width) > x2;
+        const overlapZ = z1 < (z2 + d2.depth) && (z1 + d1.depth) > z2;
+
+        // Check if the block is above the modified block
+        if (overlapX && overlapZ && y1 >= y2) {
+          blocksToMove.push({
+            block,
+            y: y1,
+            id: block._id || block.id
+          });
+        }
+      }
+    });
+
+    // Sort blocks by height (bottom to top)
+    return blocksToMove.sort((a, b) => a.y - b.y);
+  };
+
+  // Recursively adjust block positions to resolve overlaps
+  const resolveOverlaps = (modifiedBlockId, modifiedBlock, oldDimensions, processedBlocks = new Set()) => {
+    processedBlocks.add(modifiedBlockId);
+    
+    const heightChange = modifiedBlock.dimensions.height - oldDimensions.height;
+    const widthChange = modifiedBlock.dimensions.width - oldDimensions.width;
+    const depthChange = modifiedBlock.dimensions.depth - oldDimensions.depth;
+    
+    // Create a map to store all updates
+    const updatedBlocks = new Map();
+
+    if (heightChange !== 0) {
+      // Find all blocks that need to be moved, sorted by height
+      const blocksToMove = findBlocksToMove(modifiedBlock);
+      
+      // Calculate new positions for all affected blocks
+      blocksToMove.forEach(({block}) => {
+        const newPosition = [...block.position];
+        newPosition[1] += Math.abs(heightChange);
+        
+        updatedBlocks.set(block._id || block.id, {
+          ...block,
+          position: newPosition
+        });
+      });
+    }
+
+    // Handle width and depth changes
+    blocks.forEach(block => {
+      const blockId = block._id || block.id;
+      if (blockId !== modifiedBlockId && !processedBlocks.has(blockId) && !updatedBlocks.has(blockId)) {
+        if (widthChange !== 0 || depthChange !== 0) {
+          const [x1, y1, z1] = block.position;
+          const [x2, y2, z2] = modifiedBlock.position;
+          
+          // Check if block needs to move in width direction
+          if (widthChange !== 0 && x1 > x2) {
+            const newPosition = [...block.position];
+            newPosition[0] += Math.abs(widthChange);
+            updatedBlocks.set(blockId, { ...block, position: newPosition });
+          }
+          
+          // Check if block needs to move in depth direction
+          if (depthChange !== 0 && z1 > z2) {
+            const currentBlock = updatedBlocks.get(blockId) || block;
+            const newPosition = [...currentBlock.position];
+            newPosition[2] += Math.abs(depthChange);
+            updatedBlocks.set(blockId, { ...currentBlock, position: newPosition });
+          }
+        }
+      }
+    });
+
+    // Apply all updates at once if there are any
+    if (updatedBlocks.size > 0) {
+      setBlocks(prevBlocks =>
+        prevBlocks.map(block => {
+          const blockId = block._id || block.id;
+          return updatedBlocks.has(blockId) ? updatedBlocks.get(blockId) : block;
+        })
+      );
+    }
   };
 
   useEffect(() => {
@@ -258,10 +417,14 @@ const BuildingCanvas = () => {
         setBlocks(prevBlocks => prevBlocks.map(block => 
           (block._id || block.id) === selectedBlock ? updatedBlock : block
         ));
+        // Resolve any overlaps after updating dimensions
+        resolveOverlaps(selectedBlock, updatedBlock, oldDimensions);
       } else {
         setBlocks(prevBlocks => prevBlocks.map(block => 
           (block._id || block.id) === selectedBlock ? updatedBlockData : block
         ));
+        // Resolve any overlaps after updating dimensions
+        resolveOverlaps(selectedBlock, updatedBlockData, oldDimensions);
       }
     } catch (error) {
       console.error('Error updating block:', error);

@@ -405,6 +405,42 @@ const BuildingCanvas = () => {
     const oldDimensions = blockToUpdate.dimensions;
     const newPosition = calculateNewPosition(blockToUpdate.position, oldDimensions, newDimensions);
     
+    // Yükseklik azalıyorsa ve üstteki bloklarla çakışma olacaksa izin verme
+    const heightChange = newDimensions.height - oldDimensions.height;
+    if (heightChange < 0) {
+      const blocksAbove = blocks.filter(block => {
+        if ((block._id || block.id) === selectedBlock) return false;
+        const [x1, y1, z1] = block.position;
+        const [x2, y2, z2] = blockToUpdate.position;
+        
+        // X-Z düzleminde çakışma kontrolü
+        const hasXZOverlap = (
+          x1 < x2 + blockToUpdate.dimensions.width &&
+          x1 + block.dimensions.width > x2 &&
+          z1 < z2 + blockToUpdate.dimensions.depth &&
+          z1 + block.dimensions.depth > z2
+        );
+
+        // Üstte olma kontrolü
+        return hasXZOverlap && y1 > y2;
+      });
+
+      // Üstteki bloklarla çakışma kontrolü
+      const willCollide = blocksAbove.some(block => {
+        return areBlocksIntersecting(
+          blockToUpdate.position,
+          newDimensions,
+          block.position,
+          block.dimensions
+        );
+      });
+
+      if (willCollide) {
+        console.error('Cannot decrease height: blocks above would collide');
+        return;
+      }
+    }
+
     const updatedBlockData = {
       ...blockToUpdate,
       position: newPosition,
@@ -417,14 +453,18 @@ const BuildingCanvas = () => {
         setBlocks(prevBlocks => prevBlocks.map(block => 
           (block._id || block.id) === selectedBlock ? updatedBlock : block
         ));
-        // Resolve any overlaps after updating dimensions
-        resolveOverlaps(selectedBlock, updatedBlock, oldDimensions);
+        // Sadece yükseklik artıyorsa üstteki blokları hareket ettir
+        if (heightChange > 0) {
+          resolveOverlaps(selectedBlock, updatedBlock, oldDimensions);
+        }
       } else {
         setBlocks(prevBlocks => prevBlocks.map(block => 
           (block._id || block.id) === selectedBlock ? updatedBlockData : block
         ));
-        // Resolve any overlaps after updating dimensions
-        resolveOverlaps(selectedBlock, updatedBlockData, oldDimensions);
+        // Sadece yükseklik artıyorsa üstteki blokları hareket ettir
+        if (heightChange > 0) {
+          resolveOverlaps(selectedBlock, updatedBlockData, oldDimensions);
+        }
       }
     } catch (error) {
       console.error('Error updating block:', error);

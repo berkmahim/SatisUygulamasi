@@ -406,6 +406,8 @@ const BuildingCanvas = () => {
     const newPosition = calculateNewPosition(blockToUpdate.position, oldDimensions, newDimensions);
     
     const heightChange = newDimensions.height - oldDimensions.height;
+    const widthChange = newDimensions.width - oldDimensions.width;
+    const depthChange = newDimensions.depth - oldDimensions.depth;
     const [baseX, baseY, baseZ] = blockToUpdate.position;
 
     // Üstteki blokları bul
@@ -444,7 +446,43 @@ const BuildingCanvas = () => {
         ));
       }
 
-      // Üstteki blokları güncelle
+      // X eksenindeki blokları bul
+      const blocksOnXAxis = blocks.filter(block => {
+        if ((block._id || block.id) === selectedBlock) return false;
+        const [blockX, blockY, blockZ] = block.position;
+        const hasYOverlap = (
+          blockY < baseY + blockToUpdate.dimensions.height &&
+          blockY + block.dimensions.height > baseY
+        );
+        const hasZOverlap = (
+          blockZ < baseZ + blockToUpdate.dimensions.depth &&
+          blockZ + block.dimensions.depth > baseZ
+        );
+        return hasYOverlap && hasZOverlap && blockX >= baseX + oldDimensions.width;
+      }).sort((a, b) => a.position[0] - b.position[0]);
+
+      // Genişlik azaltıldıysa blokları sola kaydır
+      if (widthChange < 0) {
+        blocksOnXAxis.forEach(block => {
+          const newBlockPosition = [...block.position];
+          newBlockPosition[0] += widthChange; // Genişlik farkı kadar sola kaydır
+          const updatedBlock = { ...block, position: newBlockPosition };
+          setBlocks(prevBlocks => prevBlocks.map(b => (b._id || b.id) === block._id ? updatedBlock : b));
+          resolveOverlaps(block._id, updatedBlock, block.dimensions);
+        });
+      }
+      // Genişlik artırıldıysa blokları sağa kaydır
+      else if (widthChange > 0) {
+        blocksOnXAxis.forEach(block => {
+          const newBlockPosition = [...block.position];
+          newBlockPosition[0] += widthChange; // Genişlik farkı kadar sağa kaydır
+          const updatedBlock = { ...block, position: newBlockPosition };
+          setBlocks(prevBlocks => prevBlocks.map(b => (b._id || b.id) === block._id ? updatedBlock : b));
+          resolveOverlaps(block._id, updatedBlock, block.dimensions);
+        });
+      }
+
+      // Tüm güncellemeleri tek seferde uygula
       if (blocksAbove.length > 0) {
         const updatedPositions = new Map();
 

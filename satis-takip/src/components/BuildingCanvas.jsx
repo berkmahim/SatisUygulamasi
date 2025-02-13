@@ -405,41 +405,25 @@ const BuildingCanvas = () => {
     const oldDimensions = blockToUpdate.dimensions;
     const newPosition = calculateNewPosition(blockToUpdate.position, oldDimensions, newDimensions);
     
-    // Yükseklik azalıyorsa ve üstteki bloklarla çakışma olacaksa izin verme
     const heightChange = newDimensions.height - oldDimensions.height;
-    if (heightChange < 0) {
-      const blocksAbove = blocks.filter(block => {
-        if ((block._id || block.id) === selectedBlock) return false;
-        const [x1, y1, z1] = block.position;
-        const [x2, y2, z2] = blockToUpdate.position;
-        
-        // X-Z düzleminde çakışma kontrolü
-        const hasXZOverlap = (
-          x1 < x2 + blockToUpdate.dimensions.width &&
-          x1 + block.dimensions.width > x2 &&
-          z1 < z2 + blockToUpdate.dimensions.depth &&
-          z1 + block.dimensions.depth > z2
-        );
+    const [baseX, baseY, baseZ] = blockToUpdate.position;
 
-        // Üstte olma kontrolü
-        return hasXZOverlap && y1 > y2;
-      });
+    // Üstteki blokları bul
+    const blocksAbove = blocks.filter(block => {
+      if ((block._id || block.id) === selectedBlock) return false;
+      const [blockX, blockY, blockZ] = block.position;
+      
+      // X-Z düzleminde çakışma kontrolü
+      const hasXZOverlap = (
+        blockX < baseX + blockToUpdate.dimensions.width &&
+        blockX + block.dimensions.width > baseX &&
+        blockZ < baseZ + blockToUpdate.dimensions.depth &&
+        blockZ + block.dimensions.depth > baseZ
+      );
 
-      // Üstteki bloklarla çakışma kontrolü
-      const willCollide = blocksAbove.some(block => {
-        return areBlocksIntersecting(
-          blockToUpdate.position,
-          newDimensions,
-          block.position,
-          block.dimensions
-        );
-      });
-
-      if (willCollide) {
-        console.error('Cannot decrease height: blocks above would collide');
-        return;
-      }
-    }
+      // Üstte olma kontrolü
+      return hasXZOverlap && blockY >= baseY + oldDimensions.height;
+    }).sort((a, b) => a.position[1] - b.position[1]); // Yüksekliğe göre sırala
 
     const updatedBlockData = {
       ...blockToUpdate,
@@ -448,22 +432,64 @@ const BuildingCanvas = () => {
     };
 
     try {
+      // Önce seçili bloğu güncelle
       if (blockToUpdate._id) {
         const updatedBlock = await updateBlock(selectedBlock, updatedBlockData);
         setBlocks(prevBlocks => prevBlocks.map(block => 
           (block._id || block.id) === selectedBlock ? updatedBlock : block
         ));
-        // Sadece yükseklik artıyorsa üstteki blokları hareket ettir
-        if (heightChange > 0) {
-          resolveOverlaps(selectedBlock, updatedBlock, oldDimensions);
-        }
       } else {
         setBlocks(prevBlocks => prevBlocks.map(block => 
           (block._id || block.id) === selectedBlock ? updatedBlockData : block
         ));
-        // Sadece yükseklik artıyorsa üstteki blokları hareket ettir
-        if (heightChange > 0) {
-          resolveOverlaps(selectedBlock, updatedBlockData, oldDimensions);
+      }
+
+      // Üstteki blokları güncelle
+      if (blocksAbove.length > 0) {
+        const updatedPositions = new Map();
+
+        // Yükseklik azaltıldıysa blokları aşağı indir
+        if (heightChange < 0) {
+          blocksAbove.forEach(block => {
+            const newBlockPosition = [...block.position];
+            newBlockPosition[1] += heightChange; // Yükseklik farkı kadar aşağı indir
+            updatedPositions.set(block._id || block.id, {
+              ...block,
+              position: newBlockPosition
+            });
+          });
+        }
+        // Yükseklik artırıldıysa blokları yukarı çıkar
+        else if (heightChange > 0) {
+          blocksAbove.forEach(block => {
+            const newBlockPosition = [...block.position];
+            newBlockPosition[1] += heightChange; // Yükseklik farkı kadar yukarı çıkar
+            updatedPositions.set(block._id || block.id, {
+              ...block,
+              position: newBlockPosition
+            });
+          });
+        }
+
+        // Tüm güncellemeleri tek seferde uygula
+        if (updatedPositions.size > 0) {
+          setBlocks(prevBlocks =>
+            prevBlocks.map(block => {
+              const blockId = block._id || block.id;
+              return updatedPositions.has(blockId) ? updatedPositions.get(blockId) : block;
+            })
+          );
+
+          // Veritabanını güncelle
+          for (const [blockId, updatedBlock] of updatedPositions) {
+            if (updatedBlock._id) {
+              try {
+                await updateBlock(blockId, updatedBlock);
+              } catch (error) {
+                console.error(`Error updating block ${blockId}:`, error);
+              }
+            }
+          }
         }
       }
     } catch (error) {

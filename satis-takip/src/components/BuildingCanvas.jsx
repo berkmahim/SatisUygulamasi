@@ -446,6 +446,42 @@ const BuildingCanvas = () => {
         ));
       }
 
+      // Z eksenindeki blokları bul
+      const blocksOnZAxis = blocks.filter(block => {
+        if ((block._id || block.id) === selectedBlock) return false;
+        const [blockX, blockY, blockZ] = block.position;
+        const hasXOverlap = (
+          blockX < baseX + blockToUpdate.dimensions.width &&
+          blockX + block.dimensions.width > baseX
+        );
+        const hasYOverlap = (
+          blockY < baseY + blockToUpdate.dimensions.height &&
+          blockY + block.dimensions.height > baseY
+        );
+        return hasXOverlap && hasYOverlap && blockZ >= baseZ + oldDimensions.depth;
+      }).sort((a, b) => a.position[2] - b.position[2]);
+
+      // Derinlik azaltıldıysa blokları geri kaydır
+      if (depthChange < 0) {
+        blocksOnZAxis.forEach(block => {
+          const newBlockPosition = [...block.position];
+          newBlockPosition[2] += depthChange; // Derinlik farkı kadar geri kaydır
+          setBlocks(prevBlocks => prevBlocks.map(b => 
+            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
+          ));
+        });
+      }
+      // Derinlik artırıldıysa blokları ileri kaydır
+      else if (depthChange > 0) {
+        blocksOnZAxis.forEach(block => {
+          const newBlockPosition = [...block.position];
+          newBlockPosition[2] += depthChange; // Derinlik farkı kadar ileri kaydır
+          setBlocks(prevBlocks => prevBlocks.map(b => 
+            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
+          ));
+        });
+      }
+
       // X eksenindeki blokları bul
       const blocksOnXAxis = blocks.filter(block => {
         if ((block._id || block.id) === selectedBlock) return false;
@@ -466,9 +502,9 @@ const BuildingCanvas = () => {
         blocksOnXAxis.forEach(block => {
           const newBlockPosition = [...block.position];
           newBlockPosition[0] += widthChange; // Genişlik farkı kadar sola kaydır
-          const updatedBlock = { ...block, position: newBlockPosition };
-          setBlocks(prevBlocks => prevBlocks.map(b => (b._id || b.id) === block._id ? updatedBlock : b));
-          resolveOverlaps(block._id, updatedBlock, block.dimensions);
+          setBlocks(prevBlocks => prevBlocks.map(b => 
+            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
+          ));
         });
       }
       // Genişlik artırıldıysa blokları sağa kaydır
@@ -476,57 +512,40 @@ const BuildingCanvas = () => {
         blocksOnXAxis.forEach(block => {
           const newBlockPosition = [...block.position];
           newBlockPosition[0] += widthChange; // Genişlik farkı kadar sağa kaydır
-          const updatedBlock = { ...block, position: newBlockPosition };
-          setBlocks(prevBlocks => prevBlocks.map(b => (b._id || b.id) === block._id ? updatedBlock : b));
-          resolveOverlaps(block._id, updatedBlock, block.dimensions);
+          setBlocks(prevBlocks => prevBlocks.map(b => 
+            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
+          ));
         });
       }
 
-      // Tüm güncellemeleri tek seferde uygula
-      if (blocksAbove.length > 0) {
-        const updatedPositions = new Map();
+      // Yükseklik azaltıldıysa blokları aşağı indir
+      if (heightChange < 0) {
+        blocksAbove.forEach(block => {
+          const newBlockPosition = [...block.position];
+          newBlockPosition[1] += heightChange; // Yükseklik farkı kadar aşağı indir
+          setBlocks(prevBlocks => prevBlocks.map(b => 
+            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
+          ));
+        });
+      }
+      // Yükseklik artırıldıysa blokları yukarı çıkar
+      else if (heightChange > 0) {
+        blocksAbove.forEach(block => {
+          const newBlockPosition = [...block.position];
+          newBlockPosition[1] += heightChange; // Yükseklik farkı kadar yukarı çıkar
+          setBlocks(prevBlocks => prevBlocks.map(b => 
+            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
+          ));
+        });
+      }
 
-        // Yükseklik azaltıldıysa blokları aşağı indir
-        if (heightChange < 0) {
-          blocksAbove.forEach(block => {
-            const newBlockPosition = [...block.position];
-            newBlockPosition[1] += heightChange; // Yükseklik farkı kadar aşağı indir
-            updatedPositions.set(block._id || block.id, {
-              ...block,
-              position: newBlockPosition
-            });
-          });
-        }
-        // Yükseklik artırıldıysa blokları yukarı çıkar
-        else if (heightChange > 0) {
-          blocksAbove.forEach(block => {
-            const newBlockPosition = [...block.position];
-            newBlockPosition[1] += heightChange; // Yükseklik farkı kadar yukarı çıkar
-            updatedPositions.set(block._id || block.id, {
-              ...block,
-              position: newBlockPosition
-            });
-          });
-        }
-
-        // Tüm güncellemeleri tek seferde uygula
-        if (updatedPositions.size > 0) {
-          setBlocks(prevBlocks =>
-            prevBlocks.map(block => {
-              const blockId = block._id || block.id;
-              return updatedPositions.has(blockId) ? updatedPositions.get(blockId) : block;
-            })
-          );
-
-          // Veritabanını güncelle
-          for (const [blockId, updatedBlock] of updatedPositions) {
-            if (updatedBlock._id) {
-              try {
-                await updateBlock(blockId, updatedBlock);
-              } catch (error) {
-                console.error(`Error updating block ${blockId}:`, error);
-              }
-            }
+      // Veritabanını güncelle
+      for (const block of blocks) {
+        if (block._id) {
+          try {
+            await updateBlock(block._id, block);
+          } catch (error) {
+            console.error(`Error updating block ${block._id}:`, error);
           }
         }
       }

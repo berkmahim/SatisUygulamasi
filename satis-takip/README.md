@@ -6,11 +6,11 @@
 
 ### Proje Yönetimi
 - Çoklu proje desteği
-- Her proje için blok ve daire yönetimi
+- Her proje için küp yönetimi (daire ve dükkan)
 - Proje bazlı raporlama ve analiz
-- Blok bazlı satış durumu takibi
+- Küp bazlı satış durumu takibi
 - 3D proje görselleştirme
-- Blok ve daire durumlarının renk kodlaması
+- Küp durumlarının renk kodlaması
 
 ### Satış Yönetimi
 - Müşteri bilgileri yönetimi
@@ -38,7 +38,7 @@
 - Aylık satış grafikleri
 - Ödeme durumu dağılımı
 - Proje bazlı satış raporları
-- Blok bazlı doluluk oranları
+- Küp bazlı doluluk oranları (daire ve dükkan)
 - Excel export özelliği
 - Özelleştirilebilir rapor filtreleri
 
@@ -107,10 +107,10 @@ npm run dev
 1. Proje Oluşturma:
    - "Projeler" sayfasından "Yeni Proje" butonuna tıklayın
    - Proje bilgilerini girin
-   - Blokları ve daireleri ekleyin
+   - Küpleri (daire ve dükkan) ekleyin
 
 2. Satış İşlemi:
-   - Proje detayından ilgili bloğu seçin
+   - Proje detayından ilgili küpü seçin
    - Satılacak daireyi seçin
    - Müşteri bilgilerini girin
    - Ödeme planını oluşturun

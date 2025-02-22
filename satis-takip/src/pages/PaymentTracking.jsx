@@ -367,28 +367,21 @@ const PaymentTracking = () => {
                     bordered={false}
                 >
                     <Row gutter={[16, 16]}>
-                        <Col xs={24} sm={12} md={8} lg={6}>
+                        <Col xs={24} sm={12} md={8}>
                             <Statistic
-                                title="Müşteri"
-                                value={saleDetails?.customer?.fullName || saleDetails?.customer?.name || '-'}
+                                title="Müşteri Adı"
+                                value={saleDetails?.customer ? `${saleDetails.customer.firstName} ${saleDetails.customer.lastName}` : '-'}
                                 valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
                             />
                         </Col>
-                        <Col xs={24} sm={12} md={8} lg={6}>
-                            <Statistic
-                                title="Blok"
-                                value={saleDetails?.block?.blockName || saleDetails?.block?.name || '-'}
-                                valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
-                            />
-                        </Col>
-                        <Col xs={24} sm={12} md={8} lg={6}>
+                        <Col xs={24} sm={12} md={8}>
                             <Statistic
                                 title="Daire No"
-                                value={saleDetails?.unit?.unitNumber || saleDetails?.unit?.number || '-'}
+                                value={saleDetails?.block?.unitNumber || '-'}
                                 valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
                             />
                         </Col>
-                        <Col xs={24} sm={12} md={8} lg={6}>
+                        <Col xs={24} sm={12} md={8}>
                             <Statistic
                                 title="Toplam Tutar"
                                 value={formatCurrency(paymentDetails?.totalAmount)}

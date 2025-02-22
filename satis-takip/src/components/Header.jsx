@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Layout, Menu, Button, Drawer } from 'antd';
+import React, { useState, useCallback } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Layout, Menu, Button, Drawer, Dropdown, Space, Avatar } from 'antd';
 import { 
   HomeOutlined, UserOutlined, ProjectOutlined, 
   BarChartOutlined, BulbOutlined, BulbFilled,
-  MenuOutlined
+  MenuOutlined, LogoutOutlined, SettingOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import logoImage from '../assets/Tadu_gold_Logo.png';
 import './Header.css';
 
@@ -14,29 +16,69 @@ const { Header: AntHeader } = Layout;
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isDarkMode, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
 
-  const menuItems = [
+  const handleLogout = useCallback(() => {
+    logout();
+    navigate('/login');
+  }, [logout, navigate]);
+
+  const { hasPermission } = useAuth();
+
+  const allMenuItems = [
     {
       key: '/',
       icon: <HomeOutlined />,
       label: <Link to="/">Ana Sayfa</Link>,
+      permission: null // Ana sayfa için yetki gerekmez
     },
     {
       key: '/customers',
       icon: <UserOutlined />,
       label: <Link to="/customers">Müşteriler</Link>,
+      permission: 'customerManagement'
     },
-    {
-      key: '/projects',
-      icon: <ProjectOutlined />,
-      label: <Link to="/projects">Projeler</Link>,
-    },
+    
     {
       key: '/reports/sales',
       icon: <BarChartOutlined />,
       label: <Link to="/reports/sales">Raporlar</Link>,
+      permission: 'reportManagement'
+    },
+    {
+      key: '/users',
+      icon: <TeamOutlined />,
+      label: <Link to="/users">Kullanıcılar</Link>,
+      permission: 'userManagement'
+    }
+  ];
+
+  const menuItems = allMenuItems.filter(item => 
+    !item.permission || hasPermission(item.permission)
+  );
+
+  const userMenuItems = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: user?.fullName || 'Profil',
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Ayarlar',
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Çıkış Yap',
+      onClick: handleLogout,
     },
   ];
 
@@ -65,17 +107,32 @@ const Header = () => {
         </Link>
         
         {/* Desktop Menu */}
-        <div className="desktop-menu">
+        <div className="desktop-menu" style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
           <Menu
             mode="horizontal"
             selectedKeys={[location.pathname]}
             items={menuItems}
+            style={{ flex: 1 }}
           />
-          <Button
-            type="text"
-            icon={isDarkMode ? <BulbFilled /> : <BulbOutlined />}
-            onClick={toggleTheme}
-          />
+          <Space style={{ marginLeft: 'auto' }}>
+            <Button
+              type="text"
+              icon={isDarkMode ? <BulbFilled /> : <BulbOutlined />}
+              onClick={toggleTheme}
+            />
+            <Dropdown
+              menu={{ items: userMenuItems }}
+              placement="bottomRight"
+              arrow
+            >
+              <Space>
+                <Avatar icon={<UserOutlined />} />
+                <span style={{ color: isDarkMode ? '#fff' : '#000' }}>
+                  {user?.fullName}
+                </span>
+              </Space>
+            </Dropdown>
+          </Space>
         </div>
 
         {/* Mobile Menu Button */}

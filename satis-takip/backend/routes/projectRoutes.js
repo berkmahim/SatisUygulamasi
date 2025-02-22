@@ -6,10 +6,17 @@ import {
     updateProject,
     deleteProject
 } from '../controllers/projectController.js';
+import { protect, checkPermission } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.route('/').get(getProjects).post(createProject);
-router.route('/:id').get(getProject).put(updateProject).delete(deleteProject);
+router.route('/')
+    .get(protect, checkPermission('projectManagement'), getProjects)
+    .post(protect, checkPermission('projectManagement'), createProject);
+
+router.route('/:id')
+    .get(protect, checkPermission('projectManagement'), getProject)
+    .put(protect, checkPermission('projectManagement'), updateProject)
+    .delete(protect, checkPermission('projectManagement'), deleteProject);
 
 export default router;

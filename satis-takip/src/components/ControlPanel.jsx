@@ -9,8 +9,6 @@ const ControlPanel = ({
   selectedBlock,
   onUpdateBlockDimensions,
   selectedBlockDimensions,
-  expansionDirections,
-  onUpdateExpansionDirections,
   onUpdateBlockDetails,
   onDeleteBlock,
   blocks
@@ -47,12 +45,7 @@ const ControlPanel = ({
     onUpdateBlockDimensions(newDimensions);
   };
 
-  const handleExpansionDirectionChange = (dimension, direction) => {
-    onUpdateExpansionDirections({
-      ...expansionDirections,
-      [dimension]: direction
-    });
-  };
+
 
   const handleBlockDetailsChange = (field, value) => {
     const newDetails = { ...blockDetails, [field]: value };
@@ -147,20 +140,6 @@ const ControlPanel = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '12px', width: '60px' }}>Genişlik:</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <select
-                  value={expansionDirections.width}
-                  onChange={(e) => handleExpansionDirectionChange('width', e.target.value)}
-                  style={{
-                    padding: '4px',
-                    borderRadius: '4px',
-                    border: '1px solid #ccc',
-                    width: '80px'
-                  }}
-                >
-                  <option value="right">Sağa</option>
-                  <option value="left">Sola</option>
-                  <option value="center">Ortadan</option>
-                </select>
                 <input
                   type="number"
                   min="1"
@@ -180,20 +159,6 @@ const ControlPanel = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '12px', width: '60px' }}>Yükseklik:</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <select
-                  value={expansionDirections.height}
-                  onChange={(e) => handleExpansionDirectionChange('height', e.target.value)}
-                  style={{
-                    padding: '4px',
-                    borderRadius: '4px',
-                    border: '1px solid #ccc',
-                    width: '80px'
-                  }}
-                >
-                  <option value="up">Yukarı</option>
-                  <option value="down">Aşağı</option>
-                  <option value="center">Ortadan</option>
-                </select>
                 <input
                   type="number"
                   min="1"
@@ -213,20 +178,6 @@ const ControlPanel = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <label style={{ fontSize: '12px', width: '60px' }}>Derinlik:</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <select
-                  value={expansionDirections.depth}
-                  onChange={(e) => handleExpansionDirectionChange('depth', e.target.value)}
-                  style={{
-                    padding: '4px',
-                    borderRadius: '4px',
-                    border: '1px solid #ccc',
-                    width: '80px'
-                  }}
-                >
-                  <option value="forward">İleri</option>
-                  <option value="backward">Geri</option>
-                  <option value="center">Ortadan</option>
-                </select>
                 <input
                   type="number"
                   min="1"

@@ -137,11 +137,12 @@ const BuildingCanvas = () => {
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [addMode, setAddMode] = useState(false);
-  const [expansionDirections, setExpansionDirections] = useState({
-    width: 'right',
-    height: 'up',
-    depth: 'forward'
-  });
+  // Sabit genişleme yönleri
+  const expansionDirections = {
+    width: 'right',    // Sağa doğru
+    height: 'up',      // Yukarı doğru
+    depth: 'forward'   // İleri doğru
+  };
 
   useEffect(() => {
     const fetchBlocks = async () => {
@@ -592,8 +593,6 @@ const BuildingCanvas = () => {
         selectedBlock={selectedBlock}
         selectedBlockDimensions={getSelectedBlockDimensions()}
         onUpdateBlockDimensions={handleUpdateBlockDimensions}
-        expansionDirections={expansionDirections}
-        onUpdateExpansionDirections={setExpansionDirections}
         onUpdateBlockDetails={handleUpdateBlockDetails}
         onDeleteBlock={handleDeleteBlock}
         blocks={blocks}

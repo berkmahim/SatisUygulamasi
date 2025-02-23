@@ -53,6 +53,7 @@ const paymentSchema = new mongoose.Schema({
 });
 
 const saleSchema = new mongoose.Schema({
+    payments: [paymentSchema], // Ödeme planlarını doğrudan saklamak için eklendi
     projectId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Project',
@@ -128,6 +129,11 @@ const saleSchema = new mongoose.Schema({
 
 // Ödeme planı oluşturma
 saleSchema.methods.generatePaymentSchedule = function() {
+    // Eğer payments zaten varsa ve frontend'den gönderilmişse, onları kullan
+    if (this._doc.payments && this._doc.payments.length > 0) {
+        return;
+    }
+
     const payments = [];
     const paymentDate = new Date(this.firstPaymentDate);
 

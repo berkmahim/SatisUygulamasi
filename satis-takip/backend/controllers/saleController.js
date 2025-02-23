@@ -16,7 +16,8 @@ const createSale = asyncHandler(async (req, res) => {
             totalAmount,
             downPayment,
             installmentCount,
-            firstPaymentDate
+            firstPaymentDate,
+            payments // Özel vade tarihleri için eklendi
         } = req.body;
 
         // Blok'u bul ve kontrol et
@@ -35,21 +36,41 @@ const createSale = asyncHandler(async (req, res) => {
             return res.status(400).json({ message: 'Bu blok zaten satılmış' });
         }
 
+        // Ödemeleri kontrol et ve düzenle
+        const formattedPayments = payments ? payments.map(payment => ({
+            amount: parseFloat(payment.amount),
+            dueDate: new Date(payment.dueDate),
+            description: payment.description,
+            installmentNumber: parseInt(payment.description.split('/')[0].replace('Taksit ', '')),
+            status: 'pending'
+        })) : [];
+
         // Yeni satış oluştur
         const sale = new Sale({
             blockId,
             customerId,
-            projectId: block.projectId, // Blok'tan projectId'yi al
+            projectId: block.projectId,
             type,
             paymentPlan,
             totalAmount,
             downPayment,
             installmentCount,
-            firstPaymentDate: new Date(firstPaymentDate)
+            firstPaymentDate: new Date(firstPaymentDate),
+            payments: formattedPayments
         });
 
-        // Ödeme planını oluştur
-        sale.generatePaymentSchedule();
+        // Özel vade tarihleri varsa onları kullan, yoksa otomatik oluştur
+        if (payments && payments.length > 0) {
+            sale.payments = payments.map((payment, index) => ({
+                amount: payment.amount,
+                dueDate: new Date(payment.dueDate),
+                description: payment.description,
+                installmentNumber: index + 1,
+                status: 'pending'
+            }));
+        } else {
+            sale.generatePaymentSchedule();
+        }
 
         // Satışı kaydet
         const savedSale = await sale.save();

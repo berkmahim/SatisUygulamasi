@@ -10,10 +10,17 @@
 - Proje bazlı raporlama ve analiz
 - Küp bazlı satış durumu takibi
 - 3D proje görselleştirme
+  - Blokları sağa, yukarı ve ileri yönlerde boyutlandırma
+  - Kolay kullanımlı kontrol paneli
+  - Gerçek zamanlı 3D görüntüleme
 - Küp durumlarının renk kodlaması
 
 ### Satış Yönetimi
 - Müşteri bilgileri yönetimi
+  - Detaylı müşteri profili görüntüleme
+  - Müşterinin sahip olduğu tüm birimleri listeleme
+  - Müşterinin ödeme geçmişini görüntüleme
+  - Müşteri bilgilerini düzenleme ve silme
 - Daire satış işlemleri
 - Ödeme planı oluşturma
 - Taksit takibi
@@ -56,18 +63,37 @@
 - React 18
 - Vite
 - Ant Design 5
+  - Modern ve kullanıcı dostu bileşenler
+  - Responsive tasarım
+  - Form validasyonları
+  - Modal ve bildirim sistemleri
 - Chart.js
 - Axios
+  - HTTP istekleri yönetimi
+  - İstek/yanıt ara katmanı
 - React Router
+  - Sayfa yönlendirme
+  - Yetkilendirme kontrolleri
 - React Icons
 - date-fns
-- Three.js (3D görselleştirme)
+- Three.js
+  - 3D görselleştirme
+  - Blok boyutlandırma kontrolleri
+  - Kamera kontrolleri
 
 ### Backend
 - Node.js
 - Express.js
+  - RESTful API tasarımı
+  - Middleware yapısı
+  - Hata yönetimi
 - MongoDB
+  - NoSQL veritabanı
+  - Yüksek performanslı veri işleme
 - Mongoose
+  - Şema tabanlı modelleme
+  - Veri validasyonu
+  - Populate işlemleri
 - CORS
 - dotenv
 - node-cron (zamanlanmış görevler)

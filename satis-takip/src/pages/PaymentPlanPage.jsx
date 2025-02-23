@@ -51,18 +51,24 @@ const PaymentPlanPage = () => {
     }, [paymentPlan]);
 
     const calculatePayments = () => {
-        const payments = [];
         const { totalAmount, paymentType, downPayment, installmentCount, firstPaymentDate } = paymentPlan;
 
         if (!totalAmount || !firstPaymentDate) return;
 
+        // Mevcut ödemeleri kontrol et
+        const existingPayments = calculatedPayments.reduce((acc, payment) => {
+            acc[payment.id] = payment.dueDate;
+            return acc;
+        }, {});
+
+        const payments = [];
         const baseDate = new Date(firstPaymentDate);
 
         if (paymentType === 'cash') {
             payments.push({
                 id: 0,
                 amount: parseFloat(totalAmount),
-                dueDate: baseDate.toISOString().split('T')[0],
+                dueDate: existingPayments[0] || baseDate.toISOString().split('T')[0],
                 description: 'Peşin Ödeme'
             });
         } else if (paymentType === 'cash-installment' && downPayment && installmentCount) {
@@ -70,7 +76,7 @@ const PaymentPlanPage = () => {
             payments.push({
                 id: 0,
                 amount: parseFloat(downPayment),
-                dueDate: baseDate.toISOString().split('T')[0],
+                dueDate: existingPayments[0] || baseDate.toISOString().split('T')[0],
                 description: 'Peşinat'
             });
 
@@ -79,12 +85,13 @@ const PaymentPlanPage = () => {
             const installmentAmount = remainingAmount / installmentCount;
 
             for (let i = 0; i < installmentCount; i++) {
-                const dueDate = new Date(baseDate);
-                dueDate.setMonth(baseDate.getMonth() + i + 1);
+                const defaultDueDate = new Date(baseDate);
+                defaultDueDate.setMonth(baseDate.getMonth() + i + 1);
+                
                 payments.push({
                     id: i + 1,
                     amount: installmentAmount,
-                    dueDate: dueDate.toISOString().split('T')[0],
+                    dueDate: existingPayments[i + 1] || defaultDueDate.toISOString().split('T')[0],
                     description: 'Taksit ' + (i + 1) + '/' + installmentCount
                 });
             }
@@ -92,12 +99,13 @@ const PaymentPlanPage = () => {
             const installmentAmount = totalAmount / installmentCount;
 
             for (let i = 0; i < installmentCount; i++) {
-                const dueDate = new Date(baseDate);
-                dueDate.setMonth(baseDate.getMonth() + i);
+                const defaultDueDate = new Date(baseDate);
+                defaultDueDate.setMonth(baseDate.getMonth() + i);
+                
                 payments.push({
                     id: i,
                     amount: installmentAmount,
-                    dueDate: dueDate.toISOString().split('T')[0],
+                    dueDate: existingPayments[i] || defaultDueDate.toISOString().split('T')[0],
                     description: 'Taksit ' + (i + 1) + '/' + installmentCount
                 });
             }
@@ -115,6 +123,20 @@ const PaymentPlanPage = () => {
     };
 
     const handlePaymentDateChange = (paymentId, newDate) => {
+        // Tarih formatını kontrol et
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(newDate)) {
+            console.error('Geçersiz tarih formatı:', newDate);
+            return;
+        }
+
+        // Tarihin geçerli olduğunu kontrol et
+        const date = new Date(newDate);
+        if (isNaN(date.getTime())) {
+            console.error('Geçersiz tarih:', newDate);
+            return;
+        }
+
         setCalculatedPayments(prevPayments => 
             prevPayments.map(payment => 
                 payment.id === paymentId 
@@ -128,6 +150,28 @@ const PaymentPlanPage = () => {
         e.preventDefault();
 
         try {
+            // Ödeme tarihlerini kontrol et ve geçerli tarihler olduğundan emin ol
+            const formattedPayments = calculatedPayments.map(payment => ({
+                amount: parseFloat(payment.amount),
+                dueDate: new Date(payment.dueDate).toISOString().split('T')[0],
+                description: payment.description,
+                status: 'pending'
+            }));
+
+            // Tarihlerin sıralı olduğunu kontrol et
+            const sortedPayments = [...formattedPayments].sort((a, b) => 
+                new Date(a.dueDate) - new Date(b.dueDate)
+            );
+
+            // Tarih formatını kontrol et
+            const invalidDates = sortedPayments.filter(payment => 
+                isNaN(new Date(payment.dueDate).getTime())
+            );
+
+            if (invalidDates.length > 0) {
+                throw new Error('Geçersiz vade tarihi formatı tespit edildi');
+            }
+
             const saleData = {
                 blockId,
                 customerId: customer._id,
@@ -136,8 +180,8 @@ const PaymentPlanPage = () => {
                 paymentPlan: paymentPlan.paymentType,
                 downPayment: paymentPlan.paymentType === 'cash-installment' ? parseFloat(paymentPlan.downPayment) : undefined,
                 installmentCount: paymentPlan.paymentType !== 'cash' ? parseInt(paymentPlan.installmentCount) : undefined,
-                firstPaymentDate: paymentPlan.firstPaymentDate,
-                payments: calculatedPayments
+                firstPaymentDate: sortedPayments[0].dueDate,
+                payments: sortedPayments
             };
 
             await createSale(saleData);

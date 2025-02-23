@@ -2,7 +2,7 @@ import Sale from '../models/saleModel.js';
 
 // @desc    Record a payment for a sale
 // @route   POST /api/payments/:saleId
-// @access  Public
+// @access  Private
 const recordPayment = async (req, res) => {
     try {
         const sale = await Sale.findById(req.params.saleId);
@@ -42,8 +42,8 @@ const recordPayment = async (req, res) => {
         // Satışı kaydet ve populate et
         await sale.save();
         const updatedSale = await Sale.findById(sale._id)
-            .populate('block', 'unitNumber type')
-            .populate('customer', 'firstName lastName tcNo phone');
+            .populate('blockId', 'unitNumber type')
+            .populate('customerId', 'firstName lastName tcNo phone');
 
         res.json(updatedSale);
     } catch (error) {
@@ -54,12 +54,12 @@ const recordPayment = async (req, res) => {
 
 // @desc    Get payment details for a sale
 // @route   GET /api/payments/:saleId
-// @access  Public
+// @access  Private
 const getPaymentDetails = async (req, res) => {
     try {
         const sale = await Sale.findById(req.params.saleId)
-            .populate('block', 'unitNumber type')
-            .populate('customer', 'firstName lastName tcNo phone');
+            .populate('blockId', 'unitNumber type')
+            .populate('customerId', 'firstName lastName tcNo phone');
 
         if (!sale) {
             return res.status(404).json({ message: 'Sale not found' });
@@ -95,7 +95,7 @@ const getPaymentDetails = async (req, res) => {
 
 // @desc    Update payment due date
 // @route   PUT /api/payments/:saleId/due-date
-// @access  Public
+// @access  Private
 const updatePaymentDueDate = async (req, res) => {
     try {
         const { paymentId, newDueDate } = req.body;
@@ -122,17 +122,17 @@ const updatePaymentDueDate = async (req, res) => {
 
 // @desc    Get overdue payments
 // @route   GET /api/payments/overdue
-// @access  Public
+// @access  Private
 const getOverduePayments = async (req, res) => {
     try {
         const sales = await Sale.find({ paymentStatus: 'overdue' })
-            .populate('block', 'unitNumber type')
-            .populate('customer', 'firstName lastName tcNo phone');
+            .populate('blockId', 'unitNumber type')
+            .populate('customerId', 'firstName lastName tcNo phone');
 
         const overduePayments = sales.map(sale => ({
             saleId: sale._id,
-            block: sale.block,
-            customer: sale.customer,
+            block: sale.blockId,
+            customer: sale.customerId,
             totalAmount: sale.totalAmount,
             remainingAmount: sale.remainingAmount,
             nextPaymentDate: sale.nextPaymentDate,
@@ -155,7 +155,7 @@ const getOverduePayments = async (req, res) => {
 
 // @desc    Record bulk payments for a sale
 // @route   POST /api/payments/:saleId/bulk
-// @access  Public
+// @access  Private
 const recordBulkPayments = async (req, res) => {
     try {
         const { saleId } = req.params;
@@ -163,8 +163,8 @@ const recordBulkPayments = async (req, res) => {
 
         const sale = await Sale.findById(saleId)
             .populate('payments')
-            .populate('customer')
-            .populate('block');
+            .populate('customerId')
+            .populate('blockId');
 
         if (!sale) {
             return res.status(404).json({ message: 'Satış bulunamadı' });
@@ -207,7 +207,7 @@ const recordBulkPayments = async (req, res) => {
 
 // @desc    Update payment plan
 // @route   PUT /api/payments/:saleId/plan
-// @access  Public
+// @access  Private
 const updatePaymentPlan = async (req, res) => {
     try {
         const sale = await Sale.findById(req.params.saleId);

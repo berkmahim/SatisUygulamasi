@@ -5,11 +5,9 @@ import Customer from '../models/customerModel.js';
 
 // @desc    Create a new sale
 // @route   POST /api/sales
-// @access  Public
+// @access  Private
 const createSale = asyncHandler(async (req, res) => {
     try {
-        console.log('Creating sale with data:', req.body);
-
         const {
             blockId,
             customerId,
@@ -24,14 +22,24 @@ const createSale = asyncHandler(async (req, res) => {
         // Blok'u bul ve kontrol et
         const block = await Block.findById(blockId);
         if (!block) {
-            return res.status(404).json({ message: 'Block not found' });
+            return res.status(404).json({ message: 'Blok bulunamadı' });
         }
-        console.log('Found block:', block);
+        // Müşteriyi kontrol et
+        const customer = await Customer.findById(customerId);
+        if (!customer) {
+            return res.status(404).json({ message: 'Müşteri bulunamadı' });
+        }
+
+        // Blok daha önce satılmış mı kontrol et
+        if (block.owner) {
+            return res.status(400).json({ message: 'Bu blok zaten satılmış' });
+        }
 
         // Yeni satış oluştur
         const sale = new Sale({
-            block: blockId,
-            customer: customerId,
+            blockId,
+            customerId,
+            projectId: block.projectId, // Blok'tan projectId'yi al
             type,
             paymentPlan,
             totalAmount,
@@ -45,15 +53,14 @@ const createSale = asyncHandler(async (req, res) => {
 
         // Satışı kaydet
         const savedSale = await sale.save();
-        console.log('Sale saved:', savedSale);
-
         // Blok'u güncelle
+        block.owner = customerId;
         block.status = type === 'sale' ? 'sold' : 'reserved';
         await block.save();
 
         const populatedSale = await Sale.findById(savedSale._id)
-            .populate('block', 'unitNumber type projectId')
-            .populate('customer', 'firstName lastName tcNo phone');
+            .populate('blockId', 'unitNumber type')
+            .populate('customerId', 'firstName lastName tcNo phone');
 
         res.status(201).json(populatedSale);
     } catch (error) {
@@ -64,40 +71,40 @@ const createSale = asyncHandler(async (req, res) => {
 
 // @desc    Get sale by ID
 // @route   GET /api/sales/:id
-// @access  Public
+// @access  Private
 const getSaleById = asyncHandler(async (req, res) => {
     try {
         const sale = await Sale.findById(req.params.id)
-            .populate('block', 'unitNumber type projectId')
-            .populate('customer', 'firstName lastName tcNo phone');
+            .populate('blockId', 'unitNumber type')
+            .populate('customerId', 'firstName lastName tcNo phone');
 
         if (!sale) {
-            return res.status(404).json({ message: 'Sale not found' });
+            return res.status(404).json({ message: 'Satış bulunamadı' });
         }
-
-        console.log('Found sale:', sale);
 
         res.json(sale);
     } catch (error) {
         console.error('Error getting sale:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
 // @desc    Update sale payment plan
 // @route   PUT /api/sales/:id/payment-plan
-// @access  Public
+// @access  Private
 const updatePaymentPlan = asyncHandler(async (req, res) => {
-    const sale = await Sale.findById(req.params.id);
+    const sale = await Sale.findById(req.params.id)
+        .populate('blockId', 'unitNumber type')
+        .populate('customerId', 'firstName lastName tcNo phone');
 
     if (!sale) {
         res.status(404);
-        throw new Error('Sale not found');
+        throw new Error('Satış bulunamadı');
     }
 
     console.log('Found sale:', sale);
 
-    // Update payment dates
+    // Ödeme tarihlerini güncelle
     const { payments } = req.body;
     if (payments && Array.isArray(payments)) {
         sale.payments = payments.map(payment => ({
@@ -227,30 +234,27 @@ const cancelSaleAndRefund = asyncHandler(async (req, res) => {
 
 // @desc    Get all sales
 // @route   GET /api/sales
-// @access  Public
+// @access  Private
 const getSales = asyncHandler(async (req, res) => {
     try {
-        const { blockId, customerId, type, status } = req.query;
+        const { blockId, customerId, type, status, projectId } = req.query;
         
         const filter = {};
-        if (blockId) filter.block = blockId;
-        if (customerId) filter.customer = customerId;
+        if (blockId) filter.blockId = blockId;
+        if (customerId) filter.customerId = customerId;
+        if (projectId) filter.projectId = projectId;
         if (type) filter.type = type;
         if (status) filter.status = status;
 
-        console.log('Getting sales with filter:', filter);
-
         const sales = await Sale.find(filter)
-            .populate('block', 'unitNumber type projectId')
-            .populate('customer', 'firstName lastName tcNo phone')
+            .populate('blockId', 'unitNumber type')
+            .populate('customerId', 'firstName lastName tcNo phone')
             .sort('-createdAt');
-
-        console.log('Found sales:', sales);
 
         res.json(sales);
     } catch (error) {
         console.error('Error getting sales:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
 });
 
@@ -272,30 +276,51 @@ const getCancelledSales = asyncHandler(async (req, res) => {
 
 // @desc    Get sales by project ID
 // @route   GET /api/sales/project/:projectId
-// @access  Public
-const getSalesByProject = async (req, res) => {
+// @access  Private
+const getSalesByProject = asyncHandler(async (req, res) => {
     try {
-        // Önce projeye ait blokları bul
-        const blocks = await Block.find({ projectId: req.params.projectId });
-        const blockIds = blocks.map(block => block._id);
-
-        // Bu bloklara ait satışları getir
-        const sales = await Sale.find({ block: { $in: blockIds } })
-            .populate('block', 'unitNumber type')
-            .populate('customer', 'firstName lastName tcNo phone');
-
-        // Her satış için ödeme durumunu güncelle
-        for (let sale of sales) {
-            sale.updatePaymentStatus();
-            await sale.save();
-        }
+        const sales = await Sale.find({ projectId: req.params.projectId })
+            .populate('blockId', 'unitNumber type')
+            .populate('customerId', 'firstName lastName tcNo phone')
+            .sort('-createdAt');
 
         res.json(sales);
     } catch (error) {
-        console.error('Error getting sales by project:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: 'Sunucu hatası' });
     }
-};
+});
+
+// @desc    Get sales by customer ID
+// @route   GET /api/sales/customer/:customerId
+// @access  Private
+const getSalesByCustomerId = asyncHandler(async (req, res) => {
+    try {
+        const sales = await Sale.find({ customerId: req.params.customerId })
+            .populate('blockId', 'unitNumber type')
+            .populate('customerId', 'firstName lastName tcNo phone');
+
+        res.json(sales);
+    } catch (error) {
+        console.error('Error getting customer sales:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
+
+// @desc    Get sales by block ID
+// @route   GET /api/sales/block/:blockId
+// @access  Private
+const getSalesByBlockId = asyncHandler(async (req, res) => {
+    try {
+        const sales = await Sale.find({ blockId: req.params.blockId })
+            .populate('blockId', 'unitNumber type')
+            .populate('customerId', 'firstName lastName tcNo phone');
+
+        res.json(sales);
+    } catch (error) {
+        console.error('Error getting block sales:', error);
+        res.status(500).json({ message: 'Sunucu hatası' });
+    }
+});
 
 export {
     createSale,
@@ -306,5 +331,7 @@ export {
     getSales,
     getSalesByProject,
     cancelSaleAndRefund,
-    getCancelledSales
+    getCancelledSales,
+    getSalesByCustomerId,
+    getSalesByBlockId
 };

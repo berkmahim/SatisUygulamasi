@@ -71,27 +71,13 @@ const PaymentTracking = () => {
             // Önce satış detaylarını al
             const saleResponse = await axios.get(`/api/sales/${saleId}`);
             const saleData = saleResponse.data;
-            console.log('Raw sale data:', saleData);
-            console.log('Customer object:', JSON.stringify(saleData.customer, null, 2));
-            console.log('Block object:', JSON.stringify(saleData.block, null, 2));
-            console.log('Unit object:', JSON.stringify(saleData.unit, null, 2));
 
             // Satış verilerini state'e kaydet
             if (saleData) {
-                // Müşteri bilgilerini doğru şekilde al
-                const customerData = saleData.customer || {};
-                const blockData = saleData.block || {};
-                const unitData = saleData.unit || {};
-
-                console.log('Customer data:', customerData);
-                console.log('Block data:', blockData);
-                console.log('Unit data:', unitData);
-
                 setSaleDetails({
                     ...saleData,
-                    customer: customerData,
-                    block: blockData,
-                    unit: unitData
+                    customer: saleData.customerId || {},
+                    block: saleData.blockId || {}
                 });
             }
 
@@ -310,9 +296,9 @@ const PaymentTracking = () => {
                                 const paymentData = {
                                     ...record,
                                     paymentDate: record.paymentDate || new Date().toISOString(),
-                                    customerName: saleDetails?.customer?.name || '-',
+                                    customerName: `${saleDetails?.customer?.firstName || ''} ${saleDetails?.customer?.lastName || ''}`.trim() || '-',
                                     projectName: saleDetails?.project?.name || '-',
-                                    unitNumber: saleDetails?.unit?.number || '-',
+                                    unitNumber: saleDetails?.block?.unitNumber || '-',
                                     paidAmount: parseFloat(record.paidAmount) || 0
                                 };
 
@@ -370,7 +356,7 @@ const PaymentTracking = () => {
                         <Col xs={24} sm={12} md={8}>
                             <Statistic
                                 title="Müşteri Adı"
-                                value={saleDetails?.customer ? `${saleDetails.customer.firstName} ${saleDetails.customer.lastName}` : '-'}
+                                value={`${saleDetails?.customer?.firstName || ''} ${saleDetails?.customer?.lastName || ''}`.trim() || '-'}
                                 valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
                             />
                         </Col>

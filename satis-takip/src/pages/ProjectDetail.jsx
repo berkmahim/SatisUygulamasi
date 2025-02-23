@@ -75,16 +75,16 @@ const ProjectDetail = () => {
     const columns = [
         {
             title: 'Blok/Daire',
-            dataIndex: ['block', 'unitNumber'],
+            dataIndex: ['blockId', 'unitNumber'],
             key: 'unitNumber',
-            sorter: (a, b) => a.block.unitNumber.localeCompare(b.block.unitNumber),
+            sorter: (a, b) => a.blockId.unitNumber.localeCompare(b.blockId.unitNumber),
         },
         {
             title: 'Müşteri',
-            dataIndex: ['customer'],
+            dataIndex: ['customerId'],
             key: 'customer',
             render: (customer) => `${customer.firstName} ${customer.lastName}`,
-            sorter: (a, b) => a.customer.firstName.localeCompare(b.customer.firstName),
+            sorter: (a, b) => a.customerId.firstName.localeCompare(b.customerId.firstName),
         },
         {
             title: 'Toplam Tutar',
@@ -193,8 +193,8 @@ const ProjectDetail = () => {
                             columns={columns}
                             dataSource={sales.filter(sale => {
                                 const searchLower = searchTerm.toLowerCase();
-                                const customerName = `${sale.customer.firstName} ${sale.customer.lastName}`.toLowerCase();
-                                const unitInfo = sale.block.unitNumber.toLowerCase();
+                                const customerName = `${sale.customerId.firstName} ${sale.customerId.lastName}`.toLowerCase();
+                                const unitInfo = sale.blockId.unitNumber.toLowerCase();
                                 
                                 return customerName.includes(searchLower) || 
                                        unitInfo.includes(searchLower);

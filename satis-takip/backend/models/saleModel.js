@@ -53,12 +53,17 @@ const paymentSchema = new mongoose.Schema({
 });
 
 const saleSchema = new mongoose.Schema({
-    block: {
+    projectId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Project',
+        required: true
+    },
+    blockId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Block',
         required: true
     },
-    customer: {
+    customerId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Customer',
         required: true

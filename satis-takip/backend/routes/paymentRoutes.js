@@ -7,8 +7,12 @@ import {
     recordBulkPayments,
     updatePaymentPlan
 } from '../controllers/paymentController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Tüm route'ları koruma altına al
+router.use(protect);
 
 // Ödeme kaydetme
 router.post('/:saleId', recordPayment);

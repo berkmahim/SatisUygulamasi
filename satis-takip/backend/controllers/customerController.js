@@ -1,5 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import Customer from '../models/customerModel.js';
+import Block from '../models/blockModel.js';
+import Payment from '../models/paymentModel.js';
 import Sale from '../models/saleModel.js';
 
 // @desc    Get all customers
@@ -149,7 +151,7 @@ const deleteCustomer = async (req, res) => {
             });
         }
 
-        await customer.remove();
+        await Customer.deleteOne({ _id: customer._id });
         res.json({ message: 'Müşteri başarıyla silindi' });
     } catch (error) {
         console.error('Error deleting customer:', error);
@@ -157,11 +159,38 @@ const deleteCustomer = async (req, res) => {
     }
 };
 
+// @desc    Get customer details with blocks and payments
+// @route   GET /api/customers/:id/details
+// @access  Private
+const getCustomerDetails = asyncHandler(async (req, res) => {
+    const customer = await Customer.findById(req.params.id);
+    
+    if (!customer) {
+        res.status(404);
+        throw new Error('Müşteri bulunamadı');
+    }
+
+    // Müşterinin sahip olduğu blokları bul
+    const blocks = await Block.find({ owner: customer._id })
+        .populate('projectId', 'name'); // Proje adını getir
+
+    // Müşterinin ödeme geçmişini bul
+    const payments = await Payment.find({ customer: customer._id })
+        .sort({ createdAt: -1 }); // En yeni ödemeler önce
+
+    res.json({
+        customer,
+        blocks,
+        payments
+    });
+});
+
 export {
     createCustomer,
     getCustomers,
     getCustomerById,
     searchCustomers,
     updateCustomer,
-    deleteCustomer
+    deleteCustomer,
+    getCustomerDetails
 };

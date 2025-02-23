@@ -4,7 +4,8 @@ import { Layout, ConfigProvider, theme } from 'antd';
 import PermissionRoute from './components/PermissionRoute';
 import ProjectList from './pages/ProjectList';
 import BuildingCanvas from './components/BuildingCanvas';
-import CustomerList from './pages/CustomerList';
+import CustomersPage from './pages/CustomersPage';
+import CustomerDetailPage from './pages/CustomerDetailPage';
 import BlockDetail from './pages/BlockDetail';
 import BlockSalePage from './pages/BlockSalePage';
 import PaymentPlanPage from './pages/PaymentPlanPage';
@@ -76,7 +77,13 @@ function AppContent() {
               
               <Route path="/customers" element={
                 <PermissionRoute permission="customerManagement">
-                  <CustomerList />
+                  <CustomersPage />
+                </PermissionRoute>
+              } />
+              
+              <Route path="/customers/:id" element={
+                <PermissionRoute permission="customerManagement">
+                  <CustomerDetailPage />
                 </PermissionRoute>
               } />
               

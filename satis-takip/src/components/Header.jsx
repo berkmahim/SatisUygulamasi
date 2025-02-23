@@ -173,7 +173,13 @@ const Header = () => {
       {
         key: 'footer',
         label: (
-          <Button type="link" block>
+          <Button 
+            type="link" 
+            block 
+            onClick={() => {
+              navigate('/notifications');
+            }}
+          >
             Tüm Bildirimleri Gör
           </Button>
         ),

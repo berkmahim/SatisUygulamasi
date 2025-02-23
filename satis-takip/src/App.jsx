@@ -16,6 +16,7 @@ import SalesReport from './pages/SalesReport';
 import ProjectReport from './pages/ProjectReport';
 import LoginPage from './pages/LoginPage';
 import UsersPage from './pages/UsersPage';
+import NotificationsPage from './pages/NotificationsPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Footer from './components/Footer';
@@ -84,6 +85,12 @@ function AppContent() {
               <Route path="/customers/:id" element={
                 <PermissionRoute permission="customerManagement">
                   <CustomerDetailPage />
+                </PermissionRoute>
+              } />
+              
+              <Route path="/notifications" element={
+                <PermissionRoute>
+                  <NotificationsPage />
                 </PermissionRoute>
               } />
               

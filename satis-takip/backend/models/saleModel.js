@@ -203,7 +203,14 @@ saleSchema.methods.updatePaymentStatus = function() {
 
         if (payment.status === 'pending') {
             hasPending = true;
-            if (payment.dueDate < now) {
+            
+            // Vade tarihinden 1 gün sonrasını hesapla
+            const overdueDateLimit = new Date(payment.dueDate);
+            overdueDateLimit.setDate(overdueDateLimit.getDate() + 1);
+            overdueDateLimit.setHours(0, 0, 0, 0); // Gün başlangıcına ayarla
+            
+            // Şu anki tarih, vade tarihinden 1 gün sonrayı geçmişse
+            if (now >= overdueDateLimit) {
                 payment.status = 'overdue';
                 hasOverdue = true;
             }
@@ -228,5 +235,22 @@ saleSchema.pre('save', async function(next) {
     this.updatePaymentStatus();
     next();
 });
+
+// Her gün yarım saatte bir ödeme durumlarını kontrol et
+setInterval(async () => {
+    try {
+        const sales = await mongoose.model('Sale').find({
+            'payments.status': 'pending',
+            status: 'active'
+        });
+
+        for (const sale of sales) {
+            sale.updatePaymentStatus();
+            await sale.save();
+        }
+    } catch (error) {
+        console.error('Otomatik ödeme durumu güncelleme hatası:', error);
+    }
+}, 30 * 60 * 1000); // 30 dakika
 
 export default mongoose.model('Sale', saleSchema);

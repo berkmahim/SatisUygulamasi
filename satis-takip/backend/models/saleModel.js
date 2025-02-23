@@ -192,11 +192,12 @@ saleSchema.methods.generatePaymentSchedule = function() {
 };
 
 // Ödeme durumunu güncelle
-saleSchema.methods.updatePaymentStatus = function() {
+saleSchema.methods.updatePaymentStatus = async function() {
     const now = new Date();
     let totalPaid = 0;
     let hasOverdue = false;
     let hasPending = false;
+    let newlyOverduePayments = [];
 
     this.payments.forEach(payment => {
         totalPaid += payment.paidAmount || 0;
@@ -211,8 +212,14 @@ saleSchema.methods.updatePaymentStatus = function() {
             
             // Şu anki tarih, vade tarihinden 1 gün sonrayı geçmişse
             if (now >= overdueDateLimit) {
+                const oldStatus = payment.status;
                 payment.status = 'overdue';
                 hasOverdue = true;
+
+                // Eğer durum yeni değiştiyse, bildirimleri oluşturmak için kaydet
+                if (oldStatus !== 'overdue') {
+                    newlyOverduePayments.push(payment);
+                }
             }
         }
     });
@@ -224,6 +231,16 @@ saleSchema.methods.updatePaymentStatus = function() {
         this.paymentStatus = hasOverdue ? 'overdue' : 'partial';
     } else {
         this.paymentStatus = hasOverdue ? 'overdue' : 'pending';
+    }
+
+    // Yeni geciken ödemeler için bildirim oluştur
+    if (newlyOverduePayments.length > 0) {
+        const customer = await mongoose.model('Customer').findById(this.customerId);
+        const Notification = mongoose.model('Notification');
+
+        for (const payment of newlyOverduePayments) {
+            await Notification.createPaymentOverdueNotification(payment, this, customer);
+        }
     }
 };
 

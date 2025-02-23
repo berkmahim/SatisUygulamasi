@@ -7,7 +7,21 @@ const permissionSchema = new mongoose.Schema({
     customerManagement: { type: Boolean, default: false },
     paymentManagement: { type: Boolean, default: false },
     reportManagement: { type: Boolean, default: false },
-    userManagement: { type: Boolean, default: false }
+    userManagement: { type: Boolean, default: false },
+    paymentOverdueNotification: { type: Boolean, default: false } // Yeni eklenen bildirim izni
+});
+
+const notificationPreferencesSchema = new mongoose.Schema({
+    email: {
+        paymentOverdue: { type: Boolean, default: true },
+        newCustomer: { type: Boolean, default: true },
+        saleCompleted: { type: Boolean, default: true }
+    },
+    inApp: {
+        paymentOverdue: { type: Boolean, default: true },
+        newCustomer: { type: Boolean, default: true },
+        saleCompleted: { type: Boolean, default: true }
+    }
 });
 
 const userSchema = new mongoose.Schema({
@@ -36,6 +50,10 @@ const userSchema = new mongoose.Schema({
     },
     permissions: {
         type: permissionSchema,
+        default: () => ({})
+    },
+    notificationPreferences: {
+        type: notificationPreferencesSchema,
         default: () => ({})
     },
     isActive: {

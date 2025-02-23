@@ -1,14 +1,19 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Layout, Menu, Button, Drawer, Dropdown, Space, Avatar } from 'antd';
+import { Layout, Menu, Button, Drawer, Dropdown, Space, Avatar, Badge, Typography } from 'antd';
+
+const { Text } = Typography;
 import { 
   HomeOutlined, UserOutlined, ProjectOutlined, 
   BarChartOutlined, BulbOutlined, BulbFilled,
   MenuOutlined, LogoutOutlined, SettingOutlined,
-  TeamOutlined
+  TeamOutlined, BellOutlined
 } from '@ant-design/icons';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
+import { formatDistanceToNow } from 'date-fns';
+import { tr } from 'date-fns/locale';
 import logoImage from '../assets/Tadu_gold_Logo.png';
 import './Header.css';
 
@@ -58,6 +63,140 @@ const Header = () => {
 
   const menuItems = allMenuItems.filter(item => 
     !item.permission || hasPermission(item.permission)
+  );
+
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axios.get('/api/notifications?limit=5');
+      setNotifications(data.notifications);
+      setUnreadCount(data.unreadCount);
+    } catch (error) {
+      console.error('Bildirimler alınamadı:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    // Her 5 dakikada bir bildirimleri güncelle
+    const interval = setInterval(fetchNotifications, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await axios.put('/api/notifications/mark-all-read');
+      fetchNotifications();
+    } catch (error) {
+      console.error('Bildirimler işaretlenemedi:', error);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    try {
+      await axios.put(`/api/notifications/${notification._id}/read`);
+      
+      // İlgili sayfaya yönlendir
+      if (notification.type === 'PAYMENT_OVERDUE') {
+        navigate(`/customers/${notification.relatedData.customerId}`);
+      }
+      
+      fetchNotifications();
+    } catch (error) {
+      console.error('Bildirim işaretlenemedi:', error);
+    }
+  };
+
+  const notificationMenu = {
+    items: [
+      {
+        key: 'header',
+        label: (
+          <div style={{ padding: '8px 0' }}>
+            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Text strong>Bildirimler</Text>
+              <Button 
+                type="link" 
+                size="small"
+                onClick={handleMarkAllAsRead}
+                loading={loading}
+              >
+                Tümünü Okundu İşaretle
+              </Button>
+            </Space>
+          </div>
+        ),
+        type: 'group'
+      },
+      ...(loading ? [{
+        key: 'loading',
+        label: (
+          <div style={{ padding: '20px 0', textAlign: 'center' }}>
+            Bildirimler yükleniyor...
+          </div>
+        )
+      }] : notifications.length === 0 ? [{
+        key: 'empty',
+        label: (
+          <div style={{ padding: '20px 0', textAlign: 'center' }}>
+            Bildirim bulunmuyor
+          </div>
+        )
+      }] : notifications.map(notification => ({
+        key: notification._id,
+        label: (
+          <div 
+            style={{ maxWidth: 300, padding: '8px 0', cursor: 'pointer' }} 
+            onClick={() => handleNotificationClick(notification)}
+          >
+            <div style={{ fontWeight: notification.read ? 'normal' : 'bold' }}>
+              {notification.title}
+            </div>
+            <div style={{ fontSize: '12px', color: 'rgba(0, 0, 0, 0.45)' }}>
+              {notification.message}
+            </div>
+            <div style={{ fontSize: '11px', color: 'rgba(0, 0, 0, 0.45)', marginTop: 4 }}>
+              {formatDistanceToNow(new Date(notification.createdAt), {
+                addSuffix: true,
+                locale: tr
+              })}
+            </div>
+          </div>
+        )
+      }))),
+      {
+        key: 'footer',
+        label: (
+          <Button type="link" block>
+            Tüm Bildirimleri Gör
+          </Button>
+        ),
+        type: 'group'
+      }
+    ]
+  };
+
+  const notificationButton = (
+    <Dropdown
+      menu={notificationMenu}
+      trigger={['click']}
+      placement="bottomRight"
+      arrow
+    >
+      <Badge count={unreadCount} size="small">
+        <Button
+          type="text"
+          icon={<BellOutlined style={{ fontSize: '20px', color: isDarkMode ? '#fff' : '#1890ff' }} />}
+          style={{ width: '40px', height: '40px' }}
+        />
+      </Badge>
+    </Dropdown>
   );
 
   const userMenuItems = [
@@ -114,7 +253,8 @@ const Header = () => {
             items={menuItems}
             style={{ flex: 1 }}
           />
-          <Space style={{ marginLeft: 'auto' }}>
+          <Space style={{ marginLeft: 'auto' }} size="middle">
+            {notificationButton}
             <Button
               type="text"
               icon={isDarkMode ? <BulbFilled /> : <BulbOutlined />}

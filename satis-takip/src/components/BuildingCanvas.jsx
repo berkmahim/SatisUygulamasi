@@ -7,7 +7,7 @@ import BuildingBlock from './BuildingBlock';
 import ControlPanel from './ControlPanel';
 import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '../services/blockService';
 
-const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addMode }) => {
+const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addMode, onBlockHover }) => {
   const { camera } = useThree();
   const groundRef = useRef();
   const clickedRef = useRef(false);
@@ -109,6 +109,8 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
           isSelected={selectedBlock === (block._id || block.id)}
           editMode={editMode}
           addMode={addMode}
+          owner={block.owner}
+          onHover={onBlockHover}
         />
       ))}
 
@@ -127,6 +129,9 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
 };
 
 const BuildingCanvas = () => {
+  const [hoveredBlockOwner, setHoveredBlockOwner] = useState(null);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const { id: projectId } = useParams();
   const [blocks, setBlocks] = useState([]);
   const [selectedBlock, setSelectedBlock] = useState(null);
@@ -377,7 +382,6 @@ const BuildingCanvas = () => {
         dimensions: { width: 1, height: 1, depth: 1 },
         type: position[1] === 0 ? 'store' : 'apartment', 
         unitNumber: '',
-        owner: '',
         squareMeters: 0,
         roomCount: ''
       };
@@ -565,6 +569,19 @@ const BuildingCanvas = () => {
     }
   };
 
+  const handleDeleteBlock = async (blockId) => {
+    try {
+      const blockToDelete = blocks.find(b => (b._id || b.id) === blockId);
+      if (blockToDelete._id) {
+        await deleteBlock(blockId);
+      }
+      setBlocks(prevBlocks => prevBlocks.filter(block => (block._id || block.id) !== blockId));
+      setSelectedBlock(null);
+    } catch (error) {
+      console.error('Error deleting block:', error);
+    }
+  };
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }} tabIndex={0}>
       <ControlPanel 
@@ -578,11 +595,32 @@ const BuildingCanvas = () => {
         expansionDirections={expansionDirections}
         onUpdateExpansionDirections={setExpansionDirections}
         onUpdateBlockDetails={handleUpdateBlockDetails}
+        onDeleteBlock={handleDeleteBlock}
         blocks={blocks}
       />
+      {tooltipVisible && hoveredBlockOwner && (
+        <div
+          style={{
+            position: 'fixed',
+            left: mousePosition.x + 10,
+            top: mousePosition.y + 10,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            color: 'white',
+            padding: '5px 10px',
+            borderRadius: '4px',
+            pointerEvents: 'none',
+            zIndex: 1000
+          }}
+        >
+          {`${hoveredBlockOwner.firstName || ''} ${hoveredBlockOwner.lastName || ''}`}
+        </div>
+      )}
       <Canvas 
         camera={{ position: [10, 10, 10], fov: 50 }}
         shadows
+        onMouseMove={(e) => {
+          setMousePosition({ x: e.clientX, y: e.clientY });
+        }}
       >
         <Scene
           blocks={blocks}
@@ -591,6 +629,10 @@ const BuildingCanvas = () => {
           onBlockClick={handleBlockClick}
           editMode={editMode}
           addMode={addMode}
+          onBlockHover={(owner, visible) => {
+            setHoveredBlockOwner(owner);
+            setTooltipVisible(visible);
+          }}
         />
       </Canvas>
     </div>

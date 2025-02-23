@@ -12,6 +12,7 @@ const ControlPanel = ({
   expansionDirections,
   onUpdateExpansionDirections,
   onUpdateBlockDetails,
+  onDeleteBlock,
   blocks
 }) => {
   const { id: projectId } = useParams();
@@ -369,6 +370,26 @@ const ControlPanel = ({
                 💰
               </span>
               Bloğu Sat
+            </button>
+            <button
+              onClick={() => onDeleteBlock(selectedBlock)}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#ff4d4f',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span className="material-icons" style={{ fontSize: '20px' }}>
+                🗑️
+              </span>
+              Bloğu Sil
             </button>
           </div>
         </>

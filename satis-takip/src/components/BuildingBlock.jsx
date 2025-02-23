@@ -10,7 +10,9 @@ const BuildingBlock = ({
   onSelect, 
   isSelected, 
   editMode, 
-  addMode 
+  addMode,
+  owner = null,
+  onHover
 }) => {
   const [hovered, setHovered] = useState(false);
   const meshRef = useRef();
@@ -66,15 +68,17 @@ const BuildingBlock = ({
       }}
       onPointerOver={(e) => {
         e.stopPropagation();
-        editMode && setHovered(true);
+        setHovered(true);
+        onHover && onHover(owner, true);
       }}
       onPointerOut={(e) => {
         e.stopPropagation();
-        editMode && setHovered(false);
+        setHovered(false);
+        onHover && onHover(null, false);
       }}
     >
       <meshStandardMaterial
-        color={isSelected ? '#ff4444' : hovered ? '#a0a0a0' : color}
+        color={isSelected ? '#ff4444' : owner ? '#ff0000' : '#00ff00'}
         metalness={0.1}
         roughness={0.5}
       />

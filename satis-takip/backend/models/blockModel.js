@@ -21,7 +21,10 @@ const blockSchema = mongoose.Schema({
         enum: ['store', 'apartment']
     },
     unitNumber: String,
-    owner: String,
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Customer'
+    },
     squareMeters: Number,
     roomCount: String
 }, {

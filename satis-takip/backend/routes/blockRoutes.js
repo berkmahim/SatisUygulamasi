@@ -6,8 +6,12 @@ import {
     updateBlock,
     deleteBlock
 } from '../controllers/blockController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Tüm route'ları koruma altına al
+router.use(protect);
 
 router.route('/:projectId')
     .get(getBlocks)

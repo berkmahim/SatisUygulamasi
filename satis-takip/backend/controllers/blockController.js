@@ -4,17 +4,19 @@ import Project from '../models/projectModel.js';
 
 // @desc    Get blocks for a project
 // @route   GET /api/blocks/:projectId
-// @access  Public
+// @access  Private
 const getBlocks = asyncHandler(async (req, res) => {
-    const blocks = await Block.find({ projectId: req.params.projectId });
+    const blocks = await Block.find({ projectId: req.params.projectId })
+        .populate('owner', 'firstName lastName');
     res.json(blocks);
 });
 
 // @desc    Get block by ID
 // @route   GET /api/blocks/detail/:id
-// @access  Public
+// @access  Private
 const getBlockById = asyncHandler(async (req, res) => {
-    const block = await Block.findById(req.params.id);
+    const block = await Block.findById(req.params.id)
+        .populate('owner', 'firstName lastName');
     
     if (block) {
         res.json(block);
@@ -26,12 +28,12 @@ const getBlockById = asyncHandler(async (req, res) => {
 
 // @desc    Create a block
 // @route   POST /api/blocks/:projectId
-// @access  Public
+// @access  Private
 const createBlock = asyncHandler(async (req, res) => {
     const project = await Project.findById(req.params.projectId);
     if (!project) {
         res.status(404);
-        throw new Error('Project not found');
+        throw new Error('Proje bulunamadı');
     }
 
     const block = await Block.create({
@@ -44,7 +46,7 @@ const createBlock = asyncHandler(async (req, res) => {
 
 // @desc    Update a block
 // @route   PATCH /api/blocks/:id
-// @access  Public
+// @access  Private
 const updateBlock = asyncHandler(async (req, res) => {
     const block = await Block.findById(req.params.id);
 
@@ -57,14 +59,14 @@ const updateBlock = asyncHandler(async (req, res) => {
         req.params.id,
         req.body,
         { new: true }
-    );
+    ).populate('owner', 'firstName lastName');
 
     res.json(updatedBlock);
 });
 
 // @desc    Delete a block
 // @route   DELETE /api/blocks/:id
-// @access  Public
+// @access  Private
 const deleteBlock = asyncHandler(async (req, res) => {
     const block = await Block.findById(req.params.id);
 
@@ -74,7 +76,7 @@ const deleteBlock = asyncHandler(async (req, res) => {
     }
 
     await block.deleteOne();
-    res.json({ message: 'Block removed' });
+    res.json({ message: 'Blok silindi' });
 });
 
 export {

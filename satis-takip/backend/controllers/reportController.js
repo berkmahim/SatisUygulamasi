@@ -8,7 +8,15 @@ import { startOfMonth, endOfMonth, format } from 'date-fns';
 // @access  Public
 const getSalesStatistics = async (req, res) => {
     try {
-        const sales = await Sale.find().populate('block', 'projectId');
+        const sales = await Sale.find()
+            .populate({
+                path: 'blockId',
+                select: 'projectId',
+                populate: {
+                    path: 'projectId',
+                    select: 'name'
+                }
+            });
 
         // Toplam satış istatistikleri
         const totalStats = sales.reduce((acc, sale) => {
@@ -123,7 +131,7 @@ const getProjectSalesDistribution = async (req, res) => {
         // Satışları al ve blok bilgilerini populate et
         const sales = await Sale.find()
             .populate({
-                path: 'block',
+                path: 'blockId',
                 select: 'projectId',
                 populate: {
                     path: 'projectId',
@@ -133,8 +141,8 @@ const getProjectSalesDistribution = async (req, res) => {
 
         // Satışları projelere göre grupla
         sales.forEach(sale => {
-            if (sale.block && sale.block.projectId) {
-                const projectId = sale.block.projectId._id.toString();
+            if (sale.blockId && sale.blockId.projectId) {
+                const projectId = sale.blockId.projectId._id.toString();
                 if (projectMap[projectId]) {
                     projectMap[projectId].count++;
                     projectMap[projectId].amount += sale.totalAmount;
@@ -167,8 +175,8 @@ const getProjectStats = async (req, res) => {
         const blockIds = blocks.map(block => block._id);
 
         // Projeye ait satışları al
-        const sales = await Sale.find({ block: { $in: blockIds } })
-            .populate('block', 'blockNumber projectId');
+        const sales = await Sale.find({ blockId: { $in: blockIds } })
+            .populate('blockId', 'blockNumber projectId');
 
         // Genel istatistikler
         const stats = sales.reduce((acc, sale) => {
@@ -200,7 +208,7 @@ const getProjectStats = async (req, res) => {
 
         // Blok istatistikleri
         const blockStats = await Promise.all(blocks.map(async block => {
-            const blockSales = sales.filter(sale => sale.block._id.toString() === block._id.toString());
+            const blockSales = sales.filter(sale => sale.blockId._id.toString() === block._id.toString());
             const totalAmount = blockSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
 
             return {
@@ -243,10 +251,134 @@ const getProjectStats = async (req, res) => {
     }
 };
 
+// @desc    Get unit type distribution for a project
+// @route   GET /api/reports/projects/:projectId/unit-types
+// @access  Private
+const getUnitTypeDistribution = async (req, res) => {
+    try {
+        const projectId = req.params.projectId;
+
+        // Proje bloklarını al
+        const blocks = await Block.find({ projectId });
+        const blockIds = blocks.map(block => block._id);
+
+        // Projeye ait satışları al
+        const sales = await Sale.find({ blockId: { $in: blockIds } })
+            .populate('blockId', 'type roomCount unitNumber');
+
+        // Satılmış blokların ID'lerini set olarak tut
+        const soldBlockIds = new Set(sales.map(sale => sale.blockId._id.toString()));
+
+        // Birimlerin satış durumlarını hazırla
+        const unitStatusData = blocks.map(block => ({
+            _id: block._id.toString(),
+            type: block.type === 'apartment' ? 'Daire' : 'Dükkan',
+            unitNumber: block.unitNumber || 'Belirtilmemiş',
+            roomCount: block.type === 'apartment' ? (block.roomCount || 'Belirtilmemiş') : '-',
+            status: soldBlockIds.has(block._id.toString()) ? 'Satıldı' : 'Müsait'
+        }));
+
+        // Satılan dairelerin oda sayısı dağılımı
+        const roomDistribution = sales
+            .filter(sale => 
+                sale.blockId.type === 'apartment' && 
+                sale.blockId.roomCount
+            )
+            .reduce((acc, sale) => {
+                const count = sale.blockId.roomCount;
+                if (!acc[count]) acc[count] = 0;
+                acc[count]++;
+                return acc;
+            }, {});
+
+        const result = {
+            unitStatus: unitStatusData,
+            roomCounts: Object.entries(roomDistribution).map(([count, total]) => ({
+                type: `${count} Odalı`,
+                count: total
+            })).sort((a, b) => parseInt(a.type) - parseInt(b.type))
+        };
+
+        res.json(result);
+    } catch (error) {
+        console.error('Error getting unit type distribution:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Get payments by date range for a project
+// @route   GET /api/reports/projects/:projectId/payments
+// @access  Private
+const getProjectPayments = async (req, res) => {
+    try {
+        const projectId = req.params.projectId;
+        const { startDate, endDate } = req.query;
+
+        // Tarih aralığını kontrol et
+        if (!startDate || !endDate) {
+            return res.status(400).json({ message: 'Başlangıç ve bitiş tarihi gerekli' });
+        }
+
+        // Proje bloklarını al
+        const blocks = await Block.find({ projectId });
+        const blockIds = blocks.map(block => block._id);
+
+        // Projeye ait satışları al
+        const sales = await Sale.find({ blockId: { $in: blockIds } })
+            .populate('blockId', 'blockNumber')
+            .populate('customerId', 'firstName lastName');
+
+        // Alınan ödemeler
+        const receivedPayments = [];
+        // Beklenen ödemeler
+        const expectedPayments = [];
+
+        sales.forEach(sale => {
+            sale.payments.forEach(payment => {
+                const paymentDate = new Date(payment.dueDate);
+                if (paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate)) {
+                    const paymentInfo = {
+                        customerName: `${sale.customerId.firstName} ${sale.customerId.lastName}`,
+                        blockNumber: sale.blockId.blockNumber,
+                        amount: payment.amount,
+                        dueDate: payment.dueDate,
+                        status: payment.status
+                    };
+
+                    if (payment.paidAmount > 0) {
+                        receivedPayments.push({
+                            ...paymentInfo,
+                            paidAmount: payment.paidAmount,
+                            paidDate: payment.paidDate
+                        });
+                    }
+
+                    if (payment.amount > (payment.paidAmount || 0)) {
+                        expectedPayments.push({
+                            ...paymentInfo,
+                            remainingAmount: payment.amount - (payment.paidAmount || 0)
+                        });
+                    }
+                }
+            });
+        });
+
+        res.json({
+            receivedPayments: receivedPayments.sort((a, b) => new Date(b.paidDate) - new Date(a.paidDate)),
+            expectedPayments: expectedPayments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+        });
+    } catch (error) {
+        console.error('Error getting project payments:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 export {
     getSalesStatistics,
     getMonthlySales,
     getPaymentStatusDistribution,
     getProjectSalesDistribution,
-    getProjectStats
+    getProjectStats,
+    getUnitTypeDistribution,
+    getProjectPayments
 };

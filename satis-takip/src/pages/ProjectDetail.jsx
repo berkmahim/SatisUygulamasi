@@ -6,7 +6,8 @@ import {
 } from 'antd';
 import { 
     SearchOutlined, DollarOutlined, FileTextOutlined, 
-    StopOutlined, BoxPlotOutlined, BarChartOutlined
+    StopOutlined, BoxPlotOutlined, BarChartOutlined,
+    PieChartOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
 
@@ -165,7 +166,7 @@ const ProjectDetail = () => {
                             <Button
                                 type="primary"
                                 icon={<BarChartOutlined />}
-                                onClick={() => navigate(`/reports/projects/${id}`)}
+                                onClick={() => navigate(`/projects/${id}/reports`)}
                             >
                                 Raporlar
                             </Button>

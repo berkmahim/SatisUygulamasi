@@ -17,6 +17,7 @@ import ProjectReport from './pages/ProjectReport';
 import LoginPage from './pages/LoginPage';
 import UsersPage from './pages/UsersPage';
 import NotificationsPage from './pages/NotificationsPage';
+import ProjectReports from './pages/ProjectReports';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Footer from './components/Footer';
@@ -93,6 +94,12 @@ function AppContent() {
                   <NotificationsPage />
                 </PermissionRoute>
               } />
+
+              <Route path="/projects/:id/reports" element={
+                <PermissionRoute permission="projectManagement">
+                  <ProjectReports />
+                </PermissionRoute>
+              } />
               
               <Route path="/projects/:projectId/blocks/:blockId" element={
                 <PermissionRoute permission="projectManagement">
@@ -127,6 +134,12 @@ function AppContent() {
               <Route path="/reports/projects/:projectId" element={
                 <PermissionRoute permission="reportManagement">
                   <ProjectReport />
+                </PermissionRoute>
+              } />
+              
+              <Route path="/projects/:projectId/reports" element={
+                <PermissionRoute permission="reportManagement">
+                  <ProjectReports />
                 </PermissionRoute>
               } />
             </Routes>

@@ -49,11 +49,6 @@ const createBlock = asyncHandler(async (req, res) => {
 // @access  Private
 const updateBlock = asyncHandler(async (req, res) => {
     try {
-        console.log('Güncelleme isteği alındı:', {
-            blockId: req.params.id,
-            updateData: req.body
-        });
-
         const block = await Block.findById(req.params.id);
 
         if (!block) {
@@ -61,22 +56,19 @@ const updateBlock = asyncHandler(async (req, res) => {
             throw new Error('Block not found');
         }
 
-        console.log('Mevcut blok:', block);
-
         // Güncelleme verilerini hazırla
         const updateData = {
-            // Önce mevcut bloğun tüm verilerini al
             ...block.toObject(),
-            // Sadece güncellenen alanları ekle
-            ...(req.body.unitNumber && { unitNumber: req.body.unitNumber }),
+            // Boyut ve konum güncellemeleri, null veya undefined değilse kullan
+            ...(req.body.dimensions && { dimensions: req.body.dimensions }),
+            ...(req.body.position && { position: req.body.position }),
+            ...(req.body.unitNumber !== undefined && { unitNumber: req.body.unitNumber }),
             ...(req.body.owner && { owner: req.body.owner }),
-            ...(req.body.squareMeters && { squareMeters: req.body.squareMeters }),
-            ...(req.body.roomCount && { roomCount: req.body.roomCount }),
+            ...(req.body.squareMeters !== undefined && { squareMeters: req.body.squareMeters }),
+            ...(req.body.roomCount !== undefined && { roomCount: req.body.roomCount }),
             ...(req.body.type && { type: req.body.type }),
-            // Zorunlu alanları koru
-            projectId: block.projectId,
-            position: block.position,
-            dimensions: block.dimensions
+            // Temel alanları koru
+            projectId: block.projectId
         };
 
         // type alanının geçerli olduğundan emin ol
@@ -84,8 +76,6 @@ const updateBlock = asyncHandler(async (req, res) => {
             res.status(400);
             throw new Error('Invalid block type. Must be either "store" or "apartment"');
         }
-
-        console.log('Güncellenecek veriler:', updateData);
 
         const updatedBlock = await Block.findByIdAndUpdate(
             req.params.id,
@@ -97,8 +87,6 @@ const updateBlock = asyncHandler(async (req, res) => {
             res.status(500);
             throw new Error('Block update failed');
         }
-
-        console.log('Güncellenen blok:', updatedBlock);
 
         res.json(updatedBlock);
     } catch (error) {

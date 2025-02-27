@@ -35,17 +35,28 @@ const ControlPanel = ({
           roomCount: block.roomCount || '',
           type: block.type || 'apartment'
         });
+        // Seçilen bloğun boyutlarını da güncelle
+        setDimensions(block.dimensions || { width: 1, height: 1, depth: 1 });
       }
     }
   }, [selectedBlock, blocks]);
 
+  // selectedBlockDimensions değiştiğinde dimensions state'ini güncelle
+  useEffect(() => {
+    setDimensions(selectedBlockDimensions);
+  }, [selectedBlockDimensions]);
+
   const handleDimensionChange = (dimension, value) => {
-    const newDimensions = { ...dimensions, [dimension]: parseInt(value) || 1 };
+    // Değerin sayı olduğundan emin ol ve 1-10 arasında olmasını sağla
+    const numValue = parseInt(value) || 1;
+    const limitedValue = Math.min(Math.max(numValue, 1), 10);
+    
+    const newDimensions = { ...dimensions, [dimension]: limitedValue };
     setDimensions(newDimensions);
+    
+    // Güncellenmiş boyutları buildingCanvas'a gönder
     onUpdateBlockDimensions(newDimensions);
   };
-
-
 
   const handleBlockDetailsChange = (field, value) => {
     const newDetails = { ...blockDetails, [field]: value };
@@ -160,7 +171,7 @@ const ControlPanel = ({
                   type="number"
                   min="1"
                   max="10"
-                  value={selectedBlockDimensions.width}
+                  value={dimensions.width}
                   onChange={(e) => handleDimensionChange('width', e.target.value)}
                   style={{
                     width: '60px',
@@ -179,7 +190,7 @@ const ControlPanel = ({
                   type="number"
                   min="1"
                   max="10"
-                  value={selectedBlockDimensions.height}
+                  value={dimensions.height}
                   onChange={(e) => handleDimensionChange('height', e.target.value)}
                   style={{
                     width: '60px',
@@ -198,7 +209,7 @@ const ControlPanel = ({
                   type="number"
                   min="1"
                   max="10"
-                  value={selectedBlockDimensions.depth}
+                  value={dimensions.depth}
                   onChange={(e) => handleDimensionChange('depth', e.target.value)}
                   style={{
                     width: '60px',

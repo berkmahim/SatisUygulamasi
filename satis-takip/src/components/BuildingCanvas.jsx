@@ -150,7 +150,7 @@ const BuildingCanvas = () => {
         const data = await getAllBlocks(projectId);
         setBlocks(data);
       } catch (error) {
-        console.error('Error fetching blocks:', error);
+        // Hata durumunda sessizce devam et
       }
     };
     if (projectId) {
@@ -171,10 +171,13 @@ const BuildingCanvas = () => {
     const d1 = block1.dimensions;
     const d2 = block2.dimensions;
 
+    // Epsilon değeri, sayısal hassasiyet sorunlarını önlemek için
+    const epsilon = 0.001;
+
     return (
-      x1 < x2 + d2.width && x1 + d1.width > x2 &&
-      y1 < y2 + d2.height && y1 + d1.height > y2 &&
-      z1 < z2 + d2.depth && z1 + d1.depth > z2
+      x1 < x2 + d2.width + epsilon && x1 + d1.width + epsilon > x2 &&
+      y1 < y2 + d2.height + epsilon && y1 + d1.height + epsilon > y2 &&
+      z1 < z2 + d2.depth + epsilon && z1 + d1.depth + epsilon > z2
     );
   };
 
@@ -184,13 +187,15 @@ const BuildingCanvas = () => {
     const [x2, y2, z2] = lowerBlock.position;
     const d1 = upperBlock.dimensions;
     const d2 = lowerBlock.dimensions;
+    const epsilon = 0.001; // Sayısal hassasiyet için epsilon değeri
 
     // Check if blocks overlap in X and Z axes
-    const overlapX = x1 < (x2 + d2.width) && (x1 + d1.width) > x2;
-    const overlapZ = z1 < (z2 + d2.depth) && (z1 + d1.depth) > z2;
+    const overlapX = x1 < (x2 + d2.width + epsilon) && (x1 + d1.width + epsilon) > x2;
+    const overlapZ = z1 < (z2 + d2.depth + epsilon) && (z1 + d1.depth + epsilon) > z2;
 
     // Check if the upper block is actually above the lower block
-    const isAbove = y1 >= y2;
+    // y1 alt bloğun üst yüzeyine yakın olmalı
+    const isAbove = Math.abs(y1 - (y2 + d2.height)) < epsilon;
 
     return overlapX && overlapZ && isAbove;
   };
@@ -228,36 +233,6 @@ const BuildingCanvas = () => {
     return null;
   };
 
-  const calculateNewPosition = (oldPosition, oldDimensions, newDimensions) => {
-    const widthDiff = newDimensions.width - oldDimensions.width;
-    const heightDiff = newDimensions.height - oldDimensions.height;
-    const depthDiff = newDimensions.depth - oldDimensions.depth;
-
-    const [x, y, z] = oldPosition;
-    let newX = x, newY = y, newZ = z;
-
-    if (expansionDirections.width === 'left') {
-      newX = x - widthDiff;
-    } else if (expansionDirections.width === 'center') {
-      newX = x - widthDiff / 2;
-    }
-
-    if (expansionDirections.height === 'down') {
-      newY = y - heightDiff;
-    } else if (expansionDirections.height === 'center') {
-      newY = y - heightDiff / 2;
-    }
-
-    if (expansionDirections.depth === 'backward') {
-      newZ = z - depthDiff;
-    } else if (expansionDirections.depth === 'center') {
-      newZ = z - depthDiff / 2;
-    }
-
-    return [newX, newY, newZ];
-  };
-
-  // Find all blocks that need to be moved upward
   const findBlocksToMove = (baseBlock) => {
     const blocksToMove = [];
 
@@ -324,14 +299,14 @@ const BuildingCanvas = () => {
           const [x2, y2, z2] = modifiedBlock.position;
           
           // Check if block needs to move in width direction
-          if (widthChange !== 0 && x1 > x2) {
+          if (widthChange !== 0 && x1 > x2 + oldDimensions.width) {
             const newPosition = [...block.position];
             newPosition[0] += Math.abs(widthChange);
             updatedBlocks.set(blockId, { ...block, position: newPosition });
           }
           
           // Check if block needs to move in depth direction
-          if (depthChange !== 0 && z1 > z2) {
+          if (depthChange !== 0 && z1 > z2 + oldDimensions.depth) {
             const currentBlock = updatedBlocks.get(blockId) || block;
             const newPosition = [...currentBlock.position];
             newPosition[2] += Math.abs(depthChange);
@@ -363,7 +338,7 @@ const BuildingCanvas = () => {
           setBlocks(prevBlocks => prevBlocks.filter(block => (block._id || block.id) !== selectedBlock));
           setSelectedBlock(null);
         } catch (error) {
-          console.error('Error deleting block:', error);
+          // Hata durumunda sessizce devam et
         }
       }
     };
@@ -391,7 +366,7 @@ const BuildingCanvas = () => {
         const savedBlock = await createBlock(projectId, newBlockData);
         setBlocks(prevBlocks => [...prevBlocks, savedBlock]);
       } catch (error) {
-        console.error('Error creating block:', error);
+        // Hata durumunda sessizce devam et
       }
     }
   };
@@ -408,12 +383,11 @@ const BuildingCanvas = () => {
     if (!blockToUpdate) return;
 
     const oldDimensions = blockToUpdate.dimensions;
-    const newPosition = calculateNewPosition(blockToUpdate.position, oldDimensions, newDimensions);
+    const [baseX, baseY, baseZ] = blockToUpdate.position;
     
     const heightChange = newDimensions.height - oldDimensions.height;
     const widthChange = newDimensions.width - oldDimensions.width;
     const depthChange = newDimensions.depth - oldDimensions.depth;
-    const [baseX, baseY, baseZ] = blockToUpdate.position;
 
     // Üstteki blokları bul
     const blocksAbove = blocks.filter(block => {
@@ -422,19 +396,18 @@ const BuildingCanvas = () => {
       
       // X-Z düzleminde çakışma kontrolü
       const hasXZOverlap = (
-        blockX < baseX + blockToUpdate.dimensions.width &&
+        blockX < baseX + Math.max(oldDimensions.width, newDimensions.width) &&
         blockX + block.dimensions.width > baseX &&
-        blockZ < baseZ + blockToUpdate.dimensions.depth &&
+        blockZ < baseZ + Math.max(oldDimensions.depth, newDimensions.depth) &&
         blockZ + block.dimensions.depth > baseZ
       );
 
-      // Üstte olma kontrolü
+      // Üstte olma kontrolü - yükseklik değişiminde etkilenecek tüm blokları bul
       return hasXZOverlap && blockY >= baseY + oldDimensions.height;
     }).sort((a, b) => a.position[1] - b.position[1]); // Yüksekliğe göre sırala
 
     const updatedBlockData = {
       ...blockToUpdate,
-      position: newPosition,
       dimensions: newDimensions
     };
 
@@ -451,111 +424,181 @@ const BuildingCanvas = () => {
         ));
       }
 
-      // Z eksenindeki blokları bul
-      const blocksOnZAxis = blocks.filter(block => {
-        if ((block._id || block.id) === selectedBlock) return false;
-        const [blockX, blockY, blockZ] = block.position;
-        const hasXOverlap = (
-          blockX < baseX + blockToUpdate.dimensions.width &&
-          blockX + block.dimensions.width > baseX
-        );
-        const hasYOverlap = (
-          blockY < baseY + blockToUpdate.dimensions.height &&
-          blockY + block.dimensions.height > baseY
-        );
-        return hasXOverlap && hasYOverlap && blockZ >= baseZ + oldDimensions.depth;
-      }).sort((a, b) => a.position[2] - b.position[2]);
-
-      // Derinlik azaltıldıysa blokları geri kaydır
-      if (depthChange < 0) {
-        blocksOnZAxis.forEach(block => {
+      // Yükseklik değişimi - tüm üstteki blokları güncelle
+      if (heightChange !== 0) {
+        const updatedBlocks = blocksAbove.map(block => {
           const newBlockPosition = [...block.position];
-          newBlockPosition[2] += depthChange; // Derinlik farkı kadar geri kaydır
-          setBlocks(prevBlocks => prevBlocks.map(b => 
-            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
-          ));
+          // Yükseklik değişimi kadar yukarı/aşağı kaydır
+          newBlockPosition[1] = baseY + newDimensions.height + (block.position[1] - (baseY + oldDimensions.height));
+          return { 
+            ...block, 
+            position: newBlockPosition 
+          };
         });
-      }
-      // Derinlik artırıldıysa blokları ileri kaydır
-      else if (depthChange > 0) {
-        blocksOnZAxis.forEach(block => {
-          const newBlockPosition = [...block.position];
-          newBlockPosition[2] += depthChange; // Derinlik farkı kadar ileri kaydır
-          setBlocks(prevBlocks => prevBlocks.map(b => 
-            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
-          ));
+
+        // Tüm blokları tek seferde güncelle
+        setBlocks(prevBlocks => {
+          const newBlocks = [...prevBlocks];
+          updatedBlocks.forEach(updatedBlock => {
+            const index = newBlocks.findIndex(b => (b._id || b.id) === (updatedBlock._id || updatedBlock.id));
+            if (index !== -1) {
+              newBlocks[index] = updatedBlock;
+            }
+          });
+          return newBlocks;
         });
       }
 
-      // X eksenindeki blokları bul
-      const blocksOnXAxis = blocks.filter(block => {
-        if ((block._id || block.id) === selectedBlock) return false;
-        const [blockX, blockY, blockZ] = block.position;
-        const hasYOverlap = (
-          blockY < baseY + blockToUpdate.dimensions.height &&
-          blockY + block.dimensions.height > baseY
-        );
-        const hasZOverlap = (
-          blockZ < baseZ + blockToUpdate.dimensions.depth &&
-          blockZ + block.dimensions.depth > baseZ
-        );
-        return hasYOverlap && hasZOverlap && blockX >= baseX + oldDimensions.width;
-      }).sort((a, b) => a.position[0] - b.position[0]);
+      // Genişlik değişimi - sağdaki tüm blokları güncelle
+      if (widthChange !== 0) {
+        const blocksOnXAxis = blocks.filter(block => {
+          if ((block._id || block.id) === selectedBlock) return false;
+          const [blockX, blockY, blockZ] = block.position;
+          const hasYOverlap = (
+            blockY < baseY + Math.max(oldDimensions.height, newDimensions.height) &&
+            blockY + block.dimensions.height > baseY
+          );
+          const hasZOverlap = (
+            blockZ < baseZ + Math.max(oldDimensions.depth, newDimensions.depth) &&
+            blockZ + block.dimensions.depth > baseZ
+          );
+          // Sadece sağdaki blokları bul (bloğun sağ kenarının sağında olan bloklar)
+          return hasYOverlap && hasZOverlap && blockX >= baseX + oldDimensions.width;
+        }).sort((a, b) => a.position[0] - b.position[0]);
 
-      // Genişlik azaltıldıysa blokları sola kaydır
-      if (widthChange < 0) {
-        blocksOnXAxis.forEach(block => {
+        const updatedBlocks = blocksOnXAxis.map(block => {
           const newBlockPosition = [...block.position];
-          newBlockPosition[0] += widthChange; // Genişlik farkı kadar sola kaydır
-          setBlocks(prevBlocks => prevBlocks.map(b => 
-            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
-          ));
+          // Genişlik değişimi kadar sağa/sola kaydır
+          newBlockPosition[0] = baseX + newDimensions.width + (block.position[0] - (baseX + oldDimensions.width));
+          return { 
+            ...block, 
+            position: newBlockPosition 
+          };
         });
-      }
-      // Genişlik artırıldıysa blokları sağa kaydır
-      else if (widthChange > 0) {
-        blocksOnXAxis.forEach(block => {
-          const newBlockPosition = [...block.position];
-          newBlockPosition[0] += widthChange; // Genişlik farkı kadar sağa kaydır
-          setBlocks(prevBlocks => prevBlocks.map(b => 
-            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
-          ));
+
+        // Tüm blokları tek seferde güncelle
+        setBlocks(prevBlocks => {
+          const newBlocks = [...prevBlocks];
+          updatedBlocks.forEach(updatedBlock => {
+            const index = newBlocks.findIndex(b => (b._id || b.id) === (updatedBlock._id || updatedBlock.id));
+            if (index !== -1) {
+              newBlocks[index] = updatedBlock;
+            }
+          });
+          return newBlocks;
         });
       }
 
-      // Yükseklik azaltıldıysa blokları aşağı indir
-      if (heightChange < 0) {
-        blocksAbove.forEach(block => {
+      // Derinlik değişimi - öndeki tüm blokları güncelle
+      if (depthChange !== 0) {
+        const blocksOnZAxis = blocks.filter(block => {
+          if ((block._id || block.id) === selectedBlock) return false;
+          const [blockX, blockY, blockZ] = block.position;
+          const hasXOverlap = (
+            blockX < baseX + Math.max(oldDimensions.width, newDimensions.width) &&
+            blockX + block.dimensions.width > baseX
+          );
+          const hasYOverlap = (
+            blockY < baseY + Math.max(oldDimensions.height, newDimensions.height) &&
+            blockY + block.dimensions.height > baseY
+          );
+          // Sadece öndeki blokları bul (bloğun ön kenarının önünde olan bloklar)
+          return hasXOverlap && hasYOverlap && blockZ >= baseZ + oldDimensions.depth;
+        }).sort((a, b) => a.position[2] - b.position[2]);
+
+        const updatedBlocks = blocksOnZAxis.map(block => {
           const newBlockPosition = [...block.position];
-          newBlockPosition[1] += heightChange; // Yükseklik farkı kadar aşağı indir
-          setBlocks(prevBlocks => prevBlocks.map(b => 
-            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
-          ));
+          // Derinlik değişimi kadar ileri/geri kaydır
+          newBlockPosition[2] = baseZ + newDimensions.depth + (block.position[2] - (baseZ + oldDimensions.depth));
+          return { 
+            ...block, 
+            position: newBlockPosition 
+          };
         });
-      }
-      // Yükseklik artırıldıysa blokları yukarı çıkar
-      else if (heightChange > 0) {
-        blocksAbove.forEach(block => {
-          const newBlockPosition = [...block.position];
-          newBlockPosition[1] += heightChange; // Yükseklik farkı kadar yukarı çıkar
-          setBlocks(prevBlocks => prevBlocks.map(b => 
-            (b._id || b.id) === (block._id || block.id) ? { ...block, position: newBlockPosition } : b
-          ));
+
+        // Tüm blokları tek seferde güncelle
+        setBlocks(prevBlocks => {
+          const newBlocks = [...prevBlocks];
+          updatedBlocks.forEach(updatedBlock => {
+            const index = newBlocks.findIndex(b => (b._id || b.id) === (updatedBlock._id || updatedBlock.id));
+            if (index !== -1) {
+              newBlocks[index] = updatedBlock;
+            }
+          });
+          return newBlocks;
         });
       }
 
       // Veritabanını güncelle
-      for (const block of blocks) {
-        if (block._id) {
-          try {
-            await updateBlock(block._id, block);
-          } catch (error) {
-            console.error(`Error updating block ${block._id}:`, error);
+      const blocksToUpdate = [];
+      
+      // Etkilenen blokları topla
+      if (heightChange !== 0) {
+        blocksAbove.forEach(block => {
+          if (block._id) {
+            const newBlockPosition = [...block.position];
+            // Yükseklik değişimi kadar yukarı/aşağı kaydır
+            newBlockPosition[1] = baseY + newDimensions.height + (block.position[1] - (baseY + oldDimensions.height));
+            blocksToUpdate.push({
+              _id: block._id,
+              position: newBlockPosition
+            });
           }
+        });
+      }
+      
+      if (widthChange !== 0) {
+        blocksOnXAxis.forEach(block => {
+          if (block._id) {
+            const newBlockPosition = [...block.position];
+            // Genişlik değişimi kadar sağa/sola kaydır
+            newBlockPosition[0] = baseX + newDimensions.width + (block.position[0] - (baseX + oldDimensions.width));
+            
+            // Eğer bu blok daha önce eklenmediyse ekle
+            const existingIndex = blocksToUpdate.findIndex(b => b._id === block._id);
+            if (existingIndex !== -1) {
+              blocksToUpdate[existingIndex].position[0] = newBlockPosition[0];
+            } else {
+              blocksToUpdate.push({
+                _id: block._id,
+                position: newBlockPosition
+              });
+            }
+          }
+        });
+      }
+      
+      if (depthChange !== 0) {
+        blocksOnZAxis.forEach(block => {
+          if (block._id) {
+            const newBlockPosition = [...block.position];
+            // Derinlik değişimi kadar ileri/geri kaydır
+            newBlockPosition[2] = baseZ + newDimensions.depth + (block.position[2] - (baseZ + oldDimensions.depth));
+            
+            // Eğer bu blok daha önce eklenmediyse ekle
+            const existingIndex = blocksToUpdate.findIndex(b => b._id === block._id);
+            if (existingIndex !== -1) {
+              blocksToUpdate[existingIndex].position[2] = newBlockPosition[2];
+            } else {
+              blocksToUpdate.push({
+                _id: block._id,
+                position: newBlockPosition
+              });
+            }
+          }
+        });
+      }
+      
+      // Veritabanını güncelle - sadece değişen bloklar için
+      for (const blockData of blocksToUpdate) {
+        try {
+          await updateBlock(blockData._id, blockData);
+        } catch (error) {
+          // Hata durumunda sessizce devam et
         }
       }
     } catch (error) {
-      console.error('Error updating block:', error);
+      // Hata durumunda sessizce devam et
     }
   };
 
@@ -566,7 +609,7 @@ const BuildingCanvas = () => {
         (block._id || block.id) === blockId ? updatedBlock : block
       ));
     } catch (error) {
-      console.error('Error updating block details:', error);
+      // Hata durumunda sessizce devam et
     }
   };
 
@@ -579,7 +622,7 @@ const BuildingCanvas = () => {
       setBlocks(prevBlocks => prevBlocks.filter(block => (block._id || block.id) !== blockId));
       setSelectedBlock(null);
     } catch (error) {
-      console.error('Error deleting block:', error);
+      // Hata durumunda sessizce devam et
     }
   };
 

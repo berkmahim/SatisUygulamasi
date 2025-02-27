@@ -272,9 +272,9 @@ const getUnitTypeDistribution = async (req, res) => {
         // Birimlerin satış durumlarını hazırla
         const unitStatusData = blocks.map(block => ({
             _id: block._id.toString(),
-            type: block.type === 'apartment' ? 'Daire' : 'Dükkan',
+            type: block.type === 'apartment' ? 'Daire' : block.type === 'store' ? 'Dükkan' : 'Belirtilmemiş',
             unitNumber: block.unitNumber || 'Belirtilmemiş',
-            roomCount: block.type === 'apartment' ? (block.roomCount || 'Belirtilmemiş') : '-',
+            roomCount: block.type === 'apartment' ? (block.roomCount || 'Belirtilmemiş') : block.type === 'store' ? '-' : 'Belirtilmemiş',
             status: soldBlockIds.has(block._id.toString()) ? 'Satıldı' : 'Müsait'
         }));
 
@@ -291,12 +291,28 @@ const getUnitTypeDistribution = async (req, res) => {
                 return acc;
             }, {});
 
+        // Dükkanları da ekleyelim
+        const shopCount = sales
+            .filter(sale => sale.blockId.type === 'store')
+            .length;
+
+        // Tüm oda sayıları ve dükkanlar için sonuç
+        const roomCountsArray = Object.entries(roomDistribution).map(([count, total]) => ({
+            type: `${count} Odalı`,
+            count: total
+        })).sort((a, b) => parseInt(a.type) - parseInt(b.type));
+        
+        // Eğer dükkan satışı varsa, sonuç dizisine ekle
+        if (shopCount > 0) {
+            roomCountsArray.push({
+                type: 'Dükkan',
+                count: shopCount
+            });
+        }
+
         const result = {
             unitStatus: unitStatusData,
-            roomCounts: Object.entries(roomDistribution).map(([count, total]) => ({
-                type: `${count} Odalı`,
-                count: total
-            })).sort((a, b) => parseInt(a.type) - parseInt(b.type))
+            roomCounts: roomCountsArray
         };
 
         res.json(result);

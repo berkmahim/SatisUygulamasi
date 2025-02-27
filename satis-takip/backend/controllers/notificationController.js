@@ -21,7 +21,6 @@ const getNotifications = asyncHandler(async (req, res) => {
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
-        .populate('relatedData.customerId', 'firstName lastName')
         .lean();
 
     // Toplam okunmamış bildirim sayısını getir

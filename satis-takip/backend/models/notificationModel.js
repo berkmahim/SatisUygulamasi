@@ -41,7 +41,7 @@ const notificationSchema = new mongoose.Schema({
             ref: 'Sale'
         },
         customerId: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed, // ObjectId veya String kabul edebilir
             ref: 'Customer'
         },
         paymentId: {
@@ -64,24 +64,38 @@ const notificationSchema = new mongoose.Schema({
 
 // Bildirim oluşturma yardımcı metodu
 notificationSchema.statics.createPaymentOverdueNotification = async function(payment, sale, customer) {
+    // Eğer müşteri veya müşteri bilgileri yoksa
+    if (!customer) {
+        console.log('Bildirim oluşturulamadı: Müşteri bilgisi bulunamadı');
+        return null;
+    }
+
     const users = await mongoose.model('User').find({
         $or: [
             { role: 'admin' },
-            { permissions: 'PAYMENT_OVERDUE_NOTIFICATION' }
+            { 'permissions.paymentOverdueNotification': true }
         ]
     });
 
+    // Eğer kullanıcı yoksa
+    if (!users || users.length === 0) {
+        console.log('Bildirim oluşturulamadı: Bildirim alacak kullanıcı bulunamadı');
+        return null;
+    }
+
+    const customerName = customer ? `${customer.firstName || ''} ${customer.lastName || ''}`.trim() : 'Bilinmeyen Müşteri';
+    
     const notification = new this({
         type: 'PAYMENT_OVERDUE',
         title: 'Geciken Ödeme Bildirimi',
-        message: `${customer.firstName} ${customer.lastName} müşterisinin ${payment.amount} TL tutarındaki ödemesi gecikmiştir.`,
+        message: `${customerName} müşterisinin ${payment.amount} TL tutarındaki ödemesi gecikmiştir.`,
         recipients: users.map(user => ({
             userId: user._id,
             read: false
         })),
         relatedData: {
             saleId: sale._id,
-            customerId: customer._id,
+            customerId: customer ? customer._id : null,
             paymentId: payment._id,
             amount: payment.amount,
             dueDate: payment.dueDate

@@ -9,8 +9,8 @@ import locale from 'antd/es/date-picker/locale/tr_TR';
 import { DownloadOutlined, FilePdfOutlined, FileExcelOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const { Title } = Typography;
 const { RangePicker } = DatePicker;
@@ -150,19 +150,24 @@ const ProjectReports = () => {
     setOverduePayments(overdue);
   }, [payments.expectedPayments]);
 
-  // Grafik konfigürasyonu
+  // Pasta grafik konfigürasyonu
   const pieConfig = {
     appendPadding: 10,
-    angleField: 'count',
+    data: [],
+    angleField: 'value',
     colorField: 'type',
     radius: 0.8,
-    label: false, // Etiketleri devre dışı bırak
+    label: {
+      type: 'outer',
+      content: '{name}: {value}',
+    },
+    interactions: [{ type: 'element-active' }],
+    legend: { position: 'bottom' },
     tooltip: {
       formatter: (datum) => {
         return { name: datum.type, value: `${datum.count} adet` };
       },
     },
-    interactions: [{ type: 'element-active' }]
   };
 
   // Tablo kolonları
@@ -242,6 +247,12 @@ const ProjectReports = () => {
     }
   ];
 
+  // Oda sayısı dağılımı tablosu için kolonlar
+  const roomCountColumns = [
+    { title: 'Oda Sayısı', dataIndex: 'type', key: 'type' },
+    { title: 'Satılan Adet', dataIndex: 'count', key: 'count' }
+  ];
+
   // Özel veri formatları için hazırlık
   const prepareDataForExport = (data, type) => {
     return data.map(item => {
@@ -271,7 +282,7 @@ const ProjectReports = () => {
       else if (type === 'roomCount') {
         newItem = {
           'Oda Sayısı': item.type,
-          'Adet': item.count
+          'Satılan Adet': item.count
         };
       }
       // Beklenen ödemeler için
@@ -337,34 +348,58 @@ const ProjectReports = () => {
 
   // PDF dosyası oluşturma ve indirme
   const exportToPDF = (data, fileName, type) => {
+    // Veriyi dışa aktarım için hazırla
     const exportData = prepareDataForExport(data, type);
-    const doc = new jsPDF('l', 'mm', 'a4');
     
-    // Başlık ve tarih ekle
-    doc.setFontSize(18);
-    doc.text(`${projectInfo.name ? projectInfo.name + ' - ' : ''}${fileName.replace(/_/g, ' ')}`, 14, 22);
-    doc.setFontSize(11);
-    doc.text(`Oluşturulma Tarihi: ${dayjs().format('DD.MM.YYYY')}`, 14, 30);
+    // Doküman oluştur - Türkçe karakter desteği için Unicode seçildi
+    const doc = new jsPDF({
+      orientation: 'l',
+      unit: 'mm',
+      format: 'a4',
+      putOnlyUsedFonts: true,
+      compress: true
+    });
     
-    // Tablo oluştur
+    // Metin kodlama ayarları
+    doc.setLanguage("tr");
+    
+    // Başlık ekle - ASCII olmayan karakterler yerine alternatif metin kullanılabilir
+    const safeProjectName = projectInfo.name ? projectInfo.name : '';
+    doc.setFontSize(16);
+    
+    // Başlık için direkt encoding sorununu aşmak için ASCII karakterlerini kullan
+    doc.text(`${safeProjectName} - ${fileName.replace(/_/g, ' ')}`, doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+    
+    // Tarih ekle - Sabit ASCII metni
+    doc.setFontSize(10);
+    doc.text(`Olusturulma Tarihi: ${dayjs().format('DD.MM.YYYY')}`, doc.internal.pageSize.getWidth() / 2, 30, { align: 'center' });
+    
+    // Tablo için veri hazırla
     const tableColumn = Object.keys(exportData[0] || {});
     const tableRows = exportData.map(item => {
-      return tableColumn.map(key => item[key] || '');
+      return tableColumn.map(key => {
+        // Türkçe karakterlerin dönüştürülmesi
+        return (item[key] || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      });
     });
     
     // AutoTable oluştur
-    doc.autoTable({
+    autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 40,
       theme: 'grid',
-      styles: { fontSize: 9, cellPadding: 3 },
+      styles: { 
+        fontSize: 9, 
+        cellPadding: 3,
+        font: 'helvetica'
+      },
       headStyles: { fillColor: [66, 66, 66] }
     });
     
     // Dosya adına proje adını ekle
-    const safeProjectName = projectInfo.name ? `${projectInfo.name.replace(/[^a-z0-9]/gi, '_')}_` : '';
-    doc.save(`${safeProjectName}${fileName}_${dayjs().format('YYYY-MM-DD')}.pdf`);
+    const safeProjectNameForFile = projectInfo.name ? `${projectInfo.name.replace(/[^a-z0-9]/gi, '_')}_` : '';
+    doc.save(`${safeProjectNameForFile}${fileName}_${dayjs().format('YYYY-MM-DD')}.pdf`);
     
     message.success('PDF dosyası başarıyla indirildi');
   };
@@ -435,12 +470,12 @@ const ProjectReports = () => {
           {/* Oda Sayısı Dağılımı */}
           <Col xs={24} lg={12}>
             <Card 
-              title="Satılan Dairelerin Oda Sayısı Dağılımı"
+              title="Satılan Birimlerin Dağılımı"
               extra={
                 <Space>
                   <Button 
                     icon={<FileExcelOutlined />} 
-                    onClick={() => exportToExcel(roomCountData || [], 'Oda_Sayisi_Dagilimi', 'roomCount')}
+                    onClick={() => exportToExcel(roomCountData || [], 'Birim_Dagilimi', 'roomCount')}
                     disabled={!roomCountData || roomCountData.length === 0}
                   >
                     Excel
@@ -449,7 +484,7 @@ const ProjectReports = () => {
                     icon={<FilePdfOutlined />}
                     onClick={() => exportToPDF(
                       roomCountData || [], 
-                      'Oda_Sayisi_Dagilimi',
+                      'Birim_Dagilimi',
                       'roomCount'
                     )}
                     disabled={!roomCountData || roomCountData.length === 0}
@@ -460,11 +495,19 @@ const ProjectReports = () => {
               }
             >
               {Array.isArray(roomCountData) && roomCountData.length > 0 ? (
-                <Pie {...pieConfig} data={roomCountData.map(item => ({
-                  type: item.type,
-                  count: item.count,
-                  value: item.count
-                }))} />
+                <>
+                  <Table 
+                    dataSource={roomCountData}
+                    columns={roomCountColumns}
+                    pagination={false}
+                    rowKey={(record) => record.type}
+                    style={{ marginBottom: 20 }}
+                  />
+                  <Pie {...pieConfig} data={roomCountData.map(item => ({
+                    type: item.type,
+                    value: item.count
+                  }))} />
+                </>
               ) : (
                 <Empty description="Henüz satılan daire bulunmamaktadır" />
               )}

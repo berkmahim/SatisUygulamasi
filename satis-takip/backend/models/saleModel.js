@@ -205,13 +205,15 @@ saleSchema.methods.updatePaymentStatus = async function() {
         if (payment.status === 'pending') {
             hasPending = true;
             
-            // Vade tarihinden 1 gün sonrasını hesapla
-            const overdueDateLimit = new Date(payment.dueDate);
-            overdueDateLimit.setDate(overdueDateLimit.getDate() + 1);
-            overdueDateLimit.setHours(0, 0, 0, 0); // Gün başlangıcına ayarla
+            // Vade tarihi bugün veya daha önceyse
+            const dueDate = new Date(payment.dueDate);
+            // Tarih karşılaştırmaları için saat bilgilerini sıfırla
+            dueDate.setHours(0, 0, 0, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
             
-            // Şu anki tarih, vade tarihinden 1 gün sonrayı geçmişse
-            if (now >= overdueDateLimit) {
+            // Eğer vade tarihi bugün veya öncesiyse
+            if (dueDate <= today) {
                 const oldStatus = payment.status;
                 payment.status = 'overdue';
                 hasOverdue = true;
@@ -235,11 +237,21 @@ saleSchema.methods.updatePaymentStatus = async function() {
 
     // Yeni geciken ödemeler için bildirim oluştur
     if (newlyOverduePayments.length > 0) {
-        const customer = await mongoose.model('Customer').findById(this.customerId);
-        const Notification = mongoose.model('Notification');
+        try {
+            const customer = await mongoose.model('Customer').findById(this.customerId);
+            const Notification = mongoose.model('Notification');
 
-        for (const payment of newlyOverduePayments) {
-            await Notification.createPaymentOverdueNotification(payment, this, customer);
+            for (const payment of newlyOverduePayments) {
+                try {
+                    await Notification.createPaymentOverdueNotification(payment, this, customer);
+                } catch (error) {
+                    console.error('Gecikmiş ödeme bildirimi oluşturma hatası:', error);
+                    // Hatayı logluyoruz ama işlemi devam ettiriyoruz
+                }
+            }
+        } catch (error) {
+            console.error('Bildirim oluşturma işleminde genel hata:', error);
+            // Hatayı logluyoruz ama işlemi devam ettiriyoruz
         }
     }
 };

@@ -38,8 +38,12 @@ const NotificationsPage = () => {
       await axios.put(`/api/notifications/${notification._id}/read`);
       
       // İlgili sayfaya yönlendir
-      if (notification.type === 'PAYMENT_OVERDUE') {
+      if (notification.type === 'PAYMENT_OVERDUE' && notification.relatedData?.customerId) {
+        // Müşteri ID'si varsa ve geçerliyse müşteri sayfasına yönlendir
         navigate(`/customers/${notification.relatedData.customerId}`);
+      } else {
+        // Müşteri bilgisi yoksa veya geçersizse bildirimleri güncelle ama yönlendirme yapma
+        message.info('İlgili müşteri bilgisi bulunamadı');
       }
       
       // Bildirimi güncelle

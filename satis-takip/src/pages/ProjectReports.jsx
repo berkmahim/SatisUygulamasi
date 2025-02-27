@@ -17,6 +17,8 @@ const ProjectReports = () => {
   const [roomCountData, setRoomCountData] = useState(null);
   const [payments, setPayments] = useState({ receivedPayments: [], expectedPayments: [] });
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs().endOf('month')]);
+  const [expectedPaymentDateRange, setExpectedPaymentDateRange] = useState([null, null]);
+  const [filteredExpectedPayments, setFilteredExpectedPayments] = useState([]);
 
   // Birim tipi ve oda sayısı dağılımını al
   const fetchUnitTypeDistribution = async () => {
@@ -43,6 +45,7 @@ const ProjectReports = () => {
         }
       });
       setPayments(data);
+      setFilteredExpectedPayments(data.expectedPayments);
     } catch (error) {
       message.error('Ödemeler alınamadı');
       console.error(error);
@@ -64,6 +67,38 @@ const ProjectReports = () => {
   useEffect(() => {
     fetchPayments();
   }, [dateRange]);
+  
+  // Beklenen ödemeleri tarih aralığına göre filtrele
+  useEffect(() => {
+    if (!payments.expectedPayments || !payments.expectedPayments.length) {
+      setFilteredExpectedPayments([]);
+      return;
+    }
+    
+    if (!expectedPaymentDateRange[0] && !expectedPaymentDateRange[1]) {
+      // Tarih filtresi yoksa tüm ödemeleri göster
+      setFilteredExpectedPayments(payments.expectedPayments);
+      return;
+    }
+    
+    const filtered = payments.expectedPayments.filter(payment => {
+      const dueDate = dayjs(payment.dueDate);
+      
+      // Eğer bir başlangıç tarihi varsa ve ödeme tarihi bundan küçükse filtrele
+      if (expectedPaymentDateRange[0] && dueDate.isBefore(expectedPaymentDateRange[0], 'day')) {
+        return false;
+      }
+      
+      // Eğer bir bitiş tarihi varsa ve ödeme tarihi bundan büyükse filtrele
+      if (expectedPaymentDateRange[1] && dueDate.isAfter(expectedPaymentDateRange[1], 'day')) {
+        return false;
+      }
+      
+      return true;
+    });
+    
+    setFilteredExpectedPayments(filtered);
+  }, [expectedPaymentDateRange, payments.expectedPayments]);
 
   // Grafik konfigürasyonu
   const pieConfig = {
@@ -195,8 +230,17 @@ const ProjectReports = () => {
                 </Col>
                 <Col span={24}>
                   <Title level={4}>Beklenen Ödemeler</Title>
+                  <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                    <RangePicker
+                      locale={locale}
+                      value={expectedPaymentDateRange}
+                      onChange={setExpectedPaymentDateRange}
+                      placeholder={['Vade başlangıç', 'Vade bitiş']}
+                      format="DD.MM.YYYY"
+                    />
+                  </div>
                   <Table 
-                    dataSource={payments.expectedPayments}
+                    dataSource={filteredExpectedPayments}
                     columns={expectedColumns}
                     rowKey={(record) => `expected-${record._id || `${record.customerName}-${record.dueDate}-${record.amount}`}`}
                   />

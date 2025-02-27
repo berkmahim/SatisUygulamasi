@@ -48,20 +48,64 @@ const createBlock = asyncHandler(async (req, res) => {
 // @route   PATCH /api/blocks/:id
 // @access  Private
 const updateBlock = asyncHandler(async (req, res) => {
-    const block = await Block.findById(req.params.id);
+    try {
+        console.log('Güncelleme isteği alındı:', {
+            blockId: req.params.id,
+            updateData: req.body
+        });
 
-    if (!block) {
-        res.status(404);
-        throw new Error('Block not found');
+        const block = await Block.findById(req.params.id);
+
+        if (!block) {
+            res.status(404);
+            throw new Error('Block not found');
+        }
+
+        console.log('Mevcut blok:', block);
+
+        // Güncelleme verilerini hazırla
+        const updateData = {
+            // Önce mevcut bloğun tüm verilerini al
+            ...block.toObject(),
+            // Sadece güncellenen alanları ekle
+            ...(req.body.unitNumber && { unitNumber: req.body.unitNumber }),
+            ...(req.body.owner && { owner: req.body.owner }),
+            ...(req.body.squareMeters && { squareMeters: req.body.squareMeters }),
+            ...(req.body.roomCount && { roomCount: req.body.roomCount }),
+            ...(req.body.type && { type: req.body.type }),
+            // Zorunlu alanları koru
+            projectId: block.projectId,
+            position: block.position,
+            dimensions: block.dimensions
+        };
+
+        // type alanının geçerli olduğundan emin ol
+        if (updateData.type && !['store', 'apartment'].includes(updateData.type)) {
+            res.status(400);
+            throw new Error('Invalid block type. Must be either "store" or "apartment"');
+        }
+
+        console.log('Güncellenecek veriler:', updateData);
+
+        const updatedBlock = await Block.findByIdAndUpdate(
+            req.params.id,
+            updateData,
+            { new: true, runValidators: true }
+        ).populate('owner', 'firstName lastName');
+
+        if (!updatedBlock) {
+            res.status(500);
+            throw new Error('Block update failed');
+        }
+
+        console.log('Güncellenen blok:', updatedBlock);
+
+        res.json(updatedBlock);
+    } catch (error) {
+        console.error('Blok güncelleme hatası:', error);
+        res.status(error.status || 500);
+        throw error;
     }
-
-    const updatedBlock = await Block.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        { new: true }
-    ).populate('owner', 'firstName lastName');
-
-    res.json(updatedBlock);
 });
 
 // @desc    Delete a block

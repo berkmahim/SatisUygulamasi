@@ -51,7 +51,23 @@ const ControlPanel = ({
     const newDetails = { ...blockDetails, [field]: value };
     setBlockDetails(newDetails);
     if (selectedBlock) {
-      onUpdateBlockDetails(selectedBlock, newDetails);
+      const currentBlock = blocks.find(b => (b._id || b.id) === selectedBlock);
+      if (currentBlock) {
+        // Mevcut bloğun tüm verilerini koru
+        const updatedBlock = {
+          ...currentBlock,
+          unitNumber: newDetails.unitNumber,
+          owner: newDetails.owner,
+          squareMeters: newDetails.squareMeters,
+          roomCount: newDetails.roomCount,
+          type: newDetails.type || currentBlock.type,
+          // Zorunlu alanları mutlaka gönder
+          projectId: currentBlock.projectId,
+          position: currentBlock.position,
+          dimensions: currentBlock.dimensions
+        };
+        onUpdateBlockDetails(selectedBlock, updatedBlock);
+      }
     }
   };
 

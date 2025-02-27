@@ -323,9 +323,12 @@ const getProjectPayments = async (req, res) => {
         const blocks = await Block.find({ projectId });
         const blockIds = blocks.map(block => block._id);
 
-        // Projeye ait satışları al
+        // Projeye ait satışları al ve daha detaylı bilgilerle populate et
         const sales = await Sale.find({ blockId: { $in: blockIds } })
-            .populate('blockId', 'blockNumber')
+            .populate({
+                path: 'blockId',
+                select: 'blockNumber unitNumber type squareMeters roomCount'
+            })
             .populate('customerId', 'firstName lastName');
 
         // Alınan ödemeler
@@ -337,9 +340,22 @@ const getProjectPayments = async (req, res) => {
             sale.payments.forEach(payment => {
                 const paymentDate = new Date(payment.dueDate);
                 if (paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate)) {
+                    // Birim bilgisini zenginleştir
+                    const unitInfo = sale.blockId ? `${sale.blockId.unitNumber || sale.blockId.blockNumber || ''}` : '';
+                    const blockDetails = sale.blockId ? {
+                        blockNumber: sale.blockId.blockNumber,
+                        unitNumber: sale.blockId.unitNumber,
+                        type: sale.blockId.type,
+                        squareMeters: sale.blockId.squareMeters,
+                        roomCount: sale.blockId.roomCount
+                    } : {};
+
                     const paymentInfo = {
                         customerName: `${sale.customerId.firstName} ${sale.customerId.lastName}`,
                         blockNumber: sale.blockId.blockNumber,
+                        unitNumber: sale.blockId.unitNumber || '',
+                        blockInfo: unitInfo,
+                        blockDetails,
                         amount: payment.amount,
                         dueDate: payment.dueDate,
                         status: payment.status

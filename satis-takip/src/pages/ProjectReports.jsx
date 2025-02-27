@@ -170,9 +170,15 @@ const ProjectReports = () => {
     { title: 'Müşteri', dataIndex: 'customerName', key: 'customerName' },
     { 
       title: 'Birim', 
-      key: 'blockInfo',
+      key: 'unitInfo',
       render: (_, record) => {
-        // Ödeme kayıtları doğrudan birim bilgisi içermiyor
+        if (record.unitNumber) {
+          return record.unitNumber;
+        } else if (record.blockNumber) {
+          return record.blockNumber;
+        } else if (record.blockInfo) {
+          return record.blockInfo;
+        }
         return <Tag color="blue">Birim Bilgisi Ekleyin</Tag>;
       }
     },
@@ -200,11 +206,15 @@ const ProjectReports = () => {
     { title: 'Müşteri', dataIndex: 'customerName', key: 'customerName' },
     { 
       title: 'Birim', 
-      key: 'blockInfo',
+      key: 'unitInfo',
       render: (_, record) => {
-        // Ödeme kayıtları doğrudan birim bilgisi içermiyor. 
-        // Ödemeler müşteriler üzerinden yapılmış, dolayısıyla birim bilgisi 
-        // mevcut değil veya başka bir API çağrısı gerekiyor.
+        if (record.unitNumber) {
+          return record.unitNumber;
+        } else if (record.blockNumber) {
+          return record.blockNumber;
+        } else if (record.blockInfo) {
+          return record.blockInfo;
+        }
         return <Tag color="blue">Birim Bilgisi Ekleyin</Tag>;
       }
     },
@@ -239,8 +249,13 @@ const ProjectReports = () => {
       
       // Birim bilgisi fonksiyonu
       const getUnitInfo = (item) => {
-        // API yanıtında birim bilgisi yok, bu nedenle eksik bilgi olduğunu belirten 
-        // bir mesaj dönüyoruz
+        if (item.unitNumber) {
+          return item.unitNumber;
+        } else if (item.blockNumber) {
+          return item.blockNumber;
+        } else if (item.blockInfo) {
+          return item.blockInfo;
+        }
         return 'Birim Bilgisi Eksik';
       };
 
@@ -354,6 +369,13 @@ const ProjectReports = () => {
     message.success('PDF dosyası başarıyla indirildi');
   };
   
+  // Tablolara ek birim detayları eklemek için useEffect
+  useEffect(() => {
+    if (payments.receivedPayments && payments.receivedPayments.length) {
+      console.log('Örnek ödeme verisi:', payments.receivedPayments[0]);
+    }
+  }, [payments]);
+
   return (
     <Spin spinning={loading}>
       <div style={{ padding: '24px' }}>
@@ -568,7 +590,7 @@ const ProjectReports = () => {
                     dataSource={overduePayments}
                     columns={[
                       { title: 'Müşteri', dataIndex: 'customerName', key: 'customerName' },
-                      { title: 'Birim', dataIndex: 'blockInfo', key: 'blockInfo' },
+                      { title: 'Birim', dataIndex: 'blockNumber', key: 'blockNumber' },
                       { 
                         title: 'Tutar', 
                         dataIndex: 'amount', 

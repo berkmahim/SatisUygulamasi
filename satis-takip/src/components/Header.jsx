@@ -215,6 +215,7 @@ const Header = () => {
       key: 'settings',
       icon: <SettingOutlined />,
       label: 'Ayarlar',
+      onClick: () => navigate('/user-profile'),
     },
     {
       type: 'divider',

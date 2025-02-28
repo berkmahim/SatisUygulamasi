@@ -18,6 +18,7 @@ import LoginPage from './pages/LoginPage';
 import UsersPage from './pages/UsersPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ProjectReports from './pages/ProjectReports';
+import UserProfilePage from './pages/UserProfilePage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Footer from './components/Footer';
@@ -140,6 +141,11 @@ function AppContent() {
               <Route path="/projects/:projectId/reports" element={
                 <PermissionRoute permission="reportManagement">
                   <ProjectReports />
+                </PermissionRoute>
+              } />
+              <Route path="/user-profile" element={
+                <PermissionRoute>
+                  <UserProfilePage />
                 </PermissionRoute>
               } />
             </Routes>

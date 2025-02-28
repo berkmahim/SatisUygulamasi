@@ -32,11 +32,13 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (username, password) => {
+        setLoading(true);
         try {
-            const { data } = await axios.post('/api/auth/login', { username, password });
-            setUser(data);
-            localStorage.setItem('user', JSON.stringify(data));
-            axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+            const response = await axios.post('/api/auth/login', { username, password });
+            const userData = response.data;
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+            axios.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
             navigate('/');
             return { success: true };
         } catch (error) {
@@ -44,7 +46,22 @@ export const AuthProvider = ({ children }) => {
                 success: false,
                 error: error.response?.data?.message || 'Giriş başarısız'
             };
+        } finally {
+            setLoading(false);
         }
+    };
+
+    const updateUserInfo = (updatedUserData) => {
+        setUser(prevUser => ({
+            ...prevUser,
+            ...updatedUserData
+        }));
+        // LocalStorage'ı da güncelle
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        localStorage.setItem('user', JSON.stringify({
+            ...storedUser,
+            ...updatedUserData
+        }));
     };
 
     const logout = () => {
@@ -65,6 +82,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         hasPermission,
+        updateUserInfo,
         loading
     };
 

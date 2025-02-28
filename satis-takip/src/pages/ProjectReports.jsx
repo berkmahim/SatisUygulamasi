@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Row, Col, DatePicker, Table, Typography, Spin, message, Tag, Empty, Button, Space } from 'antd';
+import { Card, Row, Col, DatePicker, Table, Typography, Spin, message, Tag, Empty, Button, Space, Statistic } from 'antd';
 import { Pie } from '@ant-design/plots';
 import axios from 'axios';
 import dayjs from 'dayjs';
@@ -26,6 +26,11 @@ const ProjectReports = () => {
   const [filteredExpectedPayments, setFilteredExpectedPayments] = useState([]);
   const [overduePayments, setOverduePayments] = useState([]);
   const [projectInfo, setProjectInfo] = useState({ name: '' });
+  const [totals, setTotals] = useState({
+    received: 0,
+    expected: 0,
+    overdue: 0
+  });
 
   // Birim tipi ve oda sayısı dağılımını al
   const fetchUnitTypeDistribution = async () => {
@@ -422,6 +427,41 @@ const ProjectReports = () => {
     }
   }, [payments]);
 
+  // Toplam miktarları hesapla
+  const calculateTotals = () => {
+    // Alınan ödemelerin toplamı
+    const receivedTotal = payments.receivedPayments.reduce((sum, payment) => {
+      return sum + (payment.paidAmount || 0);
+    }, 0);
+    
+    // Beklenen ödemelerin toplamı (filtrelenmiş)
+    const expectedTotal = filteredExpectedPayments.reduce((sum, payment) => {
+      return sum + (payment.amount || 0);
+    }, 0);
+    
+    // Gecikmiş ödemelerin toplamı
+    const overdueTotal = overduePayments.reduce((sum, payment) => {
+      return sum + (payment.amount || 0);
+    }, 0);
+    
+    setTotals({
+      received: receivedTotal,
+      expected: expectedTotal,
+      overdue: overdueTotal
+    });
+    
+    console.log('Toplam tutarlar hesaplandı:', {
+      receivedTotal,
+      expectedTotal,
+      overdueTotal
+    });
+  };
+  
+  // Ödemelerin veya filtrelerin değişimi ile toplam tutarları yeniden hesapla
+  useEffect(() => {
+    calculateTotals();
+  }, [payments.receivedPayments, filteredExpectedPayments, overduePayments]);
+
   return (
     <Spin spinning={loading}>
       <div style={{ padding: '24px' }}>
@@ -543,63 +583,104 @@ const ProjectReports = () => {
             >
               <Row gutter={[16, 16]}>
                 <Col span={24}>
-                  <Title level={4} style={{ display: 'inline-block', marginRight: '16px' }}>Alınan Ödemeler</Title>
-                  <Space>
-                    <Button 
-                      icon={<FileExcelOutlined />} 
-                      onClick={() => exportToExcel(
-                        payments.receivedPayments, 
-                        'Alinan_Odemeler',
-                        'received'
-                      )}
-                      disabled={!payments.receivedPayments || payments.receivedPayments.length === 0}
-                    >
-                      Excel
-                    </Button>
-                    <Button 
-                      icon={<FilePdfOutlined />}
-                      onClick={() => exportToPDF(
-                        payments.receivedPayments,
-                        'Alinan_Odemeler',
-                        'received'
-                      )}
-                      disabled={!payments.receivedPayments || payments.receivedPayments.length === 0}
-                    >
-                      PDF
-                    </Button>
-                  </Space>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <Title level={4} style={{ margin: 0 }}>Alınan Ödemeler</Title>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <Statistic 
+                        title="Toplam Alınan" 
+                        value={totals.received} 
+                        precision={2} 
+                        suffix="₺" 
+                        style={{ marginRight: '24px' }}
+                        valueStyle={{ color: '#3f8600' }}
+                      />
+                      <Space>
+                        <Button 
+                          icon={<FileExcelOutlined />} 
+                          onClick={() => exportToExcel(
+                            payments.receivedPayments, 
+                            'Alinan_Odemeler',
+                            'received'
+                          )}
+                          disabled={!payments.receivedPayments || payments.receivedPayments.length === 0}
+                        >
+                          Excel
+                        </Button>
+                        <Button 
+                          icon={<FilePdfOutlined />}
+                          onClick={() => exportToPDF(
+                            payments.receivedPayments,
+                            'Alinan_Odemeler',
+                            'received'
+                          )}
+                          disabled={!payments.receivedPayments || payments.receivedPayments.length === 0}
+                        >
+                          PDF
+                        </Button>
+                      </Space>
+                    </div>
+                  </div>
                   <Table 
                     dataSource={payments.receivedPayments}
                     columns={receivedColumns}
                     rowKey={(record) => `received-${record._id || `${record.customerName}-${record.paidDate}-${record.amount}`}`}
+                    summary={pageData => {
+                      let totalPaid = 0;
+                      pageData.forEach(({ paidAmount }) => {
+                        totalPaid += paidAmount || 0;
+                      });
+                      return (
+                        <Table.Summary.Row>
+                          <Table.Summary.Cell index={0} colSpan={3}>
+                            <strong>Toplam</strong>
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={1}>
+                            <strong>{totalPaid.toLocaleString('tr-TR')} ₺</strong>
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={2} colSpan={1}></Table.Summary.Cell>
+                        </Table.Summary.Row>
+                      );
+                    }}
                   />
                 </Col>
                 <Col span={24}>
-                  <Title level={4} style={{ display: 'inline-block', marginRight: '16px' }}>Beklenen Ödemeler</Title>
-                  <Space>
-                    <Button 
-                      icon={<FileExcelOutlined />} 
-                      onClick={() => exportToExcel(
-                        filteredExpectedPayments, 
-                        'Beklenen_Odemeler',
-                        'expected'
-                      )}
-                      disabled={!filteredExpectedPayments || filteredExpectedPayments.length === 0}
-                    >
-                      Excel
-                    </Button>
-                    <Button 
-                      icon={<FilePdfOutlined />}
-                      onClick={() => exportToPDF(
-                        filteredExpectedPayments,
-                        'Beklenen_Odemeler',
-                        'expected'
-                      )}
-                      disabled={!filteredExpectedPayments || filteredExpectedPayments.length === 0}
-                    >
-                      PDF
-                    </Button>
-                  </Space>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <Title level={4} style={{ margin: 0 }}>Beklenen Ödemeler</Title>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <Statistic 
+                        title="Toplam Beklenen" 
+                        value={totals.expected} 
+                        precision={2} 
+                        suffix="₺" 
+                        style={{ marginRight: '24px' }}
+                        valueStyle={{ color: '#1890ff' }}
+                      />
+                      <Space>
+                        <Button 
+                          icon={<FileExcelOutlined />} 
+                          onClick={() => exportToExcel(
+                            filteredExpectedPayments, 
+                            'Beklenen_Odemeler',
+                            'expected'
+                          )}
+                          disabled={!filteredExpectedPayments || filteredExpectedPayments.length === 0}
+                        >
+                          Excel
+                        </Button>
+                        <Button 
+                          icon={<FilePdfOutlined />}
+                          onClick={() => exportToPDF(
+                            filteredExpectedPayments,
+                            'Beklenen_Odemeler',
+                            'expected'
+                          )}
+                          disabled={!filteredExpectedPayments || filteredExpectedPayments.length === 0}
+                        >
+                          PDF
+                        </Button>
+                      </Space>
+                    </div>
+                  </div>
                   <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end' }}>
                     <RangePicker
                       locale={locale}
@@ -616,37 +697,66 @@ const ProjectReports = () => {
                     dataSource={filteredExpectedPayments}
                     columns={expectedColumns.filter(col => col.key !== 'status')} // Durum sütununu kaldır
                     rowKey={(record) => `expected-${record._id || `${record.customerName}-${record.dueDate}-${record.amount}`}`}
+                    summary={pageData => {
+                      let totalExpected = 0;
+                      pageData.forEach(({ amount }) => {
+                        totalExpected += amount || 0;
+                      });
+                      return (
+                        <Table.Summary.Row>
+                          <Table.Summary.Cell index={0} colSpan={2}>
+                            <strong>Toplam</strong>
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={1}>
+                            <strong>{totalExpected.toLocaleString('tr-TR')} ₺</strong>
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={2} colSpan={1}></Table.Summary.Cell>
+                        </Table.Summary.Row>
+                      );
+                    }}
                   />
                 </Col>
 
                 <Col span={24}>
-                  <Title level={4} style={{ color: '#ff4d4f', display: 'inline-block', marginRight: '16px' }}>Gecikmiş Ödemeler</Title>
-                  <Space>
-                    <Button 
-                      icon={<FileExcelOutlined />} 
-                      onClick={() => exportToExcel(
-                        overduePayments, 
-                        'Gecikmis_Odemeler',
-                        'overdue'
-                      )}
-                      disabled={!overduePayments || overduePayments.length === 0}
-                      style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
-                    >
-                      Excel
-                    </Button>
-                    <Button 
-                      icon={<FilePdfOutlined />}
-                      onClick={() => exportToPDF(
-                        overduePayments,
-                        'Gecikmis_Odemeler',
-                        'overdue'
-                      )}
-                      disabled={!overduePayments || overduePayments.length === 0}
-                      style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
-                    >
-                      PDF
-                    </Button>
-                  </Space>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <Title level={4} style={{ margin: 0, color: '#ff4d4f' }}>Gecikmiş Ödemeler</Title>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <Statistic 
+                        title="Toplam Gecikmiş" 
+                        value={totals.overdue} 
+                        precision={2} 
+                        suffix="₺" 
+                        style={{ marginRight: '24px' }}
+                        valueStyle={{ color: '#ff4d4f' }}
+                      />
+                      <Space>
+                        <Button 
+                          icon={<FileExcelOutlined />} 
+                          onClick={() => exportToExcel(
+                            overduePayments, 
+                            'Gecikmis_Odemeler',
+                            'overdue'
+                          )}
+                          disabled={!overduePayments || overduePayments.length === 0}
+                          style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
+                        >
+                          Excel
+                        </Button>
+                        <Button 
+                          icon={<FilePdfOutlined />}
+                          onClick={() => exportToPDF(
+                            overduePayments,
+                            'Gecikmis_Odemeler',
+                            'overdue'
+                          )}
+                          disabled={!overduePayments || overduePayments.length === 0}
+                          style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
+                        >
+                          PDF
+                        </Button>
+                      </Space>
+                    </div>
+                  </div>
                   <Table 
                     dataSource={overduePayments}
                     columns={[
@@ -684,7 +794,23 @@ const ProjectReports = () => {
                       }
                     ]}
                     rowKey={(record) => `overdue-${record._id || `${record.customerName}-${record.dueDate}-${record.amount}`}`}
-                    rowClassName={() => 'overdue-row'}
+                    summary={pageData => {
+                      let totalOverdue = 0;
+                      pageData.forEach(({ amount }) => {
+                        totalOverdue += amount || 0;
+                      });
+                      return (
+                        <Table.Summary.Row>
+                          <Table.Summary.Cell index={0} colSpan={2}>
+                            <strong>Toplam</strong>
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={1}>
+                            <strong>{totalOverdue.toLocaleString('tr-TR')} ₺</strong>
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell index={2} colSpan={2}></Table.Summary.Cell>
+                        </Table.Summary.Row>
+                      );
+                    }}
                   />
                 </Col>
               </Row>

@@ -4,29 +4,44 @@ import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { useParams } from 'react-router-dom';
 import BuildingBlock from './BuildingBlock';
+import Text3D from './Text3D';
 import ControlPanel from './ControlPanel';
 import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '../services/blockService';
 
-const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addMode, onBlockHover }) => {
+const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addMode, onBlockHover, texts, onAddText, onTextClick, selectedText, onTextHover, textMode }) => {
   const { camera } = useThree();
   const groundRef = useRef();
   const clickedRef = useRef(false);
 
   const handleGroundPointerDown = (event) => {
-    if (!editMode || !addMode || clickedRef.current) return;
+    if (!editMode) return;
     
-    // Only handle direct ground clicks
+    // Sadece zemine tıklandığında işlem yap
     if (event.object !== groundRef.current) return;
     
     event.stopPropagation();
     clickedRef.current = true;
     
     const point = event.point;
-    onAddBlock([
-      Math.round(point.x - 0.5),
-      0,
-      Math.round(point.z - 0.5)
-    ]);
+    
+    if (textMode) {
+      // Metin modu aktifse, tıklanan noktaya metin ekle
+      onAddText(
+        [
+          Math.round(point.x),
+          0.5, // Metin yerden biraz yukarıda olsun
+          Math.round(point.z)
+        ],
+        "Yeni Metin"
+      );
+    } else if (addMode) {
+      // Blok ekleme modu aktifse, blok ekle
+      onAddBlock([
+        Math.round(point.x - 0.5),
+        0,
+        Math.round(point.z - 0.5)
+      ]);
+    }
 
     // Reset click state after a short delay
     setTimeout(() => {
@@ -85,6 +100,23 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
     }, 100);
   };
 
+  const handleTextPointerDown = (event) => {
+    if (!editMode || !addMode || clickedRef.current) return;
+    
+    event.nativeEvent.stopPropagation();
+    clickedRef.current = true;
+    
+    const { point, textData } = event;
+    if (!textData) return;
+
+    onTextClick(textData.id === selectedText ? null : textData.id);
+
+    // Reset click state after a short delay
+    setTimeout(() => {
+      clickedRef.current = false;
+    }, 100);
+  };
+
   return (
     <>
       <ambientLight intensity={0.5} />
@@ -114,6 +146,20 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
         />
       ))}
 
+      {texts.map((text) => (
+        <Text3D
+          key={text.id}
+          {...text}
+          onPointerDown={handleTextPointerDown}
+          onSelect={(e) => editMode && onTextClick(text.id, e)}
+          isSelected={selectedText === text.id}
+          editMode={editMode}
+          addMode={addMode}
+          onHover={onTextHover}
+          onDrag={(x, y, z) => handleTextDrag(text.id, x, y, z)}
+        />
+      ))}
+
       <OrbitControls makeDefault />
       <mesh 
         ref={groundRef}
@@ -137,6 +183,9 @@ const BuildingCanvas = () => {
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [addMode, setAddMode] = useState(false);
+  const [texts, setTexts] = useState([]);
+  const [selectedText, setSelectedText] = useState(null);
+  const [textMode, setTextMode] = useState(false);
   // Sabit genişleme yönleri
   const expansionDirections = {
     width: 'right',    // Sağa doğru
@@ -626,6 +675,84 @@ const BuildingCanvas = () => {
     }
   };
 
+  const addText = async (position, text) => {
+    const newTextData = {
+      id: `text-${Date.now()}`,
+      position,
+      text,
+      color: "#ffffff",
+      fontSize: 0.3
+    };
+
+    setTexts(prevTexts => [...prevTexts, newTextData]);
+  };
+
+  const handleTextClick = (textId) => {
+    setSelectedText(textId === selectedText ? null : textId);
+  };
+
+  const handleUpdateText = (textId, newContent) => {
+    setTexts(prevTexts => prevTexts.map(text => {
+      if (text.id === textId) {
+        // Eğer newContent bir string ise, sadece metin içeriğini güncelle
+        if (typeof newContent === 'string') {
+          return { ...text, text: newContent };
+        }
+        // Eğer newContent bir obje ise, bu özellikleri güncelle
+        return { ...text, ...newContent };
+      }
+      return text;
+    }));
+  };
+
+  const handleDeleteText = async (textId) => {
+    try {
+      setTexts(prevTexts => prevTexts.filter(text => text.id !== textId));
+      setSelectedText(null);
+    } catch (error) {
+      // Hata durumunda sessizce devam et
+    }
+  };
+
+  // Metni taşıma fonksiyonu
+  const moveText = (textId, direction) => {
+    if (!textId) return;
+    
+    setTexts(prevTexts => 
+      prevTexts.map(item => {
+        if (item.id === textId) {
+          const newPosition = [...item.position];
+          
+          // X, Y veya Z koordinatını belirtilen yönde değiştir
+          if (direction === 'left') newPosition[0] -= 0.5;
+          if (direction === 'right') newPosition[0] += 0.5;
+          if (direction === 'up') newPosition[1] += 0.5;
+          if (direction === 'down') newPosition[1] -= 0.5;
+          if (direction === 'forward') newPosition[2] -= 0.5;
+          if (direction === 'backward') newPosition[2] += 0.5;
+          
+          return { ...item, position: newPosition };
+        }
+        return item;
+      })
+    );
+  };
+
+  // Sürükleme ile metin konumunu güncelle
+  const handleTextDrag = (textId, x, y, z) => {
+    setTexts(prevTexts => 
+      prevTexts.map(item => {
+        if (item.id === textId) {
+          return {
+            ...item,
+            position: [x, y, z]
+          };
+        }
+        return item;
+      })
+    );
+  };
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }} tabIndex={0}>
       <ControlPanel 
@@ -633,12 +760,19 @@ const BuildingCanvas = () => {
         setEditMode={setEditMode}
         addMode={addMode}
         setAddMode={setAddMode}
+        textMode={textMode}
+        setTextMode={setTextMode}
         selectedBlock={selectedBlock}
         selectedBlockDimensions={getSelectedBlockDimensions()}
         onUpdateBlockDimensions={handleUpdateBlockDimensions}
         onUpdateBlockDetails={handleUpdateBlockDetails}
         onDeleteBlock={handleDeleteBlock}
         blocks={blocks}
+        selectedText={selectedText}
+        onUpdateText={handleUpdateText}
+        onDeleteText={handleDeleteText}
+        texts={texts}
+        onMoveText={moveText}
       />
       {tooltipVisible && hoveredBlockOwner && (
         <div
@@ -675,6 +809,15 @@ const BuildingCanvas = () => {
             setHoveredBlockOwner(owner);
             setTooltipVisible(visible);
           }}
+          texts={texts}
+          onAddText={addText}
+          onTextClick={handleTextClick}
+          selectedText={selectedText}
+          onTextHover={(owner, visible) => {
+            setHoveredBlockOwner(owner);
+            setTooltipVisible(visible);
+          }}
+          textMode={textMode}
         />
       </Canvas>
     </div>

@@ -5,13 +5,20 @@ const ControlPanel = ({
   editMode, 
   setEditMode, 
   addMode, 
-  setAddMode, 
+  setAddMode,
+  textMode,
+  setTextMode,
   selectedBlock,
   onUpdateBlockDimensions,
   selectedBlockDimensions,
   onUpdateBlockDetails,
   onDeleteBlock,
-  blocks
+  blocks,
+  selectedText,
+  onUpdateText,
+  onDeleteText,
+  texts,
+  onMoveText
 }) => {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
@@ -88,6 +95,14 @@ const ControlPanel = ({
     }
   };
 
+  // Düzenleme modunu aktifleştir ve diğer modları deaktif et
+  const toggleTextMode = () => {
+    setTextMode(!textMode);
+    if (!textMode) {
+      setAddMode(false); // Blok ekleme modunu kapat
+    }
+  };
+
   return (
     <div style={{
       position: 'absolute',
@@ -103,54 +118,34 @@ const ControlPanel = ({
       gap: '10px',
       minWidth: '200px'
     }}>
-      <button
-        onClick={() => {
-          setEditMode(!editMode);
-          if (!editMode) {
-            setAddMode(false);
-          }
-        }}
-        style={{
-          padding: '8px 16px',
-          backgroundColor: editMode ? '#4CAF50' : '#f0f0f0',
-          color: editMode ? 'white' : 'black',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontWeight: 'bold',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}
-      >
-        <span className="material-icons" style={{ fontSize: '20px' }}>
-          {editMode ? '✏️' : '👁️'}
-        </span>
-        {editMode ? 'Düzenleme Modu Aktif' : 'Görüntüleme Modu'}
-      </button>
-
-      {editMode && (
-        <button
-          onClick={() => setAddMode(!addMode)}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: addMode ? '#2196F3' : '#f0f0f0',
-            color: addMode ? 'white' : 'black',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
+      {/* Mod Seçim Butonları */}
+      <div className="panel-section">
+        <h3>Mod Seçimi</h3>
+        <button 
+          className={`button ${editMode ? 'active' : ''}`} 
+          onClick={() => setEditMode(!editMode)}
         >
-          <span className="material-icons" style={{ fontSize: '20px' }}>
-            {addMode ? '➕' : '🚫'}
-          </span>
-          {addMode ? 'Blok Ekleme Aktif' : 'Blok Ekleme Pasif'}
+          {editMode ? 'Düzenleme Modu Aktif' : 'Düzenleme Modu'}
         </button>
-      )}
+        
+        {editMode && (
+          <div className="sub-options">
+            <button 
+              className={`button ${addMode ? 'active' : ''}`} 
+              onClick={() => setAddMode(!addMode)}
+            >
+              {addMode ? 'Blok Ekleme Modu Aktif' : 'Blok Ekleme Modu'}
+            </button>
+            
+            <button 
+              className={`button ${textMode ? 'active' : ''}`} 
+              onClick={toggleTextMode}
+            >
+              {textMode ? 'Metin Ekleme Modu Aktif' : 'Metin Ekleme Modu'}
+            </button>
+          </div>
+        )}
+      </div>
 
       {editMode && selectedBlock && (
         <>
@@ -371,6 +366,134 @@ const ControlPanel = ({
             </button>
           </div>
         </>
+      )}
+
+      {/* Metin Düzenleme Paneli */}
+      {editMode && selectedText && (
+        <div className="panel-section">
+          <h3>Metin Düzenle</h3>
+          <div className="form-field">
+            <label>Metin İçeriği:</label>
+            <input
+              type="text"
+              value={texts.find(t => t.id === selectedText)?.text || ''}
+              onChange={(e) => onUpdateText(selectedText, e.target.value)}
+              className="input-field"
+            />
+          </div>
+          
+          <div className="form-field">
+            <label>Metin Konumu:</label>
+            <div className="position-controls" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px' }}>
+              {/* X ekseni (sağ-sol) */}
+              <button 
+                onClick={() => onMoveText(selectedText, 'left')}
+                style={{ padding: '5px', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '3px' }}
+              >
+                ← Sol
+              </button>
+              <div style={{ textAlign: 'center', padding: '5px', backgroundColor: '#f8f8f8', border: '1px solid #ddd', borderRadius: '3px' }}>
+                X Ekseni
+              </div>
+              <button 
+                onClick={() => onMoveText(selectedText, 'right')}
+                style={{ padding: '5px', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '3px' }}
+              >
+                Sağ →
+              </button>
+              
+              {/* Y ekseni (yukarı-aşağı) */}
+              <button 
+                onClick={() => onMoveText(selectedText, 'up')}
+                style={{ padding: '5px', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '3px' }}
+              >
+                ↑ Yukarı
+              </button>
+              <div style={{ textAlign: 'center', padding: '5px', backgroundColor: '#f8f8f8', border: '1px solid #ddd', borderRadius: '3px' }}>
+                Y Ekseni
+              </div>
+              <button 
+                onClick={() => onMoveText(selectedText, 'down')}
+                style={{ padding: '5px', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '3px' }}
+              >
+                Aşağı ↓
+              </button>
+              
+              {/* Z ekseni (ileri-geri) */}
+              <button 
+                onClick={() => onMoveText(selectedText, 'forward')}
+                style={{ padding: '5px', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '3px' }}
+              >
+                ↑ İleri
+              </button>
+              <div style={{ textAlign: 'center', padding: '5px', backgroundColor: '#f8f8f8', border: '1px solid #ddd', borderRadius: '3px' }}>
+                Z Ekseni
+              </div>
+              <button 
+                onClick={() => onMoveText(selectedText, 'backward')}
+                style={{ padding: '5px', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '3px' }}
+              >
+                Geri ↓
+              </button>
+            </div>
+          </div>
+          
+          <div className="form-field">
+            <label>Metin Rengi:</label>
+            <div className="color-picker" style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+              {['#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#000000'].map(color => (
+                <div 
+                  key={color}
+                  onClick={() => onUpdateText(selectedText, { color })}
+                  style={{ 
+                    width: '25px', 
+                    height: '25px', 
+                    backgroundColor: color, 
+                    border: texts.find(t => t.id === selectedText)?.color === color 
+                      ? '3px solid #000' 
+                      : '1px solid #ccc',
+                    borderRadius: '3px',
+                    cursor: 'pointer'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+          
+          <div className="form-field">
+            <label>Metin Boyutu:</label>
+            <div className="size-adjuster" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button 
+                onClick={() => {
+                  const currentSize = texts.find(t => t.id === selectedText)?.fontSize || 0.3;
+                  onUpdateText(selectedText, { fontSize: Math.max(0.1, currentSize - 0.1) });
+                }}
+                style={{ padding: '5px 10px', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '3px' }}
+              >
+                -
+              </button>
+              <span>{(texts.find(t => t.id === selectedText)?.fontSize || 0.3).toFixed(1)}</span>
+              <button 
+                onClick={() => {
+                  const currentSize = texts.find(t => t.id === selectedText)?.fontSize || 0.3;
+                  onUpdateText(selectedText, { fontSize: Math.min(1.0, currentSize + 0.1) });
+                }}
+                style={{ padding: '5px 10px', backgroundColor: '#f0f0f0', border: '1px solid #ccc', borderRadius: '3px' }}
+              >
+                +
+              </button>
+            </div>
+          </div>
+          
+          <div className="form-field" style={{ marginTop: '10px' }}>
+            <button 
+              onClick={() => onDeleteText(selectedText)} 
+              style={{ padding: '8px 16px', backgroundColor: '#ff5252', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              Metni Sil
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

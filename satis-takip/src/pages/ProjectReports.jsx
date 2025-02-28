@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Row, Col, DatePicker, Table, Typography, Spin, message, Tag, Empty, Button, Space, Statistic } from 'antd';
-import { Pie } from '@ant-design/plots';
 import axios from 'axios';
+import {
+  Row, Col, Card, Table, DatePicker, Typography,
+  Statistic, Tag, Spin, Empty, Divider, message, Button, Space
+} from 'antd';
+import { Pie } from '@ant-design/plots';
+import { DownloadOutlined, FilePdfOutlined, FileExcelOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/tr';
 import locale from 'antd/es/date-picker/locale/tr_TR';
-import { DownloadOutlined, FilePdfOutlined, FileExcelOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
@@ -167,23 +170,31 @@ const ProjectReports = () => {
   }, [payments.expectedPayments]);
 
   // Pasta grafik konfigürasyonu
-  const pieConfig = {
-    appendPadding: 10,
-    data: [],
-    angleField: 'value',
-    colorField: 'type',
-    radius: 0.8,
-    label: {
-      type: 'outer',
-      content: '{name}: {value}',
-    },
-    interactions: [{ type: 'element-active' }],
-    legend: { position: 'bottom' },
-    tooltip: {
-      formatter: (datum) => {
-        return { name: datum.type, value: `${datum.count} adet` };
-      },
-    },
+  const renderPieChart = (data, angleField = 'value', colorField = 'type') => {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return <Empty description="Veri yok" />;
+    }
+
+    return (
+      <Pie
+        data={data}
+        angleField={angleField}
+        colorField={colorField}
+        radius={0.8}
+        label={{
+          type: 'inner',
+          offset: '-30%',
+          formatter: (datum) => `${datum[angleField]}`,
+          style: {
+            fontSize: 14,
+            textAlign: 'center',
+          },
+        }}
+        legend={{
+          position: 'bottom',
+        }}
+      />
+    );
   };
 
   // Tablo kolonları
@@ -207,13 +218,13 @@ const ProjectReports = () => {
       title: 'Tutar', 
       dataIndex: 'amount', 
       key: 'amount',
-      render: (amount) => `${amount.toLocaleString('tr-TR')} ₺`
+      render: (amount) => amount ? `${amount.toLocaleString('tr-TR')} ₺` : '0,00 ₺'
     },
     { 
       title: 'Ödenen', 
       dataIndex: 'paidAmount', 
       key: 'paidAmount',
-      render: (amount) => `${amount.toLocaleString('tr-TR')} ₺`
+      render: (amount) => amount ? `${amount.toLocaleString('tr-TR')} ₺` : '0,00 ₺'
     },
     { 
       title: 'Ödeme Tarihi', 
@@ -243,7 +254,7 @@ const ProjectReports = () => {
       title: 'Tutar', 
       dataIndex: 'amount', 
       key: 'amount',
-      render: (amount) => `${amount.toLocaleString('tr-TR')} ₺`
+      render: (amount) => amount ? `${amount.toLocaleString('tr-TR')} ₺` : '0,00 ₺'
     },
     { 
       title: 'Vade Tarihi', 
@@ -462,6 +473,14 @@ const ProjectReports = () => {
     calculateTotals();
   }, [payments.receivedPayments, filteredExpectedPayments, overduePayments]);
 
+  // Boş veri kontrolü için güvenlik fonksiyonu
+  const safeData = (data) => {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return [{ type: 'Veri Yok', count: 0 }];
+    }
+    return data;
+  };
+
   return (
     <Spin spinning={loading}>
       <div style={{ padding: '24px' }}>
@@ -554,10 +573,20 @@ const ProjectReports = () => {
                     rowKey={(record) => record.type}
                     style={{ marginBottom: 20 }}
                   />
-                  <Pie {...pieConfig} data={roomCountData.map(item => ({
-                    type: item.type,
-                    value: item.count
-                  }))} />
+                  <Spin spinning={loading}>
+                    {roomCountData && roomCountData.length > 0 ? (
+                      renderPieChart(
+                        roomCountData.map(item => ({
+                          type: item.type,
+                          value: item.count
+                        })),
+                        'value',
+                        'type'
+                      )
+                    ) : (
+                      <Empty description="Veri yok" />
+                    )}
+                  </Spin>
                 </>
               ) : (
                 <Empty description="Henüz satılan daire bulunmamaktadır" />
@@ -766,7 +795,7 @@ const ProjectReports = () => {
                         title: 'Tutar', 
                         dataIndex: 'amount', 
                         key: 'amount',
-                        render: (amount) => `${amount.toLocaleString('tr-TR')} ₺`,
+                        render: (amount) => amount ? `${amount.toLocaleString('tr-TR')} ₺` : '0,00 ₺',
                         sorter: (a, b) => a.amount - b.amount
                       },
                       { 

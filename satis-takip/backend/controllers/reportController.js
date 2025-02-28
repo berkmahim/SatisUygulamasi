@@ -9,7 +9,7 @@ import asyncHandler from 'express-async-handler';
 // @access  Public
 const getSalesStatistics = async (req, res) => {
     try {
-        const sales = await Sale.find()
+        const sales = await Sale.find({ status: { $ne: 'cancelled' } })
             .populate({
                 path: 'blockId',
                 select: 'projectId',
@@ -59,7 +59,7 @@ const getSalesStatistics = async (req, res) => {
 // @access  Public
 const getMonthlySales = async (req, res) => {
     try {
-        const sales = await Sale.find().sort('createdAt');
+        const sales = await Sale.find({ status: { $ne: 'cancelled' } }).sort('createdAt');
         
         // Aylık satışları grupla
         const monthlySales = sales.reduce((acc, sale) => {
@@ -96,7 +96,7 @@ const getMonthlySales = async (req, res) => {
 // @access  Public
 const getPaymentStatusDistribution = async (req, res) => {
     try {
-        const sales = await Sale.find();
+        const sales = await Sale.find({ status: { $ne: 'cancelled' } });
         
         const distribution = sales.reduce((acc, sale) => {
             if (!acc[sale.paymentStatus]) {
@@ -130,7 +130,7 @@ const getProjectSalesDistribution = async (req, res) => {
         }, {});
 
         // Satışları al ve blok bilgilerini populate et
-        const sales = await Sale.find()
+        const sales = await Sale.find({ status: { $ne: 'cancelled' } })
             .populate({
                 path: 'blockId',
                 select: 'projectId',
@@ -176,7 +176,7 @@ const getProjectStats = async (req, res) => {
         const blockIds = blocks.map(block => block._id);
 
         // Projeye ait satışları al
-        const sales = await Sale.find({ blockId: { $in: blockIds } })
+        const sales = await Sale.find({ blockId: { $in: blockIds }, status: { $ne: 'cancelled' } })
             .populate('blockId', 'blockNumber projectId');
 
         // Genel istatistikler
@@ -264,7 +264,7 @@ const getUnitTypeDistribution = async (req, res) => {
         const blockIds = blocks.map(block => block._id);
 
         // Projeye ait satışları al
-        const sales = await Sale.find({ blockId: { $in: blockIds } })
+        const sales = await Sale.find({ blockId: { $in: blockIds }, status: { $ne: 'cancelled' } })
             .populate('blockId', 'type roomCount unitNumber');
 
         // Satılmış blokların ID'lerini set olarak tut
@@ -328,80 +328,129 @@ const getUnitTypeDistribution = async (req, res) => {
 // @access  Private
 const getProjectPayments = async (req, res) => {
     try {
-        const projectId = req.params.projectId;
+        const { projectId } = req.params;
         const { startDate, endDate } = req.query;
 
-        // Tarih aralığını kontrol et
-        if (!startDate || !endDate) {
-            return res.status(400).json({ message: 'Başlangıç ve bitiş tarihi gerekli' });
+        // Tarih aralığına göre filtrele
+        const dateFilter = {};
+        if (startDate && endDate) {
+            dateFilter.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
         }
 
-        // Proje bloklarını al
-        const blocks = await Block.find({ projectId });
-        const blockIds = blocks.map(block => block._id);
+        // Proje ID'sine göre ve aktif satışları filtrele (iptal edilenleri hariç tut)
+        const filter = { 
+            projectId: projectId,
+            status: { $ne: 'cancelled' } // İptal edilmiş satışları hariç tut
+        };
 
-        // Projeye ait satışları al
-        const sales = await Sale.find({ blockId: { $in: blockIds } })
-            .populate({
-                path: 'blockId',
-                select: 'blockNumber unitNumber type squareMeters roomCount'
-            })
-            .populate('customerId', 'firstName lastName');
+        // Satışları getir
+        const sales = await Sale.find(filter)
+            .populate('customerId', 'firstName lastName')
+            .populate('blockId', 'unitNumber');
 
-        // Alınan ödemeler
+        // Alınan ödemeler listesi oluştur
         const receivedPayments = [];
-        // Beklenen ödemeler
         const expectedPayments = [];
 
-        sales.forEach(sale => {
-            sale.payments.forEach(payment => {
-                const paymentDate = new Date(payment.dueDate);
-                if (paymentDate >= new Date(startDate) && paymentDate <= new Date(endDate)) {
-                    // Birim bilgisini zenginleştir
-                    const unitInfo = sale.blockId ? `${sale.blockId.unitNumber || sale.blockId.blockNumber || ''}` : '';
-                    const blockDetails = sale.blockId ? {
-                        blockNumber: sale.blockId.blockNumber,
-                        unitNumber: sale.blockId.unitNumber,
-                        type: sale.blockId.type,
-                        squareMeters: sale.blockId.squareMeters,
-                        roomCount: sale.blockId.roomCount
-                    } : {};
+        // Her satış için
+        for (const sale of sales) {
+            // Ödemeler içinde dön
+            for (const payment of sale.payments) {
+                const paymentData = {
+                    _id: payment._id,
+                    customerName: `${sale.customerId.firstName} ${sale.customerId.lastName}`,
+                    blockNumber: sale.blockId.unitNumber,
+                    description: payment.description,
+                    saleId: sale._id
+                };
 
-                    const paymentInfo = {
-                        customerName: `${sale.customerId.firstName} ${sale.customerId.lastName}`,
-                        blockNumber: sale.blockId.blockNumber,
-                        unitNumber: sale.blockId.unitNumber || '',
-                        blockInfo: unitInfo,
-                        blockDetails,
-                        amount: payment.amount,
-                        dueDate: payment.dueDate,
-                        status: payment.status
-                    };
+                // Ödeme kısmen veya tamamen yapıldıysa
+                if (payment.paidAmount > 0) {
+                    receivedPayments.push({
+                        ...paymentData,
+                        paidAmount: payment.paidAmount,
+                        paidDate: payment.paidDate,
+                        paymentMethod: payment.paymentMethod
+                    });
+                }
 
-                    if (payment.paidAmount > 0) {
-                        receivedPayments.push({
-                            ...paymentInfo,
-                            paidAmount: payment.paidAmount,
-                            paidDate: payment.paidDate
-                        });
-                    }
-
-                    if (payment.amount > (payment.paidAmount || 0)) {
+                // Ödeme tam yapılmadıysa
+                if (payment.status !== 'paid') {
+                    const amount = payment.amount - (payment.paidAmount || 0);
+                    if (amount > 0) {
                         expectedPayments.push({
-                            ...paymentInfo,
-                            remainingAmount: payment.amount - (payment.paidAmount || 0)
+                            ...paymentData,
+                            amount: amount,
+                            dueDate: payment.dueDate,
+                            status: payment.status
                         });
                     }
                 }
-            });
-        });
+            }
+        }
 
-        res.json({
-            receivedPayments: receivedPayments.sort((a, b) => new Date(b.paidDate) - new Date(a.paidDate)),
-            expectedPayments: expectedPayments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
-        });
+        res.json({ receivedPayments, expectedPayments });
     } catch (error) {
         console.error('Error getting project payments:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+// @desc    Get all payments
+// @route   GET /api/reports/payments
+// @access  Public
+const getAllPayments = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        // Tarih aralığına göre filtrele
+        const dateFilter = {};
+        if (startDate && endDate) {
+            dateFilter.createdAt = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+
+        // İptal edilen satışları hariç tut
+        const sales = await Sale.find({ 
+            ...dateFilter,
+            status: { $ne: 'cancelled' } // İptal edilmiş satışları hariç tut
+        })
+            .populate('customerId', 'firstName lastName')
+            .populate('blockId', 'unitNumber')
+            .populate('projectId', 'name');
+
+        // Alınan ödemeler listesi oluştur
+        const allPayments = [];
+
+        // Her satış için
+        for (const sale of sales) {
+            // Ödemeler içinde dön
+            for (const payment of sale.payments) {
+                // Ödeme kısmen veya tamamen yapıldıysa
+                if (payment.paidAmount > 0) {
+                    allPayments.push({
+                        _id: payment._id,
+                        customerName: `${sale.customerId.firstName} ${sale.customerId.lastName}`,
+                        blockNumber: sale.blockId.unitNumber,
+                        projectName: sale.projectId.name,
+                        description: payment.description,
+                        paidAmount: payment.paidAmount,
+                        paidDate: payment.paidDate,
+                        paymentMethod: payment.paymentMethod,
+                        saleId: sale._id
+                    });
+                }
+            }
+        }
+
+        res.json(allPayments);
+    } catch (error) {
+        console.error('Error getting all payments:', error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -423,7 +472,7 @@ const getGlobalUnitTypeDistribution = asyncHandler(async (req, res) => {
         }
         
         // Tüm projelerdeki satışları al
-        const sales = await Sale.find(query)
+        const sales = await Sale.find({ ...query, status: { $ne: 'cancelled' } })
             .populate({
                 path: 'blockId',
                 select: 'type roomCount unitNumber projectId',
@@ -481,7 +530,7 @@ const getGlobalMonthlySales = asyncHandler(async (req, res) => {
         }
         
         // Satışları al
-        const sales = await Sale.find(query);
+        const sales = await Sale.find({ ...query, status: { $ne: 'cancelled' } });
         
         // Aylık satış toplamlarını hesapla
         const monthlySalesTotals = {};
@@ -528,7 +577,7 @@ const getGlobalPaymentData = asyncHandler(async (req, res) => {
         const endDateObj = new Date(endDate);
         
         // Satışları al
-        const sales = await Sale.find({})
+        const sales = await Sale.find({ status: { $ne: 'cancelled' } })
             .populate({
                 path: 'blockId',
                 select: 'blockNumber unitNumber type squareMeters roomCount projectId',
@@ -623,6 +672,7 @@ export {
     getProjectStats,
     getUnitTypeDistribution,
     getProjectPayments,
+    getAllPayments,
     getGlobalUnitTypeDistribution,
     getGlobalMonthlySales,
     getGlobalPaymentData

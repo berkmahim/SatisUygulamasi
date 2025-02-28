@@ -9,7 +9,8 @@ import {
     cancelSaleAndRefund,
     getCancelledSales,
     getSalesByCustomerId,
-    getSalesByBlockId
+    getSalesByBlockId,
+    updateRefundStatus
 } from '../controllers/saleController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -34,6 +35,7 @@ router.get('/block/:blockId', getSalesByBlockId);
 router.get('/:id', getSaleById);
 router.put('/:id/payment-plan', updatePaymentPlan);
 router.post('/:id/cancel', cancelSaleAndRefund);
+router.put('/:id/update-refund', updateRefundStatus);
 router.delete('/:id', cancelSale);
 
 export default router;

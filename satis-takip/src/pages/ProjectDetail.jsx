@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
     Typography, Card, Table, Input, Select, Space, Button, Tag, Row, Col, 
-    Statistic, Spin, Alert, Modal, message 
+    Statistic, Spin, Alert, Modal, message, Checkbox, InputNumber, Form, DatePicker
 } from 'antd';
 import { 
     SearchOutlined, DollarOutlined, FileTextOutlined, 
@@ -20,12 +20,18 @@ const ProjectDetail = () => {
     const navigate = useNavigate();
     const [project, setProject] = useState(null);
     const [sales, setSales] = useState([]);
+    const [cancelledSales, setCancelledSales] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [selectedSale, setSelectedSale] = useState(null);
+    const [cancelLoading, setCancelLoading] = useState(false);
+    const [hasRefund, setHasRefund] = useState(false);
+    const [refundForm] = Form.useForm();
+    const [activeTabKey, setActiveTabKey] = useState('active');
+    const [loadingCancelled, setLoadingCancelled] = useState(false);
 
     useEffect(() => {
         fetchProjectDetails();
@@ -38,7 +44,7 @@ const ProjectDetail = () => {
 
             const [projectResponse, salesResponse] = await Promise.all([
                 axios.get(`/api/projects/${id}`),
-                axios.get(`/api/sales/project/${id}`)
+                axios.get(`/api/sales/project/${id}?status=active`)
             ]);
 
             setProject(projectResponse.data);
@@ -51,6 +57,25 @@ const ProjectDetail = () => {
         }
     };
 
+    // İptal edilmiş satışları getir
+    const fetchCancelledSales = async () => {
+        try {
+            setLoadingCancelled(true);
+            const response = await axios.get(`/api/sales/project/${id}?status=cancelled`);
+            setCancelledSales(Array.isArray(response.data) ? response.data : []);
+        } catch (error) {
+            message.error('İptal edilmiş satışlar yüklenirken bir hata oluştu');
+        } finally {
+            setLoadingCancelled(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTabKey === 'cancelled') {
+            fetchCancelledSales();
+        }
+    }, [activeTabKey, id]);
+
     const handlePaymentClick = (saleId) => {
         navigate(`/sales/${saleId}/payments`);
     };
@@ -58,6 +83,61 @@ const ProjectDetail = () => {
     const handleCancelSale = (sale) => {
         setSelectedSale(sale);
         setShowCancelModal(true);
+        setHasRefund(false);
+        
+        // Müşterinin toplam ödediği tutarı hesapla
+        const totalPaidAmount = calculateTotalPaidAmount(sale);
+        
+        // Form alanlarını sıfırla ve iade miktarını ödenen tutar olarak ayarla
+        refundForm.resetFields();
+        refundForm.setFieldsValue({
+            refundAmount: totalPaidAmount,
+            refundDate: null,
+            refundReason: ''
+        });
+    };
+    
+    // Müşterinin toplam ödediği tutarı hesaplayan yardımcı fonksiyon
+    const calculateTotalPaidAmount = (sale) => {
+        if (!sale || !sale.payments) return 0;
+        
+        return sale.payments.reduce((total, payment) => {
+            return total + (payment.paidAmount || 0);
+        }, 0);
+    };
+
+    const processCancelSale = async () => {
+        try {
+            setCancelLoading(true);
+            
+            let values = {};
+            if (hasRefund) {
+                // Eğer iade varsa form değerlerini al
+                values = await refundForm.validateFields();
+            }
+            
+            const payload = {
+                hasRefund: hasRefund,
+                ...values
+            };
+            
+            const response = await axios.post(`/api/sales/${selectedSale._id}/cancel`, payload);
+            
+            // İptal edilen satışı listeden kaldır
+            setSales(sales.filter(sale => sale._id !== selectedSale._id));
+            
+            message.success('Satış başarıyla iptal edildi');
+            
+            // Blok durumunu güncellenmiş olarak göstermek için projeyi yeniden yükle
+            fetchProjectDetails();
+            
+            setShowCancelModal(false);
+        } catch (error) {
+            console.error('Satış iptal hatası:', error);
+            message.error(error.response?.data?.message || 'Satış iptal edilirken bir hata oluştu');
+        } finally {
+            setCancelLoading(false);
+        }
     };
 
     const getPaymentStatusTag = (status) => {
@@ -132,6 +212,93 @@ const ProjectDetail = () => {
         },
     ];
 
+    // İptal edilmiş satışlar için sütunlar
+    const cancelledColumns = [
+        {
+            title: 'Blok/Daire',
+            dataIndex: ['blockId', 'unitNumber'],
+            key: 'unitNumber',
+            sorter: (a, b) => a.blockId.unitNumber.localeCompare(b.blockId.unitNumber),
+        },
+        {
+            title: 'Müşteri',
+            dataIndex: ['customerId'],
+            key: 'customer',
+            render: (customer) => `${customer.firstName} ${customer.lastName}`,
+            sorter: (a, b) => a.customerId.firstName.localeCompare(b.customerId.firstName),
+        },
+        {
+            title: 'İptal Tarihi',
+            dataIndex: ['cancellationDetails', 'cancelledAt'],
+            key: 'cancelledAt',
+            render: (date) => new Date(date).toLocaleDateString('tr-TR'),
+            sorter: (a, b) => new Date(a.cancellationDetails.cancelledAt) - new Date(b.cancellationDetails.cancelledAt),
+        },
+        {
+            title: 'İade Durumu',
+            key: 'refundStatus',
+            render: (_, record) => (
+                <Tag color={record.cancellationDetails.hasRefund ? 'green' : 'orange'}>
+                    {record.cancellationDetails.hasRefund ? 'İade Edildi' : 'İade Edilmedi'}
+                </Tag>
+            ),
+            filters: [
+                { text: 'İade Edildi', value: true },
+                { text: 'İade Edilmedi', value: false },
+            ],
+            onFilter: (value, record) => record.cancellationDetails.hasRefund === value,
+        },
+        {
+            title: 'İade Tutarı',
+            dataIndex: ['cancellationDetails', 'refundAmount'],
+            key: 'refundAmount',
+            render: (amount) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount || 0),
+        },
+        {
+            title: 'İptal Nedeni',
+            dataIndex: ['cancellationDetails', 'reason'],
+            key: 'reason',
+        },
+        {
+            title: 'İşlemler',
+            key: 'actions',
+            render: (_, record) => (
+                <Space>
+                    <Button 
+                        type={record.cancellationDetails.hasRefund ? "default" : "primary"}
+                        onClick={() => handleUpdateRefundStatus(record)}
+                        disabled={record.cancellationDetails.hasRefund}
+                    >
+                        {record.cancellationDetails.hasRefund ? 'İade Edildi' : 'İade Durumunu Güncelle'}
+                    </Button>
+                </Space>
+            ),
+        },
+    ];
+
+    // İade durumunu güncelleme
+    const handleUpdateRefundStatus = async (sale) => {
+        Modal.confirm({
+            title: 'İade Durumunu Güncelle',
+            content: 'Bu satış için iade yapıldığını onaylıyor musunuz?',
+            okText: 'Evet, İade Yapıldı',
+            cancelText: 'İptal',
+            onOk: async () => {
+                try {
+                    await axios.put(`/api/sales/${sale._id}/update-refund`, {
+                        hasRefund: true,
+                        refundDate: new Date()
+                    });
+                    
+                    message.success('İade durumu güncellendi');
+                    fetchCancelledSales();
+                } catch (error) {
+                    message.error('İade durumu güncellenirken bir hata oluştu');
+                }
+            },
+        });
+    };
+
     if (loading) {
         return (
             <div style={{ textAlign: 'center', padding: '50px' }}>
@@ -175,37 +342,63 @@ const ProjectDetail = () => {
                 </Col>
 
                 <Col span={24}>
-                    <Card title="Satışlar">
-                        <Space style={{ marginBottom: 16 }} size="middle">
-                            <Search
-                                placeholder="Ara..."
-                                allowClear
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                style={{ width: 200 }}
-                            />
-                            <Link to={`/projects/${id}/building`}>
-                                <Button type="primary" icon={<BoxPlotOutlined />}>
-                                    3D Görünüm
-                                </Button>
-                            </Link>
-                        </Space>
+                    <Card
+                        title="Satışlar"
+                        tabList={[
+                            {
+                                key: 'active',
+                                tab: 'Aktif Satışlar',
+                            },
+                            {
+                                key: 'cancelled',
+                                tab: 'İptal Edilen Satışlar',
+                            },
+                        ]}
+                        activeTabKey={activeTabKey}
+                        onTabChange={setActiveTabKey}
+                    >
+                        {activeTabKey === 'active' && (
+                            <>
+                                <Space style={{ marginBottom: 16 }} size="middle">
+                                    <Search
+                                        placeholder="Ara..."
+                                        allowClear
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        style={{ width: 200 }}
+                                    />
+                                    <Link to={`/projects/${id}/building`}>
+                                        <Button type="primary" icon={<BoxPlotOutlined />}>
+                                            3D Görünüm
+                                        </Button>
+                                    </Link>
+                                </Space>
 
-                        <Table
-                            columns={columns}
-                            dataSource={sales.filter(sale => {
-                                const searchLower = searchTerm.toLowerCase();
-                                const customerName = `${sale.customerId.firstName} ${sale.customerId.lastName}`.toLowerCase();
-                                const unitInfo = sale.blockId.unitNumber.toLowerCase();
-                                
-                                return customerName.includes(searchLower) || 
-                                       unitInfo.includes(searchLower);
-                            })}
-                            rowKey="_id"
-                            pagination={{ pageSize: 10 }}
-                            onChange={(pagination, filters, sorter) => {
-                                console.log('Table params:', { pagination, filters, sorter });
-                            }}
-                        />
+                                <Table
+                                    columns={columns}
+                                    dataSource={sales.filter(sale => {
+                                        const searchLower = searchTerm.toLowerCase();
+                                        const customerName = `${sale.customerId.firstName} ${sale.customerId.lastName}`.toLowerCase();
+                                        const unitInfo = sale.blockId.unitNumber.toLowerCase();
+                                        
+                                        return customerName.includes(searchLower) || 
+                                              unitInfo.includes(searchLower);
+                                    })}
+                                    rowKey="_id"
+                                    pagination={{ pageSize: 10 }}
+                                    loading={loading}
+                                />
+                            </>
+                        )}
+
+                        {activeTabKey === 'cancelled' && (
+                            <Table
+                                columns={cancelledColumns}
+                                dataSource={cancelledSales}
+                                rowKey="_id"
+                                pagination={{ pageSize: 10 }}
+                                loading={loadingCancelled}
+                            />
+                        )}
                     </Card>
                 </Col>
             </Row>
@@ -216,21 +409,105 @@ const ProjectDetail = () => {
                 onCancel={() => setShowCancelModal(false)}
                 footer={[
                     <Button key="back" onClick={() => setShowCancelModal(false)}>
-                        İptal
+                        Vazgeç
                     </Button>,
-                    <Button key="submit" type="primary" danger onClick={() => {
-                        // Satış iptal işlemi
-                        setShowCancelModal(false);
-                    }}>
+                    <Button 
+                        key="submit" 
+                        type="primary" 
+                        danger 
+                        loading={cancelLoading}
+                        onClick={processCancelSale}
+                    >
                         Satışı İptal Et
                     </Button>,
                 ]}
             >
-                <p>Bu satışı iptal etmek istediğinizden emin misiniz?</p>
                 {selectedSale && (
                     <div>
-                        <p>Blok/Daire: {selectedSale.block.unitNumber}</p>
-                        <p>Müşteri: {selectedSale.customer.firstName} {selectedSale.customer.lastName}</p>
+                        <p>Bu satışı iptal etmek istediğinizden emin misiniz?</p>
+                        <div style={{ marginBottom: 16 }}>
+                            <p><strong>Blok/Daire:</strong> {selectedSale.blockId.unitNumber}</p>
+                            <p><strong>Müşteri:</strong> {selectedSale.customerId.firstName} {selectedSale.customerId.lastName}</p>
+                            <p><strong>Toplam Tutar:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(selectedSale.totalAmount)}</p>
+                        </div>
+                        
+                        <Checkbox 
+                            checked={hasRefund} 
+                            onChange={(e) => {
+                                setHasRefund(e.target.checked);
+                                
+                                // Eğer checkbox seçiliyse, ödenen tutarı form alanına doldur
+                                if (e.target.checked && selectedSale) {
+                                    const totalPaidAmount = calculateTotalPaidAmount(selectedSale);
+                                    refundForm.setFieldsValue({
+                                        refundAmount: totalPaidAmount
+                                    });
+                                }
+                            }}
+                            style={{ marginBottom: 16 }}
+                        >
+                            Müşteriye geri ödeme yapılacak
+                        </Checkbox>
+                        
+                        {hasRefund && (
+                            <Form 
+                                form={refundForm}
+                                layout="vertical"
+                                initialValues={{
+                                    refundDate: null,
+                                    refundAmount: 0,
+                                    refundReason: ''
+                                }}
+                            >
+                                <Form.Item
+                                    name="refundAmount"
+                                    label="İade Miktarı (₺)"
+                                    rules={[
+                                        { required: true, message: 'Lütfen iade miktarını giriniz' },
+                                        { 
+                                            validator: (_, value) => {
+                                                const totalPaidAmount = calculateTotalPaidAmount(selectedSale);
+                                                if (value > totalPaidAmount) {
+                                                    return Promise.reject(`İade miktarı ödenen toplam tutardan (${new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalPaidAmount)}) fazla olamaz`);
+                                                }
+                                                return Promise.resolve();
+                                            }
+                                        }
+                                    ]}
+                                >
+                                    <InputNumber 
+                                        min={0} 
+                                        max={selectedSale.totalAmount}
+                                        style={{ width: '100%' }} 
+                                        formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}
+                                        parser={value => value.replace(/\$\s?|(\.*)/g, '')}
+                                    />
+                                </Form.Item>
+                                
+                                <Form.Item
+                                    name="refundDate"
+                                    label="İade Tarihi"
+                                    rules={[{ required: true, message: 'Lütfen iade tarihini giriniz' }]}
+                                >
+                                    <DatePicker style={{ width: '100%' }} format="DD.MM.YYYY" />
+                                </Form.Item>
+                                
+                                <Form.Item
+                                    name="refundReason"
+                                    label="İptal Nedeni"
+                                    rules={[{ required: true, message: 'Lütfen iptal nedenini giriniz' }]}
+                                >
+                                    <Input.TextArea rows={3} />
+                                </Form.Item>
+                            </Form>
+                        )}
+                        
+                        <Alert 
+                            type="warning" 
+                            message="Uyarı" 
+                            description="Satış iptal edildiğinde ilgili birim tekrar satılabilir duruma geçecektir. Bu işlem geri alınamaz." 
+                            showIcon
+                        />
                     </div>
                 )}
             </Modal>

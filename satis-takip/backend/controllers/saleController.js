@@ -207,8 +207,101 @@ const cancelSale = asyncHandler(async (req, res) => {
 
 // @desc    Cancel a sale and process refund
 // @route   POST /api/sales/:id/cancel
-// @access  Public
+// @access  Private/Admin
 const cancelSaleAndRefund = asyncHandler(async (req, res) => {
+    try {
+        const sale = await Sale.findById(req.params.id);
+
+        if (!sale) {
+            res.status(404);
+            throw new Error('Satış bulunamadı');
+        }
+
+        // Satış zaten iptal edilmişse hata fırlat
+        if (sale.status === 'cancelled') {
+            res.status(400);
+            throw new Error('Bu satış zaten iptal edilmiş');
+        }
+
+        // İptal bilgilerini al
+        const { hasRefund, refundAmount, refundDate, refundReason } = req.body;
+
+        // İade gerekiyorsa doğrulama kontrolleri yap
+        if (hasRefund) {
+            if (!refundAmount || !refundDate || !refundReason) {
+                res.status(400);
+                throw new Error('İade için miktar, tarih ve neden zorunludur');
+            }
+
+            // Toplam ödenen miktarı hesapla
+            let totalPaid = 0;
+            sale.payments.forEach(payment => {
+                if (payment.paidAmount) {
+                    totalPaid += payment.paidAmount;
+                }
+            });
+
+            // İade miktarı, toplam ödenen miktardan fazla olamaz
+            if (refundAmount > totalPaid) {
+                res.status(400);
+                throw new Error(`İade miktarı toplam ödenen tutardan (${totalPaid} TL) fazla olamaz`);
+            }
+        }
+
+        // Toplam ödenen miktarı hesapla (bu değer daha önce hesaplanmışsa tekrar hesaplamaya gerek yok)
+        let totalPaid = 0;
+        if (!hasRefund) {
+            sale.payments.forEach(payment => {
+                if (payment.paidAmount) {
+                    totalPaid += payment.paidAmount;
+                }
+            });
+        }
+
+        // İade işlemi
+        if (hasRefund && refundAmount > 0) {
+            console.log(`${refundAmount} TL iade işlemi yapılıyor...`);
+            // İade işlemi burada gerçekleşir
+            // Ödeme sistemi entegrasyonu burada yapılabilir
+        }
+
+        // Birim durumunu "available" olarak güncelle
+        await Block.findByIdAndUpdate(sale.blockId, { status: 'available', owner: null, saleId: null });
+
+        // Satış durumunu "cancelled" olarak güncelle
+        sale.status = 'cancelled';
+        
+        // İptal detaylarını ayarla
+        sale.cancellationDetails = {
+            cancelledAt: new Date(),
+            reason: refundReason || 'İptal nedeni belirtilmedi',
+            refundAmount: hasRefund ? refundAmount : 0,
+            refundDate: hasRefund ? new Date(refundDate) : null,
+            hasRefund: hasRefund
+        };
+
+        // Kaydı güncelle
+        await sale.save();
+
+        res.status(200).json({
+            message: 'Satış başarıyla iptal edildi',
+            sale: {
+                _id: sale._id,
+                status: sale.status,
+                cancellationDetails: sale.cancellationDetails
+            }
+        });
+
+    } catch (error) {
+        res.status(res.statusCode === 200 ? 500 : res.statusCode);
+        throw new Error(error.message || 'Satış iptal işlemi sırasında bir hata oluştu');
+    }
+});
+
+// @desc    Cancel sale (LEGACY - Use cancelSaleAndRefund instead)
+// @route   DELETE /api/sales/:id
+// @access  Public
+const cancelSaleLegacy = asyncHandler(async (req, res) => {
     try {
         const sale = await Sale.findById(req.params.id);
         if (!sale) {
@@ -284,14 +377,22 @@ const getSales = asyncHandler(async (req, res) => {
 // @access  Public
 const getCancelledSales = asyncHandler(async (req, res) => {
     try {
-        const cancelledSales = await Sale.find({ status: 'cancelled' })
-            .populate('block', 'blockNumber projectId')
-            .populate('customer', 'firstName lastName');
+        const { projectId } = req.query;
+        const filter = { status: 'cancelled' };
+        
+        if (projectId) {
+            filter.projectId = projectId;
+        }
+        
+        const cancelledSales = await Sale.find(filter)
+            .populate('blockId', 'unitNumber type projectId')
+            .populate('customerId', 'firstName lastName tcNo phone')
+            .sort('-cancellationDetails.cancelledAt');
 
         res.json(cancelledSales);
     } catch (error) {
         console.error('Error getting cancelled sales:', error);
-        res.status(500).json({ message: 'Cancelled sales could not be retrieved' });
+        res.status(500).json({ message: 'İptal edilmiş satışlar getirilemedi' });
     }
 });
 
@@ -300,14 +401,22 @@ const getCancelledSales = asyncHandler(async (req, res) => {
 // @access  Private
 const getSalesByProject = asyncHandler(async (req, res) => {
     try {
-        const sales = await Sale.find({ projectId: req.params.projectId })
+        const { status } = req.query;
+        
+        const filter = { projectId: req.params.projectId };
+        if (status) {
+            filter.status = status;
+        }
+        
+        const sales = await Sale.find(filter)
             .populate('blockId', 'unitNumber type')
             .populate('customerId', 'firstName lastName tcNo phone')
             .sort('-createdAt');
 
         res.json(sales);
     } catch (error) {
-        res.status(500).json({ message: 'Sunucu hatası' });
+        console.error('Error getting sales by project:', error);
+        res.status(500).json({ message: 'Proje satışları getirilemedi' });
     }
 });
 
@@ -343,16 +452,75 @@ const getSalesByBlockId = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Update refund status
+// @route   PUT /api/sales/:id/update-refund
+// @access  Private/Admin
+const updateRefundStatus = asyncHandler(async (req, res) => {
+    try {
+        const sale = await Sale.findById(req.params.id);
+
+        if (!sale) {
+            res.status(404);
+            throw new Error('Satış bulunamadı');
+        }
+
+        // Satışın iptal edilmiş olduğunu kontrol et
+        if (sale.status !== 'cancelled') {
+            res.status(400);
+            throw new Error('Sadece iptal edilmiş satışlar için iade durumu güncellenebilir');
+        }
+
+        const { hasRefund, refundDate, refundAmount } = req.body;
+
+        // İade durumunu güncelle
+        if (sale.cancellationDetails) {
+            sale.cancellationDetails.hasRefund = hasRefund || false;
+            
+            if (refundDate) {
+                sale.cancellationDetails.refundDate = new Date(refundDate);
+            }
+            
+            if (refundAmount !== undefined) {
+                sale.cancellationDetails.refundAmount = refundAmount;
+            }
+        } else {
+            sale.cancellationDetails = {
+                cancelledAt: sale.updatedAt,
+                hasRefund: hasRefund || false,
+                refundDate: refundDate ? new Date(refundDate) : null,
+                refundAmount: refundAmount || 0,
+                reason: 'İade durumu güncellendi'
+            };
+        }
+
+        // Kaydı güncelle
+        await sale.save();
+
+        res.status(200).json({
+            message: 'İade durumu başarıyla güncellendi',
+            sale: {
+                _id: sale._id,
+                status: sale.status,
+                cancellationDetails: sale.cancellationDetails
+            }
+        });
+
+    } catch (error) {
+        res.status(res.statusCode === 200 ? 500 : res.statusCode);
+        throw new Error(error.message || 'İade durumu güncellenirken bir hata oluştu');
+    }
+});
+
 export {
     createSale,
     getSaleById,
     updatePaymentPlan,
-    recordPayment,
-    cancelSale,
     getSales,
     getSalesByProject,
+    cancelSale,
     cancelSaleAndRefund,
     getCancelledSales,
     getSalesByCustomerId,
-    getSalesByBlockId
+    getSalesByBlockId,
+    updateRefundStatus
 };

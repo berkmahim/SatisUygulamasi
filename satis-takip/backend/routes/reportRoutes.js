@@ -7,6 +7,7 @@ import {
     getProjectStats,
     getUnitTypeDistribution,
     getProjectPayments,
+    getAllPayments,
     getGlobalUnitTypeDistribution,
     getGlobalMonthlySales,
     getGlobalPaymentData
@@ -29,6 +30,9 @@ router.get('/projects/:projectId/payments', protect, getProjectPayments);
 // Global raporlar - Tüm projelerin ortak verileri
 router.get('/global/unit-types', protect, getGlobalUnitTypeDistribution);
 router.get('/global/monthly-sales', protect, getGlobalMonthlySales);
-router.get('/global/payments', protect, getGlobalPaymentData);
+router.get('/global/payment-data', protect, getGlobalPaymentData);
+
+// Payments
+router.get('/payments', getAllPayments);
 
 export default router;

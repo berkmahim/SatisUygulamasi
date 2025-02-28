@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { 
     Row, Col, Card, Table, Button, Form, Input, 
     Select, message, Tag, Modal, Space, Drawer, Typography,
-    Spin, Alert, Statistic 
+    Spin, Alert, Statistic, InputNumber, Avatar, Divider
 } from 'antd';
 import { 
     DollarOutlined, CalendarOutlined, 
@@ -39,11 +39,6 @@ const getPaymentStatusColor = (status) => {
         overpaid: '#52c41a'
     };
     return statusColors[status] || '#faad14';
-};
-
-const formatCurrency = (amount) => {
-    if (!amount && amount !== 0) return '0';
-    return amount.toLocaleString('tr-TR');
 };
 
 const PaymentTracking = () => {
@@ -96,33 +91,41 @@ const PaymentTracking = () => {
         }
     };
 
-    const formatCurrency = (value) => {
-        if (!value && value !== 0) return '';
+    const handlePaymentSubmit = async (values) => {
+        if (!selectedPayment) return;
 
-        // Convert to string and handle decimal places
-        let numStr = typeof value === 'number' ? value.toString() : value;
-        
-        // Remove existing formatting
-        numStr = numStr.replace(/[^\d,]/g, '');
-        
-        // Split by comma and take only first two parts
-        const parts = numStr.split(',');
-        let integerPart = parts[0];
-        let decimalPart = parts[1] || '';
+        try {
+            // paidAmount artık doğrudan sayısal değer olarak gelecek
+            const paidAmount = values.paidAmount;
+            
+            if (isNaN(paidAmount) || paidAmount <= 0) {
+                message.error('Geçerli bir tutar giriniz');
+                return;
+            }
 
-        // Add thousand separators to integer part
-        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        
-        // Limit decimal places to 2
-        decimalPart = decimalPart.slice(0, 2);
-        
-        // Combine parts
-        return `${integerPart}${decimalPart ? ',' + decimalPart : ''}`;
-    };
+            // Taksit tutarını kontrol et
+            const remainingAmount = selectedPayment.amount - (selectedPayment.paidAmount || 0);
+            if (paidAmount > remainingAmount) {
+                message.error('Kalan tutardan fazla ödeme yapılamaz');
+                return;
+            }
 
-    const handleAmountChange = (e) => {
-        const formattedValue = formatCurrency(e.target.value);
-        form.setFieldsValue({ paidAmount: formattedValue });
+            await axios.post(`/api/payments/${saleId}`, {
+                paymentId: selectedPayment.id,
+                paidAmount: paidAmount,
+                paymentMethod: values.paymentMethod,
+                notes: values.notes || undefined,
+                paidDate: new Date()
+            });
+            
+            message.success('Ödeme başarıyla kaydedildi');
+            setReceiptVisible(true); // Ödeme makbuzunu göster
+            form.resetFields();
+            setSelectedPayment(null);
+            fetchPaymentDetails();
+        } catch (error) {
+            message.error(error.response?.data?.message || 'Ödeme kaydedilirken bir hata oluştu');
+        }
     };
 
     const calculatePaymentStatus = (payment) => {
@@ -156,51 +159,8 @@ const PaymentTracking = () => {
         return <Tag color={config.color} icon={config.icon}>{config.text}</Tag>;
     };
 
-    const handlePaymentSubmit = async (values) => {
-        if (!selectedPayment) return;
-
-        try {
-            // Convert formatted number to decimal
-            const numStr = values.paidAmount.replace(/\./g, '').replace(',', '.');
-            const paidAmount = parseFloat(numStr);
-
-            if (isNaN(paidAmount)) {
-                message.error('Geçerli bir tutar giriniz');
-                return;
-            }
-
-            if (paidAmount <= 0) {
-                message.error('Ödeme tutarı 0\'dan büyük olmalıdır');
-                return;
-            }
-
-            // Taksit tutarını kontrol et
-            const remainingAmount = selectedPayment.amount - (selectedPayment.paidAmount || 0);
-            if (paidAmount > remainingAmount) {
-                message.error('Kalan tutardan fazla ödeme yapılamaz');
-                return;
-            }
-
-            await axios.post(`/api/payments/${saleId}`, {
-                paymentId: selectedPayment.id,
-                paidAmount: paidAmount,
-                paymentMethod: values.paymentMethod,
-                notes: values.notes || undefined,
-                paidDate: new Date()
-            });
-            
-            message.success('Ödeme başarıyla kaydedildi');
-            setReceiptVisible(true); // Ödeme makbuzunu göster
-            form.resetFields();
-            setSelectedPayment(null);
-            fetchPaymentDetails();
-        } catch (error) {
-            message.error(error.response?.data?.message || 'Ödeme kaydedilirken bir hata oluştu');
-        }
-    };
-
     const formatAmount = (amount) => {
-        if (amount === undefined || amount === null) return '0,000 TL';
+        if (amount === undefined || amount === null) return '0,00 ₺';
         return new Intl.NumberFormat('tr-TR', {
             style: 'currency',
             currency: 'TRY',
@@ -272,9 +232,8 @@ const PaymentTracking = () => {
                                 onClick={() => {
                                     setSelectedPayment(record);
                                     const remaining = record.amount - (record.paidAmount || 0);
-                                    const formattedAmount = formatCurrency(remaining.toString().replace('.', ','));
                                     form.setFieldsValue({
-                                        paidAmount: formattedAmount,
+                                        paidAmount: remaining,
                                         paymentMethod: 'cash',
                                         notes: ''
                                     });
@@ -370,8 +329,8 @@ const PaymentTracking = () => {
                         <Col xs={24} sm={12} md={8}>
                             <Statistic
                                 title="Toplam Tutar"
-                                value={formatCurrency(paymentDetails?.totalAmount)}
-                                prefix="₺"
+                                value={saleDetails?.totalAmount || 0}
+                                formatter={(value) => formatAmount(value)}
                                 valueStyle={{ fontSize: '16px', color: '#1890ff' }}
                             />
                         </Col>
@@ -380,16 +339,16 @@ const PaymentTracking = () => {
                         <Col xs={24} sm={12} md={8} lg={6}>
                             <Statistic
                                 title="Ödenen Tutar"
-                                value={formatCurrency(paymentDetails?.totalPaidAmount)}
-                                prefix="₺"
+                                value={paymentDetails?.totalPaidAmount || 0}
+                                formatter={(value) => formatAmount(value)}
                                 valueStyle={{ fontSize: '16px', color: '#52c41a' }}
                             />
                         </Col>
                         <Col xs={24} sm={12} md={8} lg={6}>
                             <Statistic
                                 title="Kalan Tutar"
-                                value={formatCurrency(paymentDetails?.remainingAmount)}
-                                prefix="₺"
+                                value={paymentDetails?.remainingAmount || 0}
+                                formatter={(value) => formatAmount(value)}
                                 valueStyle={{ 
                                     fontSize: '16px', 
                                     color: paymentDetails?.remainingAmount > 0 ? '#f5222d' : '#52c41a'
@@ -477,27 +436,25 @@ const PaymentTracking = () => {
                                     name="paidAmount"
                                     label="Ödeme Tutarı"
                                     rules={[
-                                        { required: true, message: 'Lütfen ödeme tutarını giriniz' },
-                                        {
-                                            validator: (_, value) => {
-                                                if (!value) return Promise.resolve();
-                                                
-                                                const numStr = value.replace(/\./g, '').replace(',', '.');
-                                                const amount = parseFloat(numStr);
-
-                                                if (isNaN(amount) || amount <= 0) {
-                                                    return Promise.reject('Geçerli bir tutar giriniz');
-                                                }
-                                                if (amount > selectedPayment.remainingAmount) {
-                                                    return Promise.reject('Kalan tutardan fazla ödeme yapılamaz');
-                                                }
-                                                return Promise.resolve();
-                                            }
-                                        }
+                                        { required: true, message: 'Lütfen ödeme tutarını giriniz' }
                                     ]}
                                 >
-                                    <Input
-                                        onChange={handleAmountChange}
+                                    <InputNumber
+                                        style={{ width: '100%' }}
+                                        min={0.01}
+                                        max={selectedPayment ? (selectedPayment.amount - (selectedPayment.paidAmount || 0)) : 999999999}
+                                        precision={2}
+                                        formatter={(value) => {
+                                            return value ? `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
+                                        }}
+                                        parser={(value) => {
+                                            if (!value) return '';
+                                            // Binlik ayırıcı noktaları kaldır
+                                            let parsed = value.replace(/\./g, '');
+                                            // Ondalık ayırıcı virgülü, JavaScript'in anlayacağı noktaya çevir
+                                            parsed = parsed.replace(',', '.');
+                                            return parsed;
+                                        }}
                                         placeholder="0,00"
                                         suffix="₺"
                                     />

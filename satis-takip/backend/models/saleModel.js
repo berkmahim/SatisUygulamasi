@@ -114,6 +114,25 @@ const saleSchema = new mongoose.Schema({
         enum: ['not_started', 'in_progress', 'completed', 'overdue', 'pending', 'partial', 'paid'],
         default: 'not_started'
     },
+    cancellationDetails: {
+        cancelledAt: {
+            type: Date
+        },
+        reason: {
+            type: String
+        },
+        refundAmount: {
+            type: Number,
+            default: 0
+        },
+        refundDate: {
+            type: Date
+        },
+        hasRefund: {
+            type: Boolean,
+            default: false
+        }
+    },
     lastPaymentDate: {
         type: Date
     },

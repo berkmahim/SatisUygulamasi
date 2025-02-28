@@ -45,6 +45,11 @@ const ProjectReports = () => {
     try {
       if (!dateRange || !dateRange[0] || !dateRange[1]) return;
       
+      console.log('Ödeme verileri alınıyor...', {
+        startDate: dateRange[0].format('YYYY-MM-DD'),
+        endDate: dateRange[1].format('YYYY-MM-DD')
+      });
+      
       const { data } = await axios.get(`/api/reports/projects/${projectId}/payments`, {
         params: {
           startDate: dateRange[0].format('YYYY-MM-DD'),
@@ -52,6 +57,7 @@ const ProjectReports = () => {
         }
       });
       
+      console.log('Alınan ödeme verileri:', data);
       setPayments(data);
       
       // Bekleyen ve gecikmiş ödemeleri ayır
@@ -99,8 +105,12 @@ const ProjectReports = () => {
     fetchData();
   }, [projectId]);
 
+  // Tarih aralığı değiştiğinde ödemeleri yeniden getir
   useEffect(() => {
-    fetchPayments();
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      console.log('Tarih aralığı değişti, ödemeler yeniden alınıyor');
+      fetchPayments();
+    }
   }, [dateRange]);
   
   // Beklenen ödemeleri tarih aralığına göre filtrele
@@ -135,6 +145,7 @@ const ProjectReports = () => {
       return true;
     });
     
+    console.log('Filtrelenmiş beklenen ödemeler:', filtered);
     setFilteredExpectedPayments(filtered);
   }, [expectedPaymentDateRange, payments.expectedPayments]);
 
@@ -522,7 +533,11 @@ const ProjectReports = () => {
                 <RangePicker 
                   locale={locale}
                   value={dateRange}
-                  onChange={setDateRange}
+                  onChange={(dates) => {
+                    console.log('Ana tarih filtresi değişti:', dates);
+                    setDateRange(dates);
+                  }}
+                  format="DD.MM.YYYY"
                 />
               }
             >
@@ -589,7 +604,10 @@ const ProjectReports = () => {
                     <RangePicker
                       locale={locale}
                       value={expectedPaymentDateRange}
-                      onChange={setExpectedPaymentDateRange}
+                      onChange={(dates) => {
+                        console.log('Beklenen ödemeler için tarih filtresi değişti:', dates);
+                        setExpectedPaymentDateRange(dates);
+                      }}
                       placeholder={['Vade başlangıç', 'Vade bitiş']}
                       format="DD.MM.YYYY"
                     />
@@ -600,7 +618,7 @@ const ProjectReports = () => {
                     rowKey={(record) => `expected-${record._id || `${record.customerName}-${record.dueDate}-${record.amount}`}`}
                   />
                 </Col>
-                
+
                 <Col span={24}>
                   <Title level={4} style={{ color: '#ff4d4f', display: 'inline-block', marginRight: '16px' }}>Gecikmiş Ödemeler</Title>
                   <Space>

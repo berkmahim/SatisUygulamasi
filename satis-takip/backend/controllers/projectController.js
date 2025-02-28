@@ -1,5 +1,8 @@
 import asyncHandler from 'express-async-handler';
 import Project from '../models/projectModel.js';
+import Block from '../models/blockModel.js';
+import Sale from '../models/saleModel.js';
+import Customer from '../models/customerModel.js';
 
 // @desc    Get all projects
 // @route   GET /api/projects
@@ -67,14 +70,37 @@ export const updateProject = asyncHandler(async (req, res) => {
 // @route   DELETE /api/projects/:id
 // @access  Public
 export const deleteProject = asyncHandler(async (req, res) => {
-    const project = await Project.findById(req.params.id);
+    try {
+        const projectId = req.params.id;
+        const project = await Project.findById(projectId);
 
-    if (!project) {
-        res.status(404);
-        throw new Error('Proje bulunamadı');
+        if (!project) {
+            res.status(404);
+            throw new Error('Proje bulunamadı');
+        }
+
+        // 1. Bu projeye ait tüm blokları bul
+        const blocks = await Block.find({ projectId });
+        const blockIds = blocks.map(block => block._id);
+
+        // 2. Bu bloklara ait tüm satışları bul ve sil
+        await Sale.deleteMany({ blockId: { $in: blockIds } });
+        console.log(`Silinen satış sayısı: ${await Sale.countDocuments({ blockId: { $in: blockIds } })}`);
+
+        // 3. Blokları sil
+        await Block.deleteMany({ projectId });
+        console.log(`Silinen blok sayısı: ${blocks.length}`);
+
+        // 4. Projeyi sil
+        await project.deleteOne();
+
+        res.status(200).json({ 
+            id: projectId,
+            message: `Proje ve ilişkili ${blocks.length} blok başarıyla silindi.` 
+        });
+    } catch (error) {
+        console.error('Proje silme hatası:', error);
+        res.status(500);
+        throw new Error(`Proje silinirken bir hata oluştu: ${error.message}`);
     }
-
-    await project.deleteOne();
-
-    res.status(200).json({ id: req.params.id });
 });

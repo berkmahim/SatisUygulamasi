@@ -17,12 +17,13 @@ import { format, parseISO } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { 
     Card, Row, Col, Statistic, Typography, Spin, Alert, 
-    Table, Space 
+    Table, Space, Button
 } from 'antd';
 import { 
     DollarOutlined, CheckCircleOutlined, 
     ClockCircleOutlined, WarningOutlined 
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 
@@ -46,6 +47,7 @@ const SalesReport = () => {
     const [monthlySales, setMonthlySales] = useState([]);
     const [paymentStatus, setPaymentStatus] = useState({});
     const [projectSales, setProjectSales] = useState({});
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchReportData = async () => {
@@ -188,7 +190,21 @@ const SalesReport = () => {
 
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <Title level={2}>Satış Raporu</Title>
+            <Row gutter={[16, 16]} align="middle" justify="space-between">
+                <Col>
+                    <Title level={2}>Satış Raporu</Title>
+                </Col>
+                <Col>
+                    <Space>
+                        <Button 
+                            type="primary" 
+                            onClick={() => navigate('/reports/global')}
+                        >
+                            Genel Satış Raporları
+                        </Button>
+                    </Space>
+                </Col>
+            </Row>
 
             {/* İstatistik Kartları */}
             <Row gutter={[16, 16]}>

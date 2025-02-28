@@ -1,7 +1,8 @@
 import Sale from '../models/saleModel.js';
 import Block from '../models/blockModel.js';
 import Project from '../models/projectModel.js';
-import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { startOfMonth, endOfMonth, format, parseISO } from 'date-fns';
+import asyncHandler from 'express-async-handler';
 
 // @desc    Get sales statistics
 // @route   GET /api/reports/statistics
@@ -339,7 +340,7 @@ const getProjectPayments = async (req, res) => {
         const blocks = await Block.find({ projectId });
         const blockIds = blocks.map(block => block._id);
 
-        // Projeye ait satışları al ve daha detaylı bilgilerle populate et
+        // Projeye ait satışları al
         const sales = await Sale.find({ blockId: { $in: blockIds } })
             .populate({
                 path: 'blockId',
@@ -405,6 +406,215 @@ const getProjectPayments = async (req, res) => {
     }
 };
 
+// @desc    Get global unit type distribution for all projects
+// @route   GET /api/reports/global/unit-types
+// @access  Private
+const getGlobalUnitTypeDistribution = asyncHandler(async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let query = {};
+        
+        if (startDate && endDate) {
+            // Satış tarihine göre filtrele
+            query.saleDate = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+        
+        // Tüm projelerdeki satışları al
+        const sales = await Sale.find(query)
+            .populate({
+                path: 'blockId',
+                select: 'type roomCount unitNumber projectId',
+                populate: {
+                    path: 'projectId',
+                    select: 'name'
+                }
+            });
+        
+        // Oda sayısı ve birim tipi dağılımı için verileri hazırla
+        const typeCounts = {};
+        
+        sales.forEach(sale => {
+            const block = sale.blockId;
+            let typeKey;
+            
+            if (block.type === 'apartment') {
+                typeKey = block.roomCount ? `${block.roomCount}+1` : 'Belirtilmemiş Daire';
+            } else if (block.type === 'store') {
+                typeKey = 'Dükkan';
+            } else {
+                typeKey = 'Diğer';
+            }
+            
+            typeCounts[typeKey] = (typeCounts[typeKey] || 0) + 1;
+        });
+        
+        // Sonucu dizi olarak dönüştür
+        const result = Object.entries(typeCounts).map(([type, count]) => ({
+            type,
+            count
+        }));
+        
+        res.json(result);
+    } catch (error) {
+        console.error('Error getting global unit type distribution:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @desc    Get global monthly sales totals for all projects
+// @route   GET /api/reports/global/monthly-sales
+// @access  Private
+const getGlobalMonthlySales = asyncHandler(async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let query = {};
+        
+        if (startDate && endDate) {
+            // Satış tarihine göre filtrele
+            query.saleDate = {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate)
+            };
+        }
+        
+        // Satışları al
+        const sales = await Sale.find(query);
+        
+        // Aylık satış toplamlarını hesapla
+        const monthlySalesTotals = {};
+        
+        sales.forEach(sale => {
+            const date = new Date(sale.saleDate);
+            const monthYear = format(date, 'yyyy-MM');
+            
+            if (!monthlySalesTotals[monthYear]) {
+                monthlySalesTotals[monthYear] = 0;
+            }
+            
+            monthlySalesTotals[monthYear] += sale.totalAmount;
+        });
+        
+        // Sonucu dizi olarak dönüştür ve tarihe göre sırala
+        const result = Object.entries(monthlySalesTotals)
+            .map(([month, amount]) => ({
+                month,
+                amount
+            }))
+            .sort((a, b) => a.month.localeCompare(b.month));
+        
+        res.json(result);
+    } catch (error) {
+        console.error('Error getting global monthly sales:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// @desc    Get global payment data for all projects
+// @route   GET /api/reports/global/payments
+// @access  Private
+const getGlobalPaymentData = asyncHandler(async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        
+        // Tarih aralığını kontrol et
+        if (!startDate || !endDate) {
+            return res.status(400).json({ message: 'Başlangıç ve bitiş tarihi gerekli' });
+        }
+        
+        const startDateObj = new Date(startDate);
+        const endDateObj = new Date(endDate);
+        
+        // Satışları al
+        const sales = await Sale.find({})
+            .populate({
+                path: 'blockId',
+                select: 'blockNumber unitNumber type squareMeters roomCount projectId',
+                populate: {
+                    path: 'projectId',
+                    select: 'name'
+                }
+            })
+            .populate('customerId', 'firstName lastName');
+        
+        // Ödeme istatistikleri
+        let totalReceived = 0;
+        let totalExpected = 0;
+        let totalOverdue = 0;
+        const paymentDetails = [];
+        
+        const now = new Date();
+        
+        sales.forEach(sale => {
+            // blockId veya customerId yoksa atla
+            if (!sale.blockId || !sale.customerId) {
+                console.log(`Atlanıyor: BlockId veya CustomerId bulunamadı - Sale ID: ${sale._id}`);
+                return;
+            }
+            
+            // projectId yoksa atla
+            if (!sale.blockId.projectId) {
+                console.log(`Atlanıyor: ProjectId bulunamadı - Block ID: ${sale.blockId._id}`);
+                return;
+            }
+            
+            // Tüm ödemeleri incele
+            sale.payments.forEach(payment => {
+                const dueDate = new Date(payment.dueDate);
+                
+                // Tarih aralığında olan ödemeleri filtrele
+                if (dueDate >= startDateObj && dueDate <= endDateObj) {
+                    const paidAmount = payment.paidAmount || 0;
+                    const remainingAmount = payment.amount - paidAmount;
+                    
+                    // Ödenen miktarı topla
+                    totalReceived += paidAmount;
+                    
+                    // Ödeme durumunu belirle
+                    let status = 'pending';
+                    if (paidAmount >= payment.amount) {
+                        status = 'paid';
+                    } else if (dueDate < now && remainingAmount > 0) {
+                        status = 'overdue';
+                        totalOverdue += remainingAmount;
+                    } else if (remainingAmount > 0) {
+                        totalExpected += remainingAmount;
+                    }
+                    
+                    // Müşteri adı ve soyadı kontrolü
+                    const firstName = sale.customerId.firstName || '';
+                    const lastName = sale.customerId.lastName || '';
+                    const customerName = `${firstName} ${lastName}`.trim();
+                    
+                    // Tabloya eklenecek ödeme detayları
+                    paymentDetails.push({
+                        id: `${sale._id}-${payment._id}`,
+                        customerName: customerName,
+                        projectName: sale.blockId.projectId.name,
+                        blockInfo: `${sale.blockId.blockNumber}/${sale.blockId.unitNumber}`,
+                        dueDate: payment.dueDate,
+                        amount: payment.amount,
+                        paidAmount: paidAmount,
+                        status: status
+                    });
+                }
+            });
+        });
+        
+        res.json({
+            totalReceived,
+            totalExpected,
+            totalOverdue,
+            payments: paymentDetails
+        });
+    } catch (error) {
+        console.error('Error getting global payment data:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 export {
     getSalesStatistics,
     getMonthlySales,
@@ -412,5 +622,8 @@ export {
     getProjectSalesDistribution,
     getProjectStats,
     getUnitTypeDistribution,
-    getProjectPayments
+    getProjectPayments,
+    getGlobalUnitTypeDistribution,
+    getGlobalMonthlySales,
+    getGlobalPaymentData
 };

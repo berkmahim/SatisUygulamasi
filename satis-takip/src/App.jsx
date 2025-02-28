@@ -13,6 +13,7 @@ import ProjectDetail from './pages/ProjectDetail';
 import Header from './components/Header';
 import PaymentTracking from './pages/PaymentTracking';
 import SalesReport from './pages/SalesReport';
+import GlobalSalesReport from './pages/GlobalSalesReport';
 import ProjectReport from './pages/ProjectReport';
 import LoginPage from './pages/LoginPage';
 import UsersPage from './pages/UsersPage';
@@ -127,18 +128,21 @@ function AppContent() {
               } />
               
               <Route path="/reports/sales" element={
-                <PermissionRoute permission="reportManagement">
+                <PermissionRoute>
                   <SalesReport />
                 </PermissionRoute>
               } />
-              
-              <Route path="/reports/projects/:projectId" element={
-                <PermissionRoute permission="reportManagement">
+              <Route path="/reports/project/:id" element={
+                <PermissionRoute>
                   <ProjectReport />
                 </PermissionRoute>
               } />
-              
-              <Route path="/projects/:projectId/reports" element={
+              <Route path="/reports/global" element={
+                <PermissionRoute>
+                  <GlobalSalesReport />
+                </PermissionRoute>
+              } />
+              <Route path="/reports" element={
                 <PermissionRoute permission="reportManagement">
                   <ProjectReports />
                 </PermissionRoute>

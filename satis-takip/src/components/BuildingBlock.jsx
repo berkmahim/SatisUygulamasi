@@ -78,7 +78,7 @@ const BuildingBlock = ({
       }}
     >
       <meshStandardMaterial
-        color={isSelected ? '#ff4444' : owner ? '#ff0000' : '#00ff00'}
+        color={isSelected ? '#1890ff' : owner ? '#ff0000' : '#00ff00'}
         metalness={0.1}
         roughness={0.5}
       />

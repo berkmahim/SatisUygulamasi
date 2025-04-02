@@ -143,6 +143,7 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
           addMode={addMode}
           owner={block.owner}
           onHover={onBlockHover}
+          unitNumber={block.unitNumber}
         />
       ))}
 
@@ -792,72 +793,76 @@ const BuildingCanvas = () => {
   };
 
   return (
-    <div style={{ width: '100%', height: '100vh', position: 'relative' }} tabIndex={0}>
-      <ControlPanel 
-        editMode={editMode} 
-        setEditMode={setEditMode}
-        addMode={addMode}
-        setAddMode={setAddMode}
-        textMode={textMode}
-        setTextMode={setTextMode}
-        selectedBlock={selectedBlock}
-        selectedBlockDimensions={getSelectedBlockDimensions()}
-        onUpdateBlockDimensions={handleUpdateBlockDimensions}
-        onUpdateBlockDetails={handleUpdateBlockDetails}
-        onDeleteBlock={handleDeleteBlock}
-        blocks={blocks}
-        selectedText={selectedText}
-        onUpdateText={handleUpdateText}
-        onDeleteText={handleDeleteText}
-        texts={texts}
-        onMoveText={moveText}
-      />
-      {tooltipVisible && hoveredBlockOwner && (
-        <div
-          style={{
-            position: 'fixed',
-            left: mousePosition.x + 10,
-            top: mousePosition.y + 10,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            color: 'white',
-            padding: '5px 10px',
-            borderRadius: '4px',
-            pointerEvents: 'none',
-            zIndex: 1000
+    <div style={{ width: '100%', height: '100vh', position: 'relative', display: 'flex' }} tabIndex={0}>
+      <div style={{ width: '300px', height: '100%', overflow: 'auto', borderRight: '1px solid #e8e8e8' }}>
+        <ControlPanel 
+          editMode={editMode} 
+          setEditMode={setEditMode}
+          addMode={addMode}
+          setAddMode={setAddMode}
+          textMode={textMode}
+          setTextMode={setTextMode}
+          selectedBlock={selectedBlock}
+          selectedBlockDimensions={getSelectedBlockDimensions()}
+          onUpdateBlockDimensions={handleUpdateBlockDimensions}
+          onUpdateBlockDetails={handleUpdateBlockDetails}
+          onDeleteBlock={handleDeleteBlock}
+          blocks={blocks}
+          selectedText={selectedText}
+          onUpdateText={handleUpdateText}
+          onDeleteText={handleDeleteText}
+          texts={texts}
+          onMoveText={moveText}
+        />
+      </div>
+      <div style={{ flex: '1', position: 'relative' }}>
+        {tooltipVisible && hoveredBlockOwner && (
+          <div
+            style={{
+              position: 'fixed',
+              left: mousePosition.x + 10,
+              top: mousePosition.y + 10,
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              color: 'white',
+              padding: '5px 10px',
+              borderRadius: '4px',
+              pointerEvents: 'none',
+              zIndex: 1000
+            }}
+          >
+            {`${hoveredBlockOwner.firstName || ''} ${hoveredBlockOwner.lastName || ''}`}
+          </div>
+        )}
+        <Canvas 
+          camera={{ position: [10, 10, 10], fov: 50 }}
+          shadows
+          onMouseMove={(e) => {
+            setMousePosition({ x: e.clientX, y: e.clientY });
           }}
         >
-          {`${hoveredBlockOwner.firstName || ''} ${hoveredBlockOwner.lastName || ''}`}
-        </div>
-      )}
-      <Canvas 
-        camera={{ position: [10, 10, 10], fov: 50 }}
-        shadows
-        onMouseMove={(e) => {
-          setMousePosition({ x: e.clientX, y: e.clientY });
-        }}
-      >
-        <Scene
-          blocks={blocks}
-          selectedBlock={selectedBlock}
-          onAddBlock={addBlock}
-          onBlockClick={handleBlockClick}
-          editMode={editMode}
-          addMode={addMode}
-          onBlockHover={(owner, visible) => {
-            setHoveredBlockOwner(owner);
-            setTooltipVisible(visible);
-          }}
-          texts={texts}
-          onAddText={addText}
-          onTextClick={handleTextClick}
-          selectedText={selectedText}
-          onTextHover={(owner, visible) => {
-            setHoveredBlockOwner(owner);
-            setTooltipVisible(visible);
-          }}
-          textMode={textMode}
-        />
-      </Canvas>
+          <Scene
+            blocks={blocks}
+            selectedBlock={selectedBlock}
+            onAddBlock={addBlock}
+            onBlockClick={handleBlockClick}
+            editMode={editMode}
+            addMode={addMode}
+            onBlockHover={(owner, visible) => {
+              setHoveredBlockOwner(owner);
+              setTooltipVisible(visible);
+            }}
+            texts={texts}
+            onAddText={addText}
+            onTextClick={handleTextClick}
+            selectedText={selectedText}
+            onTextHover={(owner, visible) => {
+              setHoveredBlockOwner(owner);
+              setTooltipVisible(visible);
+            }}
+            textMode={textMode}
+          />
+        </Canvas>
+      </div>
     </div>
   );
 };

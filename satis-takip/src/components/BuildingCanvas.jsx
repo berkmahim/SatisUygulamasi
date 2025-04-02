@@ -348,18 +348,22 @@ const BuildingCanvas = () => {
           const [x2, y2, z2] = modifiedBlock.position;
           
           // Check if block needs to move in width direction
-          if (widthChange !== 0 && x1 > x2 + oldDimensions.width) {
-            const newPosition = [...block.position];
-            newPosition[0] += Math.abs(widthChange);
-            updatedBlocks.set(blockId, { ...block, position: newPosition });
+          if (widthChange !== 0 && areBlocksOverlapping(modifiedBlock, block)) {
+            if (x2 > x1) {
+              const newPosition = [...block.position];
+              newPosition[0] += Math.abs(widthChange);
+              updatedBlocks.set(blockId, { ...block, position: newPosition });
+            }
           }
           
           // Check if block needs to move in depth direction
-          if (depthChange !== 0 && z1 > z2 + oldDimensions.depth) {
-            const currentBlock = updatedBlocks.get(blockId) || block;
-            const newPosition = [...currentBlock.position];
-            newPosition[2] += Math.abs(depthChange);
-            updatedBlocks.set(blockId, { ...currentBlock, position: newPosition });
+          if (depthChange !== 0 && areBlocksOverlapping(modifiedBlock, block)) {
+            if (z2 > z1) {
+              const currentBlock = updatedBlocks.get(blockId) || block;
+              const newPosition = [...currentBlock.position];
+              newPosition[2] += Math.abs(depthChange);
+              updatedBlocks.set(blockId, { ...currentBlock, position: newPosition });
+            }
           }
         }
       }
@@ -597,6 +601,22 @@ const BuildingCanvas = () => {
       }
       
       if (widthChange !== 0) {
+        // blocksOnXAxis'e erişmek için burada tekrar tanımlıyoruz
+        const blocksOnXAxis = blocks.filter(block => {
+          if ((block._id || block.id) === selectedBlock) return false;
+          const [blockX, blockY, blockZ] = block.position;
+          const hasYOverlap = (
+            blockY < baseY + Math.max(oldDimensions.height, newDimensions.height) &&
+            blockY + block.dimensions.height > baseY
+          );
+          const hasZOverlap = (
+            blockZ < baseZ + Math.max(oldDimensions.depth, newDimensions.depth) &&
+            blockZ + block.dimensions.depth > baseZ
+          );
+          // Sadece sağdaki blokları bul (bloğun sağ kenarının sağında olan bloklar)
+          return hasYOverlap && hasZOverlap && blockX >= baseX + oldDimensions.width;
+        }).sort((a, b) => a.position[0] - b.position[0]);
+
         blocksOnXAxis.forEach(block => {
           if (block._id) {
             const newBlockPosition = [...block.position];
@@ -618,6 +638,22 @@ const BuildingCanvas = () => {
       }
       
       if (depthChange !== 0) {
+        // blocksOnZAxis'e erişmek için burada tekrar tanımlıyoruz
+        const blocksOnZAxis = blocks.filter(block => {
+          if ((block._id || block.id) === selectedBlock) return false;
+          const [blockX, blockY, blockZ] = block.position;
+          const hasXOverlap = (
+            blockX < baseX + Math.max(oldDimensions.width, newDimensions.width) &&
+            blockX + block.dimensions.width > baseX
+          );
+          const hasYOverlap = (
+            blockY < baseY + Math.max(oldDimensions.height, newDimensions.height) &&
+            blockY + block.dimensions.height > baseY
+          );
+          // Sadece öndeki blokları bul (bloğun ön kenarının önünde olan bloklar)
+          return hasXOverlap && hasYOverlap && blockZ >= baseZ + oldDimensions.depth;
+        }).sort((a, b) => a.position[2] - b.position[2]);
+
         blocksOnZAxis.forEach(block => {
           if (block._id) {
             const newBlockPosition = [...block.position];
@@ -641,9 +677,11 @@ const BuildingCanvas = () => {
       // Veritabanını güncelle - sadece değişen bloklar için
       for (const blockData of blocksToUpdate) {
         try {
-          await updateBlock(blockData._id, blockData);
+          console.log("Veritabanı güncelleniyor:", blockData);
+          const updatedBlock = await updateBlock(blockData._id, { position: blockData.position });
+          console.log("Güncellenen blok:", updatedBlock);
         } catch (error) {
-          // Hata durumunda sessizce devam et
+          console.error("Blok güncelleme hatası:", error);
         }
       }
     } catch (error) {

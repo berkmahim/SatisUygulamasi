@@ -10,6 +10,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import Sale from './models/saleModel.js';
 
@@ -30,6 +31,7 @@ app.use('/api/sales', saleRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // Tüm ödeme durumlarını güncelleme fonksiyonu
 const updateAllPaymentStatuses = async () => {

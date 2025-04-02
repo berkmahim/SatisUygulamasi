@@ -13,6 +13,10 @@ const projectSchema = mongoose.Schema({
         type: String,
         required: [true, 'Proje açıklaması zorunludur']
     },
+    backgroundImage: {
+        type: String,
+        default: ''
+    },
     blocks: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Block'

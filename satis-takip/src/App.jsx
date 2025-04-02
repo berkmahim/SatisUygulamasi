@@ -109,7 +109,7 @@ function AppContent() {
                 </PermissionRoute>
               } />
               
-              <Route path="/projects/:projectId/blocks/:blockId/sale" element={
+              <Route path="/projects/:projectId/blocks/:blockId/sell" element={
                 <PermissionRoute permission="salesManagement">
                   <BlockSalePage />
                 </PermissionRoute>

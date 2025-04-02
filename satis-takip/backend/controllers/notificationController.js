@@ -1,5 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import Notification from '../models/notificationModel.js';
+import User from '../models/userModel.js';
+import { sendNotificationEmail } from '../config/mailer.js';
 import emailService from '../services/emailService.js';
 
 // @desc    Kullanıcının bildirimlerini getir
@@ -8,6 +10,7 @@ import emailService from '../services/emailService.js';
 const getNotifications = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const skipIndex = (page - 1) * limit;
     const filter = req.query.filter || 'all'; // all, unread, read
 
     let query = { 'recipients.userId': req.user._id };
@@ -19,21 +22,26 @@ const getNotifications = asyncHandler(async (req, res) => {
 
     const notifications = await Notification.find(query)
         .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
         .limit(limit)
+        .skip(skipIndex)
         .lean();
 
-    // Toplam okunmamış bildirim sayısını getir
+    // Kullanıcı için bildirim sayıları
     const unreadCount = await Notification.countDocuments({
         'recipients.userId': req.user._id,
         'recipients.read': false
     });
 
+    const totalCount = await Notification.countDocuments({
+        'recipients.userId': req.user._id
+    });
+
     res.json({
         notifications,
         unreadCount,
+        totalCount,
         page,
-        pages: Math.ceil(notifications.length / limit)
+        pages: Math.ceil(totalCount / limit)
     });
 });
 
@@ -41,26 +49,34 @@ const getNotifications = asyncHandler(async (req, res) => {
 // @route   PUT /api/notifications/:id/read
 // @access  Private
 const markAsRead = asyncHandler(async (req, res) => {
-    const notification = await Notification.findOneAndUpdate(
-        {
-            _id: req.params.id,
-            'recipients.userId': req.user._id
-        },
-        {
-            $set: {
-                'recipients.$.read': true,
-                'recipients.$.readAt': new Date()
-            }
-        },
-        { new: true }
-    );
+    const notification = await Notification.findById(req.params.id);
 
     if (!notification) {
         res.status(404);
         throw new Error('Bildirim bulunamadı');
     }
 
-    res.json(notification);
+    // Mevcut alıcıyı kontrol et ve güncelle
+    const recipientIndex = notification.recipients.findIndex(
+        r => r.userId.toString() === req.user._id.toString()
+    );
+
+    if (recipientIndex === -1) {
+        res.status(404);
+        throw new Error('Bu bildirim sizin için değil');
+    }
+
+    // Bildirim zaten okunmuşsa
+    if (notification.recipients[recipientIndex].read) {
+        return res.json({ message: 'Bildirim zaten okunmuş olarak işaretlenmiş', notification });
+    }
+
+    notification.recipients[recipientIndex].read = true;
+    notification.recipients[recipientIndex].readAt = Date.now();
+
+    await notification.save();
+
+    res.json({ message: 'Bildirim okundu olarak işaretlendi', notification });
 });
 
 // @desc    Tüm bildirimleri okundu olarak işaretle
@@ -165,11 +181,104 @@ const createTestNotification = asyncHandler(async (req, res) => {
     res.status(201).json(notification);
 });
 
+// @desc    Create a new notification
+// @route   POST /api/notifications
+// @access  Private/Admin
+const createNotification = asyncHandler(async (req, res) => {
+    const { type, title, message, recipientIds, priority, relatedData } = req.body;
+    
+    if (!type || !title || !message || !recipientIds || recipientIds.length === 0) {
+        res.status(400);
+        throw new Error('Tüm gerekli alanları doldurun');
+    }
+    
+    // Alıcıları doğrula
+    const recipients = recipientIds.map(id => ({
+        userId: id,
+        read: false
+    }));
+    
+    const notification = await Notification.create({
+        type,
+        title,
+        message,
+        recipients,
+        priority: priority || 'medium',
+        relatedData: relatedData || {}
+    });
+    
+    // E-posta gönderme
+    if (notification) {
+        // Admin kullanıcılarını bul
+        const adminUsers = await User.find({ role: 'admin' });
+        
+        if (adminUsers && adminUsers.length > 0) {
+            // E-posta gönder
+            await sendNotificationEmail(notification, adminUsers);
+            
+            // E-posta gönderildi olarak işaretle
+            for (const recipient of notification.recipients) {
+                const user = adminUsers.find(u => u._id.toString() === recipient.userId.toString());
+                if (user) {
+                    recipient.emailSent = true;
+                    recipient.emailSentAt = Date.now();
+                }
+            }
+            
+            await notification.save();
+        }
+    }
+    
+    res.status(201).json(notification);
+});
+
+// @desc    Get all notifications
+// @route   GET /api/notifications/all
+// @access  Private/Admin
+const getAllNotifications = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skipIndex = (page - 1) * limit;
+    
+    const notifications = await Notification.find({})
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skipIndex);
+    
+    const totalCount = await Notification.countDocuments({});
+    
+    res.json({
+        notifications,
+        totalCount,
+        page,
+        pages: Math.ceil(totalCount / limit)
+    });
+});
+
+// @desc    Delete notification
+// @route   DELETE /api/notifications/:id
+// @access  Private/Admin
+const deleteNotification = asyncHandler(async (req, res) => {
+    const notification = await Notification.findById(req.params.id);
+    
+    if (!notification) {
+        res.status(404);
+        throw new Error('Bildirim bulunamadı');
+    }
+    
+    await notification.remove();
+    
+    res.json({ message: 'Bildirim silindi' });
+});
+
 export {
     getNotifications,
     markAsRead,
     markAllAsRead,
     archiveNotifications,
     sendEmailNotifications,
-    createTestNotification
+    createTestNotification,
+    createNotification,
+    getAllNotifications,
+    deleteNotification
 };

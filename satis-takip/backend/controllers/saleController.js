@@ -2,6 +2,8 @@ import asyncHandler from 'express-async-handler';
 import Sale from '../models/saleModel.js';
 import Block from '../models/blockModel.js';
 import Customer from '../models/customerModel.js';
+import User from '../models/userModel.js'; 
+import { sendSaleEmail } from '../config/mailer.js';
 
 // @desc    Create a new sale
 // @route   POST /api/sales
@@ -31,61 +33,56 @@ const createSale = asyncHandler(async (req, res) => {
             return res.status(404).json({ message: 'Müşteri bulunamadı' });
         }
 
-        // Blok daha önce satılmış mı kontrol et
-        if (block.owner) {
-            return res.status(400).json({ message: 'Bu blok zaten satılmış' });
+        // Blok'un durumunu kontrol et
+        if (block.status === 'sold') {
+            return res.status(400).json({ message: 'Bu birim zaten satılmış' });
         }
 
-        // Ödemeleri kontrol et ve düzenle
-        const formattedPayments = payments ? payments.map(payment => ({
-            amount: parseFloat(payment.amount),
-            dueDate: new Date(payment.dueDate),
-            description: payment.description,
-            installmentNumber: parseInt(payment.description.split('/')[0].replace('Taksit ', '')),
-            status: 'pending'
-        })) : [];
+        // Vade tarihlerini düzenle
+        let paymentDates = [];
+        if (payments && Array.isArray(payments)) {
+            paymentDates = payments.map((p, index) => ({
+                ...p,
+                dueDate: new Date(p.dueDate),
+                installmentNumber: index + 1, // Taksit numarası ekliyorum
+                status: p.paidAmount && p.paidAmount >= p.amount ? 'paid' : 'pending'
+            }));
+        }
 
-        // Yeni satış oluştur
+        // Yeni satış kaydı oluştur
         const sale = new Sale({
             blockId,
             customerId,
-            projectId: block.projectId,
+            projectId: block.projectId, // Block'un projectId'sini ekliyorum
             type,
             paymentPlan,
             totalAmount,
             downPayment,
             installmentCount,
-            firstPaymentDate: new Date(firstPaymentDate),
-            payments: formattedPayments
+            firstPaymentDate: new Date(firstPaymentDate), // firstPaymentDate ekliyorum
+            payments: paymentDates.length > 0 ? paymentDates : [],
+            createdBy: req.user._id
         });
 
-        // Özel vade tarihleri varsa onları kullan, yoksa otomatik oluştur
-        if (payments && payments.length > 0) {
-            sale.payments = payments.map((payment, index) => ({
-                amount: payment.amount,
-                dueDate: new Date(payment.dueDate),
-                description: payment.description,
-                installmentNumber: index + 1,
-                status: 'pending'
-            }));
-        } else {
-            sale.generatePaymentSchedule();
-        }
+        await sale.save();
 
-        // Satışı kaydet
-        const savedSale = await sale.save();
-        // Blok'u güncelle
+        // Blok'u "satıldı" olarak işaretle
+        block.status = 'sold';
         block.owner = customerId;
-        block.status = type === 'sale' ? 'sold' : 'reserved';
+        block.saleId = sale._id;
         await block.save();
 
-        const populatedSale = await Sale.findById(savedSale._id)
-            .populate('blockId', 'unitNumber type')
-            .populate('customerId', 'firstName lastName tcNo phone');
+        // E-posta bildirimi için admin kullanıcılarını bul
+        const adminUsers = await User.find({ role: 'admin' });
+        
+        // Satış e-postası gönder
+        if (adminUsers && adminUsers.length > 0) {
+            await sendSaleEmail(sale, block, customer, req.user, adminUsers);
+        }
 
-        res.status(201).json(populatedSale);
+        return res.status(201).json(sale);
     } catch (error) {
-        console.warn('Error creating sale:', error);
+        console.error('Error creating sale:', error);
         res.status(400).json({ message: error.message });
     }
 });
@@ -205,48 +202,31 @@ const cancelSale = asyncHandler(async (req, res) => {
     res.json(updatedSale);
 });
 
-// @desc    Cancel a sale and process refund
+// @desc    Cancel sale and handle refund
 // @route   POST /api/sales/:id/cancel
 // @access  Private/Admin
 const cancelSaleAndRefund = asyncHandler(async (req, res) => {
     try {
-        const sale = await Sale.findById(req.params.id);
+        const { hasRefund, refundAmount, refundDate, refundReason } = req.body;
+
+        // Satışı bul
+        const sale = await Sale.findById(req.params.id)
+            .populate('blockId')
+            .populate('customerId');
 
         if (!sale) {
             res.status(404);
             throw new Error('Satış bulunamadı');
         }
 
-        // Satış zaten iptal edilmişse hata fırlat
+        // Satışın durumunu kontrol et
         if (sale.status === 'cancelled') {
-            res.status(400);
-            throw new Error('Bu satış zaten iptal edilmiş');
+            return res.status(400).json({ message: 'Bu satış zaten iptal edilmiş' });
         }
 
-        // İptal bilgilerini al
-        const { hasRefund, refundAmount, refundDate, refundReason } = req.body;
-
-        // İade gerekiyorsa doğrulama kontrolleri yap
-        if (hasRefund) {
-            if (!refundAmount || !refundDate || !refundReason) {
-                res.status(400);
-                throw new Error('İade için miktar, tarih ve neden zorunludur');
-            }
-
-            // Toplam ödenen miktarı hesapla
-            let totalPaid = 0;
-            sale.payments.forEach(payment => {
-                if (payment.paidAmount) {
-                    totalPaid += payment.paidAmount;
-                }
-            });
-
-            // İade miktarı, toplam ödenen miktardan fazla olamaz
-            if (refundAmount > totalPaid) {
-                res.status(400);
-                throw new Error(`İade miktarı toplam ödenen tutardan (${totalPaid} TL) fazla olamaz`);
-            }
-        }
+        // Blok bilgilerini al
+        const block = sale.blockId;
+        const customer = sale.customerId;
 
         // Toplam ödenen miktarı hesapla (bu değer daha önce hesaplanmışsa tekrar hesaplamaya gerek yok)
         let totalPaid = 0;
@@ -282,6 +262,14 @@ const cancelSaleAndRefund = asyncHandler(async (req, res) => {
 
         // Kaydı güncelle
         await sale.save();
+
+        // E-posta bildirimi için admin kullanıcılarını bul
+        const adminUsers = await User.find({ role: 'admin' });
+        
+        // İptal e-postası gönder
+        if (adminUsers && adminUsers.length > 0) {
+            await sendSaleEmail(sale, block, customer, req.user, adminUsers, true); // true -> iptal için
+        }
 
         res.status(200).json({
             message: 'Satış başarıyla iptal edildi',

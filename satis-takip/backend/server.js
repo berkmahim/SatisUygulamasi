@@ -13,8 +13,18 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import Sale from './models/saleModel.js';
+import { initializeMailer } from './config/mailer.js';
 
 connectDB();
+
+// E-posta servisini başlat
+const emailConfig = {
+  email: process.env.EMAIL_USER || 'your-email@gmail.com', // Bu bilgiler .env dosyasından alınacak
+  password: process.env.EMAIL_PASSWORD || 'your-app-password',
+  testEmail: false
+};
+
+initializeMailer(emailConfig);
 
 const app = express();
 const port = process.env.PORT || 5000;

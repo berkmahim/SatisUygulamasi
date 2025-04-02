@@ -20,7 +20,7 @@ const Footer = () => {
         <Row gutter={[16, 24]} justify="space-between" align="middle">
           <Col xs={24} md={8}>
             <Text strong className="company-name">
-              Tadu Yazılım
+              Tadu
             </Text>
             <Text className="company-description">
               Müşteri ve proje takip sistemi
@@ -43,7 +43,7 @@ const Footer = () => {
 
           <Col xs={24} md={8} className="copyright">
             <Text>
-              © {currentYear} Tadu Yazılım. Tüm hakları saklıdır.
+              © {currentYear} Tadu Tüm hakları saklıdır.
             </Text>
           </Col>
         </Row>

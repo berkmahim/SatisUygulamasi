@@ -23,7 +23,7 @@ const createSale = asyncHandler(async (req, res) => {
         } = req.body;
 
         // Blok'u bul ve kontrol et
-        const block = await Block.findById(blockId);
+        const block = await Block.findById(blockId).populate('projectId', 'name');
         if (!block) {
             return res.status(404).json({ message: 'Blok bulunamadı' });
         }
@@ -48,6 +48,9 @@ const createSale = asyncHandler(async (req, res) => {
                 status: p.paidAmount && p.paidAmount >= p.amount ? 'paid' : 'pending'
             }));
         }
+
+        // Proje adını blok nesnesine ekle
+        block.projectName = block.projectId?.name || 'Belirtilmemiş';
 
         // Yeni satış kaydı oluştur
         const sale = new Sale({

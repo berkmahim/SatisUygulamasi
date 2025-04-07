@@ -90,7 +90,7 @@ const saleSchema = new mongoose.Schema({
     },
     paymentPlan: {
         type: String,
-        enum: ['cash', 'cash-installment', 'installment'],
+        enum: ['cash', 'cash-installment', 'installment', 'balloon-payment'],
         required: true
     },
     downPayment: {
@@ -205,6 +205,30 @@ saleSchema.methods.generatePaymentSchedule = function() {
             });
             dueDate = new Date(dueDate.setMonth(dueDate.getMonth() + 1));
         }
+    } else if (this.paymentPlan === 'balloon-payment') {
+        // Balon ödemeli plan
+        const installmentAmount = this.totalAmount / this.installmentCount;
+        let dueDate = new Date(paymentDate);
+
+        for (let i = 0; i < this.installmentCount - 1; i++) {
+            payments.push({
+                amount: installmentAmount,
+                dueDate: new Date(dueDate),
+                description: `${i + 1}. Taksit`,
+                installmentNumber: i + 1,
+                status: 'pending'
+            });
+            dueDate = new Date(dueDate.setMonth(dueDate.getMonth() + 1));
+        }
+
+        // Son ödeme (balon ödeme)
+        payments.push({
+            amount: this.totalAmount - (installmentAmount * (this.installmentCount - 1)),
+            dueDate: new Date(dueDate),
+            description: `Son Ödeme (Balon)`,
+            installmentNumber: this.installmentCount,
+            status: 'pending'
+        });
     }
 
     this.payments = payments;

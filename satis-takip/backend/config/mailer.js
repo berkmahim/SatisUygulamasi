@@ -106,9 +106,10 @@ const sendSaleEmail = async (sale, block, customer, user, adminUsers, isCancella
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
           <h2 style="color: #d32f2f;">Satış İptal Bildirimi</h2>
           <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
+            <p><strong>Proje:</strong> ${block.projectName || 'Belirtilmemiş'}</p>
             <p><strong>Birim No:</strong> ${block.unitNumber || 'Belirtilmemiş'}</p>
             <p><strong>İptal Edilen Müşteri:</strong> ${customerName}</p>
-            <p><strong>İptal Eden Kullanıcı:</strong> ${user?.name || 'Bilinmeyen Kullanıcı'}</p>
+            <p><strong>İptal Eden Kullanıcı:</strong> ${user?.fullName || user?.name || 'Bilinmeyen Kullanıcı'}</p>
             <p><strong>İptal Tarihi:</strong> ${new Date(sale.cancellationDetails?.cancelledAt || Date.now()).toLocaleString('tr-TR')}</p>
             <p><strong>İptal Nedeni:</strong> ${sale.cancellationDetails?.reason || 'Belirtilmemiş'}</p>
             <p><strong>Satış Tutarı:</strong> ${sale.totalAmount?.toLocaleString('tr-TR')} TL</p>
@@ -128,13 +129,22 @@ const sendSaleEmail = async (sale, block, customer, user, adminUsers, isCancella
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
           <h2 style="color: #4caf50;">Yeni Satış Bildirimi</h2>
           <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
+            <p><strong>Proje:</strong> ${block.projectName || 'Belirtilmemiş'}</p>
             <p><strong>Birim No:</strong> ${block.unitNumber || 'Belirtilmemiş'}</p>
             <p><strong>Müşteri:</strong> ${customerName}</p>
-            <p><strong>Satışı Yapan:</strong> ${user?.name || 'Bilinmeyen Kullanıcı'}</p>
+            <p><strong>Satışı Yapan:</strong> ${user?.fullName || user?.name || 'Bilinmeyen Kullanıcı'}</p>
             <p><strong>Satış Tarihi:</strong> ${new Date(sale.createdAt || Date.now()).toLocaleString('tr-TR')}</p>
             <p><strong>Satış Tutarı:</strong> ${sale.totalAmount?.toLocaleString('tr-TR')} TL</p>
-            <p><strong>Peşinat:</strong> ${sale.downPayment?.toLocaleString('tr-TR')} TL</p>
-            <p><strong>Ödeme Planı:</strong> ${sale.installmentCount} Taksit</p>
+            <p><strong>Ödeme Yöntemi:</strong> ${(() => {
+              switch(sale.paymentPlan) {
+                case 'cash': return 'Peşin';
+                case 'cash-installment': return 'Peşin + Taksit';
+                case 'installment': return 'Taksit';
+                case 'balloon-payment': return 'Balon Ödemeli';
+                default: return 'Belirtilmemiş';
+              }
+            })()}</p>
+            <p><strong>Ödeme Planı:</strong> ${sale.installmentCount || 1} Taksit</p>
           </div>
           <p style="font-size: 14px; color: #999; margin-top: 20px;">
             Bu e-posta otomatik olarak Tadu SatisTakip sisteminden gönderilmiştir.

@@ -13,10 +13,11 @@ const PaymentPlanPage = () => {
     const [loading, setLoading] = useState(true);
     const [paymentPlan, setPaymentPlan] = useState({
         totalAmount: '',
-        paymentType: 'cash', // cash, cash-installment, installment
+        paymentType: 'cash', // cash, cash-installment, installment, balloon-payment
         downPayment: '',
         installmentCount: '',
-        firstPaymentDate: new Date().toISOString().split('T')[0]
+        firstPaymentDate: new Date().toISOString().split('T')[0],
+        balloonPayments: [] // Balon ödemeleri için yeni alan
     });
     const [calculatedPayments, setCalculatedPayments] = useState([]);
 
@@ -27,8 +28,18 @@ const PaymentPlanPage = () => {
     };
 
     const formatDateForInput = (dateString) => {
-        const date = new Date(dateString);
-        return date.toISOString().split('T')[0];
+        if (!dateString) return ''; // Tarih yoksa boş string döndür
+        
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) {
+                return ''; // Geçersiz tarih ise boş string döndür
+            }
+            return date.toISOString().split('T')[0];
+        } catch (error) {
+            console.error('Invalid date:', dateString);
+            return ''; // Hata durumunda boş string döndür
+        }
     };
 
     useEffect(() => {
@@ -51,19 +62,13 @@ const PaymentPlanPage = () => {
     }, [paymentPlan]);
 
     const calculatePayments = () => {
-        const { totalAmount, paymentType, downPayment, installmentCount, firstPaymentDate } = paymentPlan;
+        const { totalAmount, paymentType, downPayment, installmentCount, firstPaymentDate, balloonPayments } = paymentPlan;
 
         if (!totalAmount || !firstPaymentDate) return;
 
         // Kullanıcı tarafından manuel olarak ayarlanmış tarihler varsa onları koru
-        // Ancak firstPaymentDate değişmişse, ilk ödeme için bu değeri kullan
-        // ve tüm diğer tarihleri de güncelle
         const existingPayments = calculatedPayments.reduce((acc, payment) => {
-            // firstPaymentDate değişmişse, tüm tarihleri otomatik hesapla
-            // Kullanıcının manuel değişikliklerini yalnızca firstPaymentDate değişmediğinde koru
             if (payment.id === 0 || payment.isAutoCalculated) {
-                // İlk ödeme veya otomatik hesaplanan ödemeler için herhangi bir tarihi saklamayız
-                // bunlar her zaman otomatik hesaplanacak
                 acc[payment.id] = null;
             } else {
                 acc[payment.id] = payment.dueDate;
@@ -123,9 +128,122 @@ const PaymentPlanPage = () => {
                     isAutoCalculated: !existingPayments[i]
                 });
             }
+        } else if (paymentType === 'balloon-payment' && installmentCount) {
+            // Balon ödemeli plan hesaplamasını yapabiliriz
+            if (balloonPayments.length > 0) {
+                // Hesaplama için calculateBalloonPayments fonksiyonunu çağır
+                const balloonPaymentResults = calculateBalloonPayments(
+                    parseFloat(totalAmount), 
+                    parseInt(installmentCount),
+                    balloonPayments,
+                    baseDate
+                );
+                
+                if (balloonPaymentResults) {
+                    payments.push(...balloonPaymentResults);
+                }
+            } else {
+                // Balon ödemesi henüz tanımlanmamışsa normal taksitli ödeme gibi hesapla
+                const installmentAmount = totalAmount / installmentCount;
+                
+                for (let i = 0; i < installmentCount; i++) {
+                    const defaultDueDate = new Date(baseDate);
+                    defaultDueDate.setMonth(baseDate.getMonth() + i);
+                    
+                    payments.push({
+                        id: i,
+                        amount: installmentAmount,
+                        dueDate: defaultDueDate.toISOString().split('T')[0],
+                        description: 'Taksit ' + (i + 1) + '/' + installmentCount,
+                        isAutoCalculated: true
+                    });
+                }
+            }
         }
 
         setCalculatedPayments(payments);
+    };
+
+    // Balon ödemeli plan için hesaplama fonksiyonu
+    const calculateBalloonPayments = (totalAmount, installmentCount, balloonPayments, baseDate) => {
+        // Geçerli balon ödemeleri filtrele (boş olmayanlar)
+        const validBalloonPayments = balloonPayments.filter(bp => 
+            bp.amount && parseFloat(bp.amount) > 0 && bp.dueDate
+        );
+
+        if (validBalloonPayments.length === 0) return null;
+
+        // Toplam balon ödeme tutarını hesapla
+        const totalBalloonAmount = validBalloonPayments.reduce(
+            (sum, payment) => sum + parseFloat(payment.amount), 0
+        );
+        
+        // Balon ödemeler toplam tutardan büyük olamaz
+        if (totalBalloonAmount >= totalAmount) {
+            alert('Balon ödemelerin toplamı, toplam tutardan büyük veya eşit olamaz!');
+            return null;
+        }
+        
+        // Kalan tutar (normal taksitler için)
+        const remainingAmount = totalAmount - totalBalloonAmount;
+        const regularInstallmentCount = installmentCount - validBalloonPayments.length;
+        
+        if (regularInstallmentCount <= 0) {
+            alert('Normal taksit sayısı en az 1 olmalıdır!');
+            return null;
+        }
+        
+        // Normal taksit tutarı
+        const regularInstallmentAmount = remainingAmount / regularInstallmentCount;
+        
+        let allPayments = [];
+        
+        // Tüm taksitleri oluştur
+        for (let i = 0; i < installmentCount; i++) {
+            const defaultDueDate = new Date(baseDate);
+            defaultDueDate.setMonth(baseDate.getMonth() + i);
+            
+            // Bu taksit ayında balon ödeme var mı kontrol et
+            const balloonForThisMonth = validBalloonPayments.find(bp => {
+                if (!bp.dueDate) return false;
+                
+                const bpDate = new Date(bp.dueDate);
+                const thisMonth = defaultDueDate.getMonth();
+                const thisYear = defaultDueDate.getFullYear();
+                
+                return bpDate.getMonth() === thisMonth && bpDate.getFullYear() === thisYear;
+            });
+            
+            if (balloonForThisMonth) {
+                // Bu bir balon ödeme
+                allPayments.push({
+                    id: i,
+                    amount: parseFloat(balloonForThisMonth.amount),
+                    dueDate: balloonForThisMonth.dueDate,
+                    description: `Balon Ödeme (${i+1}. Taksit)`,
+                    isAutoCalculated: false,
+                    isBalloon: true
+                });
+            } else {
+                // Bu normal bir taksit
+                allPayments.push({
+                    id: i,
+                    amount: regularInstallmentAmount,
+                    dueDate: defaultDueDate.toISOString().split('T')[0],
+                    description: `Normal Taksit (${i+1}/${installmentCount})`,
+                    isAutoCalculated: true
+                });
+            }
+        }
+        
+        // Tarihe göre sırala
+        allPayments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+        
+        // ID'leri yeniden ata
+        return allPayments.map((payment, index) => ({
+            ...payment,
+            id: index
+        }));
     };
 
     const handleInputChange = (e) => {
@@ -176,6 +294,17 @@ const PaymentPlanPage = () => {
         );
     };
 
+    const handleBalloonPaymentChange = (index, newAmount, newDueDate) => {
+        setPaymentPlan(prev => ({
+            ...prev,
+            balloonPayments: prev.balloonPayments.map((balloonPayment, i) => 
+                i === index 
+                    ? { ...balloonPayment, amount: newAmount, dueDate: newDueDate }
+                    : balloonPayment
+            )
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -185,7 +314,8 @@ const PaymentPlanPage = () => {
                 amount: parseFloat(payment.amount),
                 dueDate: new Date(payment.dueDate).toISOString().split('T')[0],
                 description: payment.description,
-                status: 'pending'
+                status: 'pending',
+                isBalloon: payment.isBalloon || false // Balon ödemesi bilgisini ekle
             }));
 
             // Tarihlerin sıralı olduğunu kontrol et
@@ -211,7 +341,11 @@ const PaymentPlanPage = () => {
                 downPayment: paymentPlan.paymentType === 'cash-installment' ? parseFloat(paymentPlan.downPayment) : undefined,
                 installmentCount: paymentPlan.paymentType !== 'cash' ? parseInt(paymentPlan.installmentCount) : undefined,
                 firstPaymentDate: sortedPayments[0].dueDate,
-                payments: sortedPayments
+                payments: sortedPayments,
+                // Balon ödeme tipi seçiliyse
+                balloonPayments: paymentPlan.paymentType === 'balloon-payment' ? 
+                    paymentPlan.balloonPayments.filter(bp => bp.amount && bp.dueDate) : 
+                    undefined
             };
 
             await createSale(saleData);
@@ -291,6 +425,7 @@ const PaymentPlanPage = () => {
                                 <option value="cash">Peşin</option>
                                 <option value="cash-installment">Peşin + Taksit</option>
                                 <option value="installment">Taksit</option>
+                                <option value="balloon-payment">Balon Ödemeli</option>
                             </select>
                         </div>
 
@@ -340,6 +475,43 @@ const PaymentPlanPage = () => {
                             />
                         </div>
                     </div>
+
+                    {paymentPlan.paymentType === 'balloon-payment' && (
+                        <div className="mt-8">
+                            <h3 className="text-lg font-semibold mb-4">Balon Ödemeleri</h3>
+                            {paymentPlan.balloonPayments.map((balloonPayment, index) => (
+                                <div key={index} className="flex items-center gap-4 mb-4">
+                                    <input
+                                        type="number"
+                                        value={balloonPayment.amount}
+                                        onChange={(e) => handleBalloonPaymentChange(index, e.target.value, balloonPayment.dueDate)}
+                                        className="w-full p-2 border rounded"
+                                        required
+                                    />
+                                    <input
+                                        type="date"
+                                        value={formatDateForInput(balloonPayment.dueDate)}
+                                        onChange={(e) => handleBalloonPaymentChange(index, balloonPayment.amount, e.target.value)}
+                                        className="w-full p-2 border rounded"
+                                        required
+                                    />
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setPaymentPlan(prev => ({
+                                    ...prev,
+                                    balloonPayments: [...prev.balloonPayments, { 
+                                        amount: '', 
+                                        dueDate: new Date().toISOString().split('T')[0] // Varsayılan olarak bugünün tarihini ekle
+                                    }]
+                                }))}
+                                className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                            >
+                                Balon Ödemesi Ekle
+                            </button>
+                        </div>
+                    )}
 
                     {/* Ödeme Planı Tablosu */}
                     {calculatedPayments.length > 0 && (

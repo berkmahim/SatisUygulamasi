@@ -55,9 +55,19 @@ const PaymentPlanPage = () => {
 
         if (!totalAmount || !firstPaymentDate) return;
 
-        // Mevcut ödemeleri kontrol et
+        // Kullanıcı tarafından manuel olarak ayarlanmış tarihler varsa onları koru
+        // Ancak firstPaymentDate değişmişse, ilk ödeme için bu değeri kullan
+        // ve tüm diğer tarihleri de güncelle
         const existingPayments = calculatedPayments.reduce((acc, payment) => {
-            acc[payment.id] = payment.dueDate;
+            // firstPaymentDate değişmişse, tüm tarihleri otomatik hesapla
+            // Kullanıcının manuel değişikliklerini yalnızca firstPaymentDate değişmediğinde koru
+            if (payment.id === 0 || payment.isAutoCalculated) {
+                // İlk ödeme veya otomatik hesaplanan ödemeler için herhangi bir tarihi saklamayız
+                // bunlar her zaman otomatik hesaplanacak
+                acc[payment.id] = null;
+            } else {
+                acc[payment.id] = payment.dueDate;
+            }
             return acc;
         }, {});
 
@@ -68,16 +78,18 @@ const PaymentPlanPage = () => {
             payments.push({
                 id: 0,
                 amount: parseFloat(totalAmount),
-                dueDate: existingPayments[0] || baseDate.toISOString().split('T')[0],
-                description: 'Peşin Ödeme'
+                dueDate: baseDate.toISOString().split('T')[0],
+                description: 'Peşin Ödeme',
+                isAutoCalculated: true
             });
         } else if (paymentType === 'cash-installment' && downPayment && installmentCount) {
             // Peşinat ödemesi
             payments.push({
                 id: 0,
                 amount: parseFloat(downPayment),
-                dueDate: existingPayments[0] || baseDate.toISOString().split('T')[0],
-                description: 'Peşinat'
+                dueDate: baseDate.toISOString().split('T')[0],
+                description: 'Peşinat',
+                isAutoCalculated: true
             });
 
             // Taksitler
@@ -92,7 +104,8 @@ const PaymentPlanPage = () => {
                     id: i + 1,
                     amount: installmentAmount,
                     dueDate: existingPayments[i + 1] || defaultDueDate.toISOString().split('T')[0],
-                    description: 'Taksit ' + (i + 1) + '/' + installmentCount
+                    description: 'Taksit ' + (i + 1) + '/' + installmentCount,
+                    isAutoCalculated: !existingPayments[i + 1]
                 });
             }
         } else if (paymentType === 'installment' && installmentCount) {
@@ -106,7 +119,8 @@ const PaymentPlanPage = () => {
                     id: i,
                     amount: installmentAmount,
                     dueDate: existingPayments[i] || defaultDueDate.toISOString().split('T')[0],
-                    description: 'Taksit ' + (i + 1) + '/' + installmentCount
+                    description: 'Taksit ' + (i + 1) + '/' + installmentCount,
+                    isAutoCalculated: !existingPayments[i]
                 });
             }
         }
@@ -116,10 +130,26 @@ const PaymentPlanPage = () => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
+        
+        // Önceki state değerlerini saklayın
+        const prevState = {...paymentPlan};
+        
         setPaymentPlan(prev => ({
             ...prev,
             [name]: value
         }));
+        
+        // Eğer firstPaymentDate değiştiyse, tüm taksit tarihlerini sıfırla ve yeniden hesaplat
+        if (name === 'firstPaymentDate' && value !== prevState.firstPaymentDate) {
+            // Tüm hesaplanmış ödemelerin isAutoCalculated değerini true yap
+            // böylece calculatePayments tüm tarihleri yeniden hesaplayabilir
+            setCalculatedPayments(prevPayments => 
+                prevPayments.map(payment => ({
+                    ...payment,
+                    isAutoCalculated: true
+                }))
+            );
+        }
     };
 
     const handlePaymentDateChange = (paymentId, newDate) => {
@@ -140,7 +170,7 @@ const PaymentPlanPage = () => {
         setCalculatedPayments(prevPayments => 
             prevPayments.map(payment => 
                 payment.id === paymentId 
-                    ? { ...payment, dueDate: newDate }
+                    ? { ...payment, dueDate: newDate, isAutoCalculated: false }
                     : payment
             )
         );

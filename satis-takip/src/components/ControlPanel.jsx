@@ -289,7 +289,7 @@ const ControlPanel = ({
                   onClick={() => onDeleteBlock(selectedBlock)}
                   style={{ width: '100%' }}
                 >
-                  Bloğu Sil
+                  Birimi Sil
                 </Button>
               </Col>
             </Row>
@@ -302,7 +302,7 @@ const ControlPanel = ({
                   icon={<EditOutlined />}
                   onClick={handleSellBlock}
                 >
-                  Bloğu Sat
+                  Birimi Sat
                 </Button>
               </Col>
             </Row>
@@ -315,7 +315,7 @@ const ControlPanel = ({
                   icon={<HomeOutlined />}
                   onClick={() => window.location.href = `/projects/${blocks.find(b => (b._id || b.id) === selectedBlock).projectId}/blocks/${selectedBlock}`}
                 >
-                  Detayına Git
+                  İncele
                 </Button>
               </Col>
             </Row>

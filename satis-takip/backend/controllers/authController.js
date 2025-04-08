@@ -15,38 +15,55 @@ const generateToken = (id) => {
     }
 };
 
-// @desc    Kullanıcı girişi
+// @desc    Login user & get token
 // @route   POST /api/auth/login
 // @access  Public
 const loginUser = asyncHandler(async (req, res) => {
     const { username, password } = req.body;
 
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ 
+        $or: [
+            { username: username },
+            { email: username }
+        ]
+    }).select('+password');
 
-    if (!user) {
-        res.status(401);
-        throw new Error('Geçersiz kullanıcı adı veya şifre');
-    }
+    if (user && await user.matchPassword(password)) {
+        if (!user.isActive) {
+            res.status(401);
+            throw new Error('Hesabınız devre dışı bırakılmış');
+        }
 
-    if (!user.isActive) {
-        res.status(403);
-        throw new Error('Hesabınız pasif durumda. Lütfen yönetici ile iletişime geçin.');
-    }
+        // İki faktörlü kimlik doğrulama kontrol et
+        if (user.twoFactorEnabled) {
+            // İlk faktör doğrulaması başarılı, ikinci faktör için geçici token oluştur
+            const token = jwt.sign(
+                { id: user._id, require2FA: true },
+                process.env.JWT_SECRET,
+                { expiresIn: '5m' } // 2FA kısa süreli token
+            );
 
-    if (await user.matchPassword(password)) {
-        // Son giriş tarihini güncelle
+            return res.json({
+                requireTwoFactor: true,
+                userId: user._id,
+                tempToken: token
+            });
+        }
+
+        // 2FA yoksa normal giriş işlemine devam et
         user.lastLogin = Date.now();
         await user.save();
 
         res.json({
             _id: user._id,
             username: user.username,
-            email: user.email,
             fullName: user.fullName,
+            email: user.email,
             role: user.role,
             permissions: user.permissions,
             isActive: user.isActive,
-            token: generateToken(user._id),
+            twoFactorEnabled: user.twoFactorEnabled,
+            token: generateToken(user._id)
         });
     } else {
         res.status(401);

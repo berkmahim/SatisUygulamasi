@@ -1,72 +1,57 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, message, Divider, Spin, Typography } from 'antd';
+import { Card, Form, Input, Button, message, Divider, Spin, Typography, Row, Col } from 'antd';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { EditOutlined, SaveOutlined, CloseOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
 
-const { Title } = Typography;
+const { Title, Paragraph } = Typography;
 
 const UserProfilePage = () => {
   const { user, updateUserInfo } = useAuth();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [passwordForm] = Form.useForm();
 
   useEffect(() => {
     if (user) {
       form.setFieldsValue({
         fullName: user.fullName,
         username: user.username,
-        email: user.email,
+        email: user.email
       });
     }
   }, [user, form]);
 
   const handleSubmit = async (values) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await axios.put('/api/auth/profile', values);
-      
-      if (response.data) {
-        message.success('Kullanıcı bilgileri başarıyla güncellendi');
-        updateUserInfo(response.data);
-      }
+      const response = await axios.put('/api/users/update-profile', values);
+      updateUserInfo(response.data);
+      message.success('Profil başarıyla güncellendi');
     } catch (error) {
-      message.error('Kullanıcı bilgileri güncellenirken bir hata oluştu');
-      console.error('Güncelleme hatası:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordChange = async (values) => {
-    try {
-      setLoading(true);
-      const response = await axios.put('/api/auth/change-password', {
-        currentPassword: values.currentPassword,
-        newPassword: values.newPassword,
-      });
-      
-      if (response.data) {
-        message.success('Şifre başarıyla değiştirildi');
-        passwordForm.resetFields();
-      }
-    } catch (error) {
-      message.error(error.response?.data?.message || 'Şifre değiştirilirken bir hata oluştu');
-      console.error('Şifre değiştirme hatası:', error);
+      message.error(error.response?.data?.message || 'Profil güncellenirken bir hata oluştu');
     } finally {
       setLoading(false);
     }
   };
 
   if (!user) {
-    return <Spin size="large" />;
+    return (
+      <div style={{ textAlign: 'center', padding: '50px' }}>
+        <Spin size="large" />
+      </div>
+    );
   }
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <Title level={2}>Kullanıcı Profili</Title>
-      
-      <Card title="Kişisel Bilgiler" style={{ marginBottom: '20px' }}>
+    <div className="profile-container">
+      <Card 
+        title={
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <UserOutlined style={{ fontSize: '18px', marginRight: '8px' }} />
+            <span>Kullanıcı Bilgileri</span>
+          </div>
+        }
+      >
         <Form
           form={form}
           layout="vertical"
@@ -82,7 +67,7 @@ const UserProfilePage = () => {
             label="Ad Soyad"
             rules={[{ required: true, message: 'Lütfen adınızı ve soyadınızı girin' }]}
           >
-            <Input />
+            <Input prefix={<UserOutlined />} />
           </Form.Item>
           
           <Form.Item
@@ -90,7 +75,7 @@ const UserProfilePage = () => {
             label="Kullanıcı Adı"
             rules={[{ required: true, message: 'Lütfen kullanıcı adınızı girin' }]}
           >
-            <Input />
+            <Input prefix={<UserOutlined />} />
           </Form.Item>
           
           <Form.Item
@@ -101,62 +86,14 @@ const UserProfilePage = () => {
               { type: 'email', message: 'Lütfen geçerli bir e-posta adresi girin' }
             ]}
           >
-            <Input />
+            <Input prefix={<MailOutlined />} />
           </Form.Item>
           
-          <Button type="primary" htmlType="submit" loading={loading}>
-            Bilgileri Güncelle
-          </Button>
-        </Form>
-      </Card>
-      
-      <Card title="Şifre Değiştir">
-        <Form
-          form={passwordForm}
-          layout="vertical"
-          onFinish={handlePasswordChange}
-        >
-          <Form.Item
-            name="currentPassword"
-            label="Mevcut Şifre"
-            rules={[{ required: true, message: 'Lütfen mevcut şifrenizi girin' }]}
-          >
-            <Input.Password />
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+              Bilgileri Güncelle
+            </Button>
           </Form.Item>
-          
-          <Form.Item
-            name="newPassword"
-            label="Yeni Şifre"
-            rules={[
-              { required: true, message: 'Lütfen yeni şifrenizi girin' },
-              { min: 6, message: 'Şifre en az 6 karakter olmalıdır' }
-            ]}
-          >
-            <Input.Password />
-          </Form.Item>
-          
-          <Form.Item
-            name="confirmPassword"
-            label="Yeni Şifreyi Tekrar Girin"
-            dependencies={['newPassword']}
-            rules={[
-              { required: true, message: 'Lütfen yeni şifrenizi tekrar girin' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('newPassword') === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error('İki şifre eşleşmiyor'));
-                },
-              }),
-            ]}
-          >
-            <Input.Password />
-          </Form.Item>
-          
-          <Button type="primary" htmlType="submit" loading={loading}>
-            Şifreyi Değiştir
-          </Button>
         </Form>
       </Card>
     </div>

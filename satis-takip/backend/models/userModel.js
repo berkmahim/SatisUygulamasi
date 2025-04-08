@@ -60,6 +60,21 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    twoFactorEnabled: {
+        type: Boolean,
+        default: false
+    },
+    twoFactorSecret: {
+        type: String,
+        default: null
+    },
+    backupCodes: [{
+        code: String,
+        used: {
+            type: Boolean,
+            default: false
+        }
+    }],
     lastLogin: {
         type: Date
     }

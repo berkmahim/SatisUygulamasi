@@ -21,6 +21,11 @@ import NotificationsPage from './pages/NotificationsPage';
 import ProjectReports from './pages/ProjectReports';
 import UserProfilePage from './pages/UserProfilePage';
 import ActivityLogs from './pages/ActivityLogs';
+import SettingsPage from './pages/SettingsPage';
+import TwoFactorSetupPage from './pages/TwoFactorSetupPage';
+import TwoFactorLoginPage from './pages/TwoFactorLoginPage';
+import TwoFactorDisablePage from './pages/TwoFactorDisablePage';
+import TwoFactorBackupCodesPage from './pages/TwoFactorBackupCodesPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Footer from './components/Footer';
@@ -154,9 +159,26 @@ function AppContent() {
                   <ProjectReports />
                 </PermissionRoute>
               } />
-              <Route path="/user-profile" element={
+              <Route path="/user-profile" element={<Navigate to="/settings" />} />
+              <Route path="/settings" element={
+                <PermissionRoute bypass2FA={true}>
+                  <SettingsPage />
+                </PermissionRoute>
+              } />
+              <Route path="/two-factor/setup" element={
+                <PermissionRoute bypass2FA={true}>
+                  <TwoFactorSetupPage />
+                </PermissionRoute>
+              } />
+              <Route path="/two-factor/login" element={<TwoFactorLoginPage />} />
+              <Route path="/two-factor/disable" element={
                 <PermissionRoute>
-                  <UserProfilePage />
+                  <TwoFactorDisablePage />
+                </PermissionRoute>
+              } />
+              <Route path="/two-factor/backup-codes" element={
+                <PermissionRoute bypass2FA={true}>
+                  <TwoFactorBackupCodesPage />
                 </PermissionRoute>
               } />
             </Routes>

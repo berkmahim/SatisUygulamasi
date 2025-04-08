@@ -12,6 +12,7 @@ import authRoutes from './routes/authRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import logRoutes from './routes/logRoutes.js';
+import twoFactorRoutes from './routes/twoFactorRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import Sale from './models/saleModel.js';
 import { initializeMailer } from './config/mailer.js';
@@ -44,6 +45,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/logs', logRoutes);
+app.use('/api/auth/2fa', twoFactorRoutes);
 
 // Tüm ödeme durumlarını güncelleme fonksiyonu
 const updateAllPaymentStatuses = async () => {

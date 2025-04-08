@@ -1,4 +1,8 @@
+import Payment from '../models/paymentModel.js';
 import Sale from '../models/saleModel.js';
+import Customer from '../models/customerModel.js';
+import Block from '../models/blockModel.js';
+import { createLog } from './logController.js';
 
 // @desc    Record a payment for a sale
 // @route   POST /api/payments/:saleId
@@ -44,6 +48,17 @@ const recordPayment = async (req, res) => {
         const updatedSale = await Sale.findById(sale._id)
             .populate('blockId', 'unitNumber type')
             .populate('customerId', 'firstName lastName tcNo phone');
+
+        // Log kaydı oluştur
+        const customer = await Customer.findById(updatedSale.customerId);
+        const block = await Block.findById(updatedSale.blockId);
+        await createLog({
+            type: 'payment',
+            action: 'create',
+            description: `${customer.firstName} ${customer.lastName} müşterisine ait ${block.unitNumber} ${block.type} için ${payment.amount.toLocaleString('tr-TR')} TL tutarında ödeme kaydedildi.`,
+            entityId: payment._id.toString(),
+            userId: req.user._id
+        }, req);
 
         res.json(updatedSale);
     } catch (error) {

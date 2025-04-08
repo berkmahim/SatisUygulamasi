@@ -3,6 +3,7 @@ import Project from '../models/projectModel.js';
 import Block from '../models/blockModel.js';
 import Sale from '../models/saleModel.js';
 import Customer from '../models/customerModel.js';
+import { createLog } from './logController.js';
 
 // @desc    Get all projects
 // @route   GET /api/projects
@@ -43,6 +44,15 @@ export const createProject = asyncHandler(async (req, res) => {
         description
     });
 
+    // Log kaydı oluştur
+    await createLog({
+        type: 'project',
+        action: 'create',
+        description: `${project.name} isimli yeni proje oluşturuldu.`,
+        entityId: project._id.toString(),
+        userId: req.user._id
+    }, req);
+
     res.status(201).json(project);
 });
 
@@ -57,13 +67,25 @@ export const updateProject = asyncHandler(async (req, res) => {
         throw new Error('Proje bulunamadı');
     }
 
-    const updatedProject = await Project.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        { new: true }
-    );
+    const updates = {
+        name: req.body.name,
+        location: req.body.location,
+        description: req.body.description
+    };
 
-    res.status(200).json(updatedProject);
+    // Değişiklikleri kaydet
+    const updatedProject = await Project.findByIdAndUpdate(req.params.id, updates, { new: true });
+
+    // Log kaydı oluştur
+    await createLog({
+        type: 'project',
+        action: 'update',
+        description: `${updatedProject.name} isimli proje güncellendi.`,
+        entityId: updatedProject._id.toString(),
+        userId: req.user._id
+    }, req);
+
+    res.json(updatedProject);
 });
 
 // @desc    Delete project
@@ -92,12 +114,18 @@ export const deleteProject = asyncHandler(async (req, res) => {
         console.log(`Silinen blok sayısı: ${blocks.length}`);
 
         // 4. Projeyi sil
-        await project.deleteOne();
+        await Project.findByIdAndDelete(req.params.id);
 
-        res.status(200).json({ 
-            id: projectId,
-            message: `Proje ve ilişkili ${blocks.length} blok başarıyla silindi.` 
-        });
+        // Log kaydı oluştur
+        await createLog({
+            type: 'project',
+            action: 'delete',
+            description: `${project.name} isimli proje silindi.`,
+            entityId: req.params.id,
+            userId: req.user._id
+        }, req);
+
+        res.json({ message: 'Proje başarıyla silindi' });
     } catch (error) {
         console.error('Proje silme hatası:', error);
         res.status(500);

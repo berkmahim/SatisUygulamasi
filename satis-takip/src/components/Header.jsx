@@ -7,7 +7,7 @@ import {
   HomeOutlined, UserOutlined, ProjectOutlined, 
   BarChartOutlined, BulbOutlined, BulbFilled,
   MenuOutlined, LogoutOutlined, SettingOutlined,
-  TeamOutlined, BellOutlined
+  TeamOutlined, BellOutlined, FileSearchOutlined
 } from '@ant-design/icons';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -46,7 +46,6 @@ const Header = () => {
       label: <Link to="/customers">Müşteriler</Link>,
       permission: 'customerManagement'
     },
-    
     {
       key: '/reports/sales',
       icon: <BarChartOutlined />,
@@ -58,11 +57,18 @@ const Header = () => {
       icon: <TeamOutlined />,
       label: <Link to="/users">Kullanıcılar</Link>,
       permission: 'userManagement'
+    },
+    {
+      key: '/activity-logs',
+      icon: <FileSearchOutlined />,
+      label: <Link to="/activity-logs">İşlem Logları</Link>,
+      adminOnly: true // Sadece adminler görebilir
     }
   ];
 
   const menuItems = allMenuItems.filter(item => 
-    !item.permission || hasPermission(item.permission)
+    (!item.permission || hasPermission(item.permission)) && 
+    (!item.adminOnly || user?.role === 'admin')
   );
 
   const [notifications, setNotifications] = useState([]);

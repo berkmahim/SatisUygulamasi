@@ -141,7 +141,7 @@ const BlockSalePage = () => {
                     >
                         İptal
                     </button>
-                    <button
+                    {/* <button
                         onClick={() => {
                             if (selectedCustomer) {
                                 // TODO: Implement reservation logic
@@ -152,7 +152,7 @@ const BlockSalePage = () => {
                         className="px-6 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:bg-gray-300"
                     >
                         Rezerve Et
-                    </button>
+                    </button> */}
                     <button
                         onClick={handleSale}
                         disabled={!selectedCustomer}

@@ -4,6 +4,7 @@ import Block from '../models/blockModel.js';
 import Customer from '../models/customerModel.js';
 import User from '../models/userModel.js'; 
 import { sendSaleEmail } from '../config/mailer.js';
+import { createLog } from './logController.js';
 
 // @desc    Create a new sale
 // @route   POST /api/sales
@@ -82,6 +83,15 @@ const createSale = asyncHandler(async (req, res) => {
         if (adminUsers && adminUsers.length > 0) {
             await sendSaleEmail(sale, block, customer, req.user, adminUsers);
         }
+
+        // Log kaydı oluştur
+        await createLog({
+            type: 'sale',
+            action: 'create',
+            description: `${customer.firstName} ${customer.lastName} müşterisine ${block.projectName || 'Belirtilmemiş'} projesinden ${block.unitNumber} nolu birim ${totalAmount.toLocaleString('tr-TR')} TL tutarla satıldı.`,
+            entityId: sale._id.toString(),
+            userId: req.user._id
+        }, req);
 
         return res.status(201).json(sale);
     } catch (error) {
@@ -214,7 +224,13 @@ const cancelSaleAndRefund = asyncHandler(async (req, res) => {
 
         // Satışı bul
         const sale = await Sale.findById(req.params.id)
-            .populate('blockId')
+            .populate({
+                path: 'blockId',
+                populate: {
+                    path: 'projectId',
+                    select: 'name'
+                }
+            })
             .populate('customerId');
 
         if (!sale) {
@@ -230,6 +246,9 @@ const cancelSaleAndRefund = asyncHandler(async (req, res) => {
         // Blok bilgilerini al
         const block = sale.blockId;
         const customer = sale.customerId;
+
+        // Proje adını blok nesnesine ekle
+        block.projectName = block.projectId?.name || 'Belirtilmemiş';
 
         // Toplam ödenen miktarı hesapla (bu değer daha önce hesaplanmışsa tekrar hesaplamaya gerek yok)
         let totalPaid = 0;
@@ -273,6 +292,15 @@ const cancelSaleAndRefund = asyncHandler(async (req, res) => {
         if (adminUsers && adminUsers.length > 0) {
             await sendSaleEmail(sale, block, customer, req.user, adminUsers, true); // true -> iptal için
         }
+
+        // Log kaydı oluştur
+        await createLog({
+            type: 'sale-cancel',
+            action: 'delete',
+            description: `${customer.firstName} ${customer.lastName} müşterisine satılan ${block.projectName || 'Belirtilmemiş'} projesinden ${block.unitNumber} nolu birimin satışı iptal edildi. ${hasRefund ? `${refundAmount.toLocaleString('tr-TR')} TL iade yapıldı.` : 'İade yapılmadı.'}`,
+            entityId: sale._id.toString(),
+            userId: req.user._id
+        }, req);
 
         res.status(200).json({
             message: 'Satış başarıyla iptal edildi',

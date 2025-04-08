@@ -23,7 +23,7 @@ const Footer = () => {
               Tadu
             </Text>
             <Text className="company-description">
-              Müşteri ve proje takip sistemi
+              Proje takip sistemi
             </Text>
           </Col>
           

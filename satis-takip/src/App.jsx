@@ -20,6 +20,7 @@ import UsersPage from './pages/UsersPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ProjectReports from './pages/ProjectReports';
 import UserProfilePage from './pages/UserProfilePage';
+import ActivityLogs from './pages/ActivityLogs';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Footer from './components/Footer';
@@ -94,6 +95,12 @@ function AppContent() {
               <Route path="/notifications" element={
                 <PermissionRoute>
                   <NotificationsPage />
+                </PermissionRoute>
+              } />
+
+              <Route path="/activity-logs" element={
+                <PermissionRoute adminOnly={true}>
+                  <ActivityLogs />
                 </PermissionRoute>
               } />
 

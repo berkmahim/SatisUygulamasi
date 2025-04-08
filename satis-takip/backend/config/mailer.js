@@ -115,7 +115,7 @@ const sendSaleEmail = async (sale, block, customer, user, adminUsers, isCancella
             <p><strong>Satış Tutarı:</strong> ${sale.totalAmount?.toLocaleString('tr-TR')} TL</p>
             ${sale.cancellationDetails?.hasRefund ? `
               <p><strong>İade Tutarı:</strong> ${sale.cancellationDetails.refundAmount?.toLocaleString('tr-TR')} TL</p>
-              <p><strong>İade Tarihi:</strong> ${sale.cancellationDetails.refundDate ? new Date(sale.cancellationDetails.refundDate).toLocaleString('tr-TR') : 'Belirtilmemiş'}</p>
+              <p><strong>İade Tarihi:</strong> ${sale.cancellationDetails.refundDate ? new Date(sale.cancellationDetails.refundDate).toLocaleDateString('tr-TR') : 'Belirtilmemiş'}</p>
             ` : '<p><strong>İade:</strong> İade yapılmadı</p>'}
           </div>
           <p style="font-size: 14px; color: #999; margin-top: 20px;">

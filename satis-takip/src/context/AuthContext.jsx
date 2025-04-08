@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { message } from 'antd';
 
 // API base URL'ini ayarla
 axios.defaults.baseURL = 'http://localhost:5000';
@@ -21,6 +22,57 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const navigate = useNavigate();
 
+  // Axios interceptor for token expiry
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      response => response,
+      error => {
+        // API isteği sırasında herhangi bir hata oluşursa
+        if (error.response) {
+          // 401 Unauthorized hatası - token süresi dolmuş veya geçersiz
+          if (error.response.status === 401) {
+            // Eğer zaten login sayfasında değilsek, logout işlemi gerçekleştir
+            if (window.location.pathname !== '/login') {
+              // Kullanıcıya bilgi mesajı göster
+              console.log('Oturum süreniz doldu. Lütfen tekrar giriş yapın.');
+              
+              // Yerel depolamadan kullanıcı verilerini temizle
+              localStorage.removeItem('user');
+              localStorage.removeItem('userToken');
+              
+              // Axios headers'dan authorization token'ı temizle
+              delete axios.defaults.headers.common['Authorization'];
+              
+              // Uygulama state'ini temizle
+              setUser(null);
+              setToken(null);
+              
+              // Kullanıcıya görsel bildirim göster
+              message.warning({
+                content: 'Oturum süreniz doldu. Giriş ekranına yönlendiriliyorsunuz...',
+                duration: 3,  // 3 saniye göster
+                onClose: () => {
+                  // Mesaj kapandıktan sonra kullanıcıyı login sayfasına yönlendir
+                  navigate('/login', { 
+                    state: { 
+                      message: 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.' 
+                    } 
+                  });
+                }
+              });
+            }
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      // Component unmount olduğunda interceptor'u temizle
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [navigate]);
+
   useEffect(() => {
     // Sayfa yenilendiğinde localStorage'dan kullanıcı bilgilerini al
     const userFromStorage = localStorage.getItem('user');
@@ -30,7 +82,12 @@ export const AuthProvider = ({ children }) => {
       
       // Kullanıcı pasif durumdaysa oturumu sonlandır
       if (!parsedUser.isActive) {
-        logout();
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('userToken');
+        delete axios.defaults.headers.common['Authorization'];
+        navigate('/login');
         return;
       }
       
@@ -40,7 +97,7 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${tokenFromStorage}`;
     }
     setLoading(false);
-  }, []);
+  }, [navigate]);
 
   const login = async (userData, token) => {
     if (!userData || !token) {
@@ -81,15 +138,6 @@ export const AuthProvider = ({ children }) => {
     }));
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('userToken');
-    delete axios.defaults.headers.common['Authorization'];
-    navigate('/login');
-  };
-
   const hasPermission = (permission) => {
     if (!user) return false;
     if (user.role === 'admin') return true;
@@ -99,7 +147,14 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     login,
-    logout,
+    logout: () => {
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('userToken');
+      delete axios.defaults.headers.common['Authorization'];
+      navigate('/login');
+    },
     hasPermission,
     updateUserInfo,
     loading,

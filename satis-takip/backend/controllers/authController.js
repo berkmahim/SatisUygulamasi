@@ -1,18 +1,18 @@
-import asyncHandler from 'express-async-handler';
 import jwt from 'jsonwebtoken';
+import asyncHandler from 'express-async-handler';
 import User from '../models/userModel.js';
 import config from '../config/config.js';
 
 // JWT Token oluşturma
 const generateToken = (id) => {
-    try {
-        return jwt.sign({ id }, config.jwtSecret, {
-            expiresIn: '30d',
-        });
-    } catch (error) {
-        console.error('Token generation error:', error);
-        throw error;
-    }
+  const now = Math.floor(Date.now() / 1000); // Unix timestamp (saniye cinsinden)
+  return jwt.sign({ 
+    id,
+    iat: now
+  }, config.jwtSecret, {
+    expiresIn: 60*60*12, // 60 saniye (1 dakika) - sayısal değer olarak belirtiliyor
+    algorithm: 'HS256'
+  });
 };
 
 // @desc    Login user & get token
@@ -38,9 +38,12 @@ const loginUser = asyncHandler(async (req, res) => {
         if (user.twoFactorEnabled) {
             // İlk faktör doğrulaması başarılı, ikinci faktör için geçici token oluştur
             const token = jwt.sign(
-                { id: user._id, require2FA: true },
+                { id: user._id },
                 process.env.JWT_SECRET,
-                { expiresIn: '5m' } // 2FA kısa süreli token
+                { 
+                    expiresIn: 300, // 300 saniye (5 dakika) - sayısal değer olarak belirtiliyor
+                    algorithm: 'HS256'
+                }
             );
 
             return res.json({

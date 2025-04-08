@@ -107,7 +107,7 @@ const TwoFactorDisablePage = () => {
             <Space style={{ width: '100%', justifyContent: 'space-between' }}>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate('/settings')}
               >
                 İptal
               </Button>

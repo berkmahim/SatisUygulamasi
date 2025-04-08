@@ -71,6 +71,11 @@ const Header = () => {
     (!item.adminOnly || user?.role === 'admin')
   );
 
+  const getMenuProps = (item) => {
+    const { adminOnly, permission, ...rest } = item;
+    return rest;
+  };
+
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -263,8 +268,13 @@ const Header = () => {
           <Menu
             mode="horizontal"
             selectedKeys={[location.pathname]}
-            items={menuItems}
-            style={{ flex: 1 }}
+            items={menuItems.map(item => getMenuProps(item))}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              justifyContent: 'flex-end',
+              borderBottom: 'none'
+            }}
           />
           <Space style={{ marginLeft: 'auto' }} size="middle">
             {notificationButton}
@@ -320,9 +330,15 @@ const Header = () => {
           <Menu
             mode="inline"
             selectedKeys={[location.pathname]}
-            items={menuItems}
-            onClick={() => {
+            items={menuItems.map(item => getMenuProps(item))}
+            style={{
+              borderRight: 'none',
+              background: isDarkMode ? '#141414' : '#fff',
+              color: isDarkMode ? '#fff' : undefined
+            }}
+            onClick={({ key }) => {
               setMobileMenuVisible(false);
+              navigate(key);
             }}
           />
         </Drawer>

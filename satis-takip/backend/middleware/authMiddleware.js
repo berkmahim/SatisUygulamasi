@@ -1,5 +1,5 @@
-import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
+import jwt from 'jsonwebtoken';
 import User from '../models/userModel.js';
 import config from '../config/config.js';
 
@@ -16,9 +16,20 @@ const protect = asyncHandler(async (req, res, next) => {
             req.user = await User.findById(decoded.id).select('-password');
             next();
         } catch (error) {
-            console.error(error);
+            // Token hatalarını daha ayrıntılı kontrol edelim
+            if (error.name === 'TokenExpiredError') {
+                // Token süresi dolmuş - daha az detaylı hata log'u
+                console.log('Token süresi doldu. Kullanıcı yeniden giriş yapmalı.');
+            } else if (error.name === 'JsonWebTokenError') {
+                // Geçersiz token formatı
+                console.log('Geçersiz token formatı: ' + error.message);
+            } else {
+                // Diğer JWT hataları
+                console.log('Token doğrulama hatası: ' + error.message);
+            }
+            
             res.status(401);
-            throw new Error('Token geçersiz');
+            throw new Error('Oturum süresi doldu, lütfen tekrar giriş yapın');
         }
     }
 

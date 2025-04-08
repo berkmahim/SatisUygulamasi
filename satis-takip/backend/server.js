@@ -29,6 +29,7 @@ const emailConfig = {
 initializeMailer(emailConfig);
 
 const app = express();
+
 const port = process.env.PORT || 5000;
 
 app.use(cors());
@@ -80,11 +81,41 @@ const updateAllPaymentStatuses = async () => {
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
   // İlk başlatıldığında ödeme durumlarını güncelle
   updateAllPaymentStatuses();
   
   // Her saatte bir tüm ödeme durumlarını otomatik güncelle
   setInterval(updateAllPaymentStatuses, 60 * 60 * 1000); // 1 saat
+});
+
+// Beklenmeyen hataları yakala
+process.on('uncaughtException', (error) => {
+  console.log('UNCAUGHT EXCEPTION!');
+  console.log('Hata detayı:', error.message);
+  // Kritik olmayan hatalar için uygulama kapanmasın, sadece loglama yap
+  if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {
+    console.log('Token hatası yakalandı, işlem normal şekilde devam ediyor.');
+  } else {
+    console.log('Kritik hata, uygulama kapatılıyor...');
+    server.close(() => {
+      process.exit(1);
+    });
+  }
+});
+
+// İşlenmeyen Promise reddetmeleri yakala
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('UNHANDLED REJECTION!');
+  console.log('Hata detayı:', reason);
+  // Kritik olmayan hatalar için uygulama kapanmasın, sadece loglama yap
+  if (reason.name === 'TokenExpiredError' || reason.name === 'JsonWebTokenError') {
+    console.log('Token hatası yakalandı, işlem normal şekilde devam ediyor.');
+  } else {
+    console.log('Kritik hata, uygulama kapatılıyor...');
+    server.close(() => {
+      process.exit(1);
+    });
+  }
 });

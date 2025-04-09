@@ -101,10 +101,10 @@ const SettingsPage = () => {
                   {user?.twoFactorEnabled ? (
                     <Button 
                       type="danger" 
-                      onClick={() => navigate('/two-factor/disable')}
+                      onClick={() => navigate('/settings')}
                       icon={<LockOutlined />}
                     >
-                      2FA'yı Devre Dışı Bırak
+                      2FA Zaten Devrede
                     </Button>
                   ) : (
                     <Button 

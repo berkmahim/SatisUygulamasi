@@ -10,8 +10,7 @@ const generateToken = (id) => {
     id,
     iat: now
   }, config.jwtSecret, {
-    expiresIn: 60*60*12, // 60 saniye (1 dakika) - sayısal değer olarak belirtiliyor
-    algorithm: 'HS256'
+    expiresIn: '12h' // 60 saniye (1 dakika) - sayısal değer olarak belirtiliyor
   });
 };
 
@@ -41,8 +40,7 @@ const loginUser = asyncHandler(async (req, res) => {
                 { id: user._id },
                 process.env.JWT_SECRET,
                 { 
-                    expiresIn: 300, // 300 saniye (5 dakika) - sayısal değer olarak belirtiliyor
-                    algorithm: 'HS256'
+                    expiresIn: '12h', // 300 saniye (5 dakika) - sayısal değer olarak belirtiliyor
                 }
             );
 

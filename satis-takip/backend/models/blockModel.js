@@ -26,7 +26,11 @@ const blockSchema = mongoose.Schema({
         ref: 'Customer'
     },
     squareMeters: Number,
-    roomCount: String
+    roomCount: String,
+    iskanPaymentDone: {
+        type: Boolean,
+        default: false
+    }
 }, {
     timestamps: true
 });

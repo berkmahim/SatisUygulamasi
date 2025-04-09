@@ -63,7 +63,8 @@ const ControlPanel = ({
     unitNumber: '',
     owner: '',
     squareMeters: 0,
-    type: 'apartment'
+    type: 'apartment',
+    iskanPaymentDone: false
   });
 
   useEffect(() => {
@@ -74,7 +75,8 @@ const ControlPanel = ({
           unitNumber: block.unitNumber || '',
           owner: block.owner || '',
           squareMeters: block.squareMeters || 0,
-          type: block.type || 'apartment'
+          type: block.type || 'apartment',
+          iskanPaymentDone: block.iskanPaymentDone || false
         });
       }
     }
@@ -233,7 +235,7 @@ const ControlPanel = ({
                 />
               </Col>
               
-              <Col span={24}>
+              {/* <Col span={24}>
                 <Text strong>Sahibi:</Text>
                 <Input
                   placeholder="Sahibi"
@@ -241,7 +243,7 @@ const ControlPanel = ({
                   onChange={(e) => handleDetailsChange('owner', e.target.value)}
                   style={{ marginTop: '5px', marginBottom: '12px' }}
                 />
-              </Col>
+              </Col> */}
               
               <Col span={24}>
                 <Text strong>Metrekare:</Text>
@@ -265,6 +267,16 @@ const ControlPanel = ({
                       <Radio value="store">Dükkan</Radio>
                     </Space>
                   </Radio.Group>
+                </div>
+              </Col>
+
+              <Col span={24}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+                  <Text strong style={{ marginRight: '10px' }}>İskan Ödemesi Yapıldı:</Text>
+                  <Switch
+                    checked={blockDetails.iskanPaymentDone}
+                    onChange={(checked) => handleDetailsChange('iskanPaymentDone', checked)}
+                  />
                 </div>
               </Col>
             </Row>

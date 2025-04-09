@@ -67,6 +67,7 @@ const updateBlock = asyncHandler(async (req, res) => {
             ...(req.body.squareMeters !== undefined && { squareMeters: req.body.squareMeters }),
             ...(req.body.roomCount !== undefined && { roomCount: req.body.roomCount }),
             ...(req.body.type && { type: req.body.type }),
+            ...(req.body.iskanPaymentDone !== undefined && { iskanPaymentDone: req.body.iskanPaymentDone }),
             // Temel alanları koru
             projectId: block.projectId
         };

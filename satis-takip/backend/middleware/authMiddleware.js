@@ -39,8 +39,19 @@ const protect = asyncHandler(async (req, res, next) => {
     }
 });
 
+// Admin middleware - admin rolüne sahip kullanıcılar için
 const admin = (req, res, next) => {
     if (req.user && req.user.role === 'admin') {
+        // Admin kullanıcıları için tüm yetkileri aktif edelim
+        req.user.permissions = {
+            projectManagement: true,
+            salesManagement: true,
+            customerManagement: true,
+            paymentManagement: true,
+            reportManagement: true,
+            userManagement: true,
+            paymentOverdueNotification: true
+        };
         next();
     } else {
         res.status(401);
@@ -48,6 +59,7 @@ const admin = (req, res, next) => {
     }
 };
 
+// Belirli bir yetki kontrolü yapan middleware
 const checkPermission = (permission) => {
     return (req, res, next) => {
         if (req.user && (req.user.role === 'admin' || req.user.permissions[permission])) {

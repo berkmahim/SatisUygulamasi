@@ -26,6 +26,8 @@ import TwoFactorSetupPage from './pages/TwoFactorSetupPage';
 import TwoFactorLoginPage from './pages/TwoFactorLoginPage';
 import TwoFactorDisablePage from './pages/TwoFactorDisablePage';
 import TwoFactorBackupCodesPage from './pages/TwoFactorBackupCodesPage';
+import TasksPage from './pages/TasksPage';
+import TaskDetailPage from './pages/TaskDetailPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Footer from './components/Footer';
@@ -102,7 +104,19 @@ function AppContent() {
                   <NotificationsPage />
                 </PermissionRoute>
               } />
-
+              
+              <Route path="/tasks" element={
+                <PermissionRoute>
+                  <TasksPage />
+                </PermissionRoute>
+              } />
+              
+              <Route path="/tasks/:id" element={
+                <PermissionRoute>
+                  <TaskDetailPage />
+                </PermissionRoute>
+              } />
+              
               <Route path="/activity-logs" element={
                 <PermissionRoute adminOnly={true}>
                   <ActivityLogs />

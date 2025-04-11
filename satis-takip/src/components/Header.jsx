@@ -7,7 +7,8 @@ import {
   HomeOutlined, UserOutlined, ProjectOutlined, 
   BarChartOutlined, BulbOutlined, BulbFilled,
   MenuOutlined, LogoutOutlined, SettingOutlined,
-  TeamOutlined, BellOutlined, FileSearchOutlined
+  TeamOutlined, BellOutlined, FileSearchOutlined,
+  CalendarOutlined
 } from '@ant-design/icons';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -45,6 +46,12 @@ const Header = () => {
       icon: <UserOutlined />,
       label: <Link to="/customers">Müşteriler</Link>,
       permission: 'customerManagement'
+    },
+    {
+      key: '/tasks',
+      icon: <CalendarOutlined />,
+      label: <Link to="/tasks">Görevler</Link>,
+      permission: null
     },
     {
       key: '/reports/sales',
@@ -116,6 +123,8 @@ const Header = () => {
       // İlgili sayfaya yönlendir
       if (notification.type === 'PAYMENT_OVERDUE') {
         navigate(`/customers/${notification.relatedData.customerId}`);
+      } else if (notification.type === 'TASK_UPDATED' && notification.relatedData?.taskId) {
+        navigate(`/tasks/${notification.relatedData.taskId}`);
       }
       
       fetchNotifications();

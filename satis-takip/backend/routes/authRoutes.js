@@ -14,7 +14,7 @@ const router = express.Router();
 router.post('/login', loginUser);
 router.post('/register', protect, admin, registerUser);
 router.get('/profile', protect, getUserProfile);
-router.get('/users', protect, admin, getUsers);
+router.get('/users', protect, getUsers); // Tüm kullanıcıların erişebilmesi için admin kısıtlamasını kaldırıyoruz
 router.delete('/users/:id', protect, admin, deleteUser);
 router.put('/users/:id', protect, admin, updateUser);
 

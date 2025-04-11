@@ -13,6 +13,8 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import twoFactorRoutes from './routes/twoFactorRoutes.js';
+import customerNoteRoutes from './routes/customerNoteRoutes.js';
+import taskRoutes from './routes/taskRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import Sale from './models/saleModel.js';
 import { initializeMailer } from './config/mailer.js';
@@ -47,6 +49,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/auth/2fa', twoFactorRoutes);
+app.use('/api/customer-notes', customerNoteRoutes);
+app.use('/api/tasks', taskRoutes);
 
 // Tüm ödeme durumlarını güncelleme fonksiyonu
 const updateAllPaymentStatuses = async () => {

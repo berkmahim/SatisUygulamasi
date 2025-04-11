@@ -44,6 +44,7 @@ const { confirm } = Modal;
 
 const TasksPage = () => {
   const [tasks, setTasks] = useState([]);
+  const [allTasks, setAllTasks] = useState([]); 
   const [users, setUsers] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -64,6 +65,7 @@ const TasksPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    fetchAllTasks(); 
     fetchTasks();
     fetchUsers();
     fetchCustomers();
@@ -72,7 +74,16 @@ const TasksPage = () => {
 
   useEffect(() => {
     updateTaskCounts();
-  }, [tasks]);
+  }, [allTasks]); 
+
+  const fetchAllTasks = async () => {
+    try {
+      const { data } = await axios.get('/api/tasks'); 
+      setAllTasks(data);
+    } catch (error) {
+      console.error('Tüm görevleri getirme hatası:', error);
+    }
+  };
 
   const fetchTasks = async (filter = '') => {
     setLoading(true);
@@ -89,7 +100,6 @@ const TasksPage = () => {
 
   const fetchUsers = async () => {
     try {
-      // Tüm kullanıcılar için erişim sağlıyoruz
       const { data } = await axios.get('/api/auth/users');
       const processedUsers = data.map(user => ({
         ...user,
@@ -98,7 +108,6 @@ const TasksPage = () => {
       setUsers(processedUsers);
     } catch (error) {
       console.error('Kullanıcıları getirme hatası:', error);
-      // Hata durumunda en azından mevcut kullanıcıyı göster
       const { user: currentUser } = useAuth();
       setUsers([{
         _id: currentUser._id,
@@ -129,12 +138,12 @@ const TasksPage = () => {
     const now = dayjs();
     
     const counts = {
-      assigned: tasks.filter(task => task.assignedTo._id === currentUser._id).length,
-      created: tasks.filter(task => task.createdBy._id === currentUser._id).length,
-      pending: tasks.filter(task => task.status === 'pending').length,
-      inProgress: tasks.filter(task => task.status === 'in_progress').length,
-      completed: tasks.filter(task => task.status === 'completed').length,
-      overdue: tasks.filter(task => 
+      assigned: allTasks.filter(task => task.assignedTo?._id === currentUser._id).length,
+      created: allTasks.filter(task => task.createdBy?._id === currentUser._id).length,
+      pending: allTasks.filter(task => task.status === 'pending').length,
+      inProgress: allTasks.filter(task => task.status === 'in_progress').length,
+      completed: allTasks.filter(task => task.status === 'completed').length,
+      overdue: allTasks.filter(task => 
         dayjs(task.dueDate).isBefore(now) && 
         task.status !== 'completed' && 
         task.status !== 'cancelled'
@@ -187,7 +196,6 @@ const TasksPage = () => {
     } else {
       form.resetFields();
       
-      // Varsayılan olarak bugünden bir haftası sonrası için vade tarihi ayarla
       form.setFieldsValue({
         dueDate: dayjs().add(7, 'day'),
         status: 'pending',
@@ -202,30 +210,25 @@ const TasksPage = () => {
     try {
       const values = await form.validateFields();
       
-      // Atanan kişinin adını ID'ye çevir
       const assignedUser = users.find(user => user._id === values.assignedTo);
       
-      // Tarihleri ISO formatına çevir
       const formattedValues = {
         ...values,
-        assignedTo: values.assignedTo, // ID zaten gönderiliyor
+        assignedTo: values.assignedTo, 
         dueDate: values.dueDate.toISOString(),
         reminderDate: values.reminderDate ? values.reminderDate.toISOString() : undefined
       };
       
       if (editingTask) {
-        // Kullanıcı görevin oluşturucusu ve atanan kişi aynı anda değilse ve admin değilse
         const isCreator = editingTask.createdBy._id === currentUser._id;
         const isAssignee = editingTask.assignedTo._id === currentUser._id;
         const isAdmin = currentUser.role === 'admin';
         
         let updatedData = formattedValues;
         
-        // Sadece atanan kişiyse, sadece status alanını gönder
         if (isAssignee && !isCreator && !isAdmin) {
           updatedData = { status: values.status };
         } 
-        // Sadece oluşturucuysa, status alanını hariç tut
         else if (isCreator && !isAssignee && !isAdmin) {
           const { status, ...taskWithoutStatus } = formattedValues;
           updatedData = taskWithoutStatus;
@@ -241,6 +244,7 @@ const TasksPage = () => {
       form.resetFields();
       setIsModalVisible(false);
       setEditingTask(null);
+      fetchAllTasks(); 
       fetchTasks(activeTab === 'assigned' ? '?type=assigned' : 
                 activeTab === 'created' ? '?type=created' : '');
     } catch (error) {
@@ -261,6 +265,7 @@ const TasksPage = () => {
         try {
           await axios.delete(`/api/tasks/${task._id}`);
           message.success('Görev başarıyla silindi');
+          fetchAllTasks(); 
           fetchTasks(activeTab === 'assigned' ? '?type=assigned' : 
                     activeTab === 'created' ? '?type=created' : '');
         } catch (error) {
@@ -275,11 +280,12 @@ const TasksPage = () => {
     try {
       await axios.put(`/api/tasks/${taskId}`, { status: newStatus });
       message.success('Görev durumu güncellendi');
+      fetchAllTasks(); 
       fetchTasks(activeTab === 'assigned' ? '?type=assigned' : 
                 activeTab === 'created' ? '?type=created' : '');
     } catch (error) {
-      console.error('Durum güncelleme hatası:', error);
-      message.error('Görev durumu güncellenirken bir hata oluştu');
+      console.error('Durum güncellenirken hata:', error);
+      message.error('Görev durumu güncellenirken bir hata oluştu: ' + (error.response?.data?.message || error.message));
     }
   };
 

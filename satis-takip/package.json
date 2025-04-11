@@ -15,6 +15,11 @@
     "@ant-design/charts": "^2.2.6",
     "@ant-design/icons": "^5.6.0",
     "@ant-design/plots": "^2.3.3",
+    "@capacitor/android": "^5.5.1",
+    "@capacitor/cli": "^5.5.1",
+    "@capacitor/core": "^5.5.1",
+    "@capacitor/preferences": "^5.0.0",
+    "@capacitor/push-notifications": "^5.1.0",
     "@react-pdf/renderer": "^4.2.1",
     "@react-three/drei": "^9.121.4",
     "@react-three/fiber": "^8.17.14",
@@ -69,7 +74,9 @@
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
     "postcss": "^8.5.1",
+    "serve": "^14.2.4",
     "tailwindcss": "^4.0.3",
-    "vite": "^6.0.5"
+    "vite": "^6.0.5",
+    "vite-plugin-pwa": "^1.0.0"
   }
 }

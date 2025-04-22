@@ -12,6 +12,8 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 const { Title, Paragraph, Text } = Typography;
 const { TabPane } = Tabs;
 
@@ -29,7 +31,7 @@ const SettingsPage = () => {
 
     setLoading(true);
     try {
-      await axios.put('/api/users/update-password', {
+      await axios.put(`${BASE_URL}/api/users/update-password`, {
         currentPassword: values.currentPassword,
         newPassword: values.newPassword
       });

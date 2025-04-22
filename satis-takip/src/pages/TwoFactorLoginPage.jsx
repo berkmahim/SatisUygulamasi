@@ -3,6 +3,8 @@ import { Card, Input, Button, Form, message, Typography, Tabs, Space, Divider, A
 import { LockOutlined, KeyOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_API_URL;
 import { useAuth } from '../context/AuthContext';
 
 const { Title, Text } = Typography;
@@ -52,7 +54,7 @@ const TwoFactorLoginPage = () => {
     setError('');
 
     try {
-      const response = await axios.post('/api/auth/2fa/login', {
+      const response = await axios.post(`${BASE_URL}/api/auth/2fa/login`, {
         userId,
         token: code,
         isBackupCode

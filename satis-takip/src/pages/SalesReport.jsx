@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_API_URL;
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -61,10 +63,10 @@ const SalesReport = () => {
                     statusResponse,
                     projectResponse
                 ] = await Promise.all([
-                    axios.get('/api/reports/statistics'),
-                    axios.get('/api/reports/monthly-sales'),
-                    axios.get('/api/reports/payment-status'),
-                    axios.get('/api/reports/project-sales')
+                    axios.get(`${BASE_URL}/api/reports/statistics`),
+                    axios.get(`${BASE_URL}/api/reports/monthly-sales`),
+                    axios.get(`${BASE_URL}/api/reports/payment-status`),
+                    axios.get(`${BASE_URL}/api/reports/project-sales`)
                 ]);
 
                 setStatistics(statsResponse.data);

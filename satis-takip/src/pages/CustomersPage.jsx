@@ -3,6 +3,8 @@ import { Table, Button, Space, Input, Modal, Form, message, Typography } from 'a
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 const { Title } = Typography;
 
 const CustomersPage = () => {
@@ -16,7 +18,7 @@ const CustomersPage = () => {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get('/api/customers');
+      const { data } = await axios.get(`${BASE_URL}/api/customers`);
       setCustomers(data);
     } catch (error) {
       message.error('Müşteriler yüklenirken bir hata oluştu');

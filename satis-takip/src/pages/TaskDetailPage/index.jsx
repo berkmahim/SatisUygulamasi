@@ -9,6 +9,8 @@ import {
   CalendarOutlined, UserOutlined, TeamOutlined, ExclamationCircleOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_API_URL;
 import dayjs from 'dayjs';
 import { useAuth } from '../../context/AuthContext';
 
@@ -166,11 +168,11 @@ const TaskDetailPage = () => {
       // Sadece oluşturucuysa ve atanan kişi değilse, status alanını hariç tut
       else if (isCreator && !isAssignee && !isAdmin) {
         const { status, ...taskWithoutStatus } = taskData;
-        await axios.put(`/api/tasks/${id}`, taskWithoutStatus);
+        await axios.put(`${BASE_URL}/api/tasks/${id}`, taskWithoutStatus);
       }
       // Hem oluşturucu hem atanan kişiyse veya admin ise, her şeyi gönder
       else {
-        await axios.put(`/api/tasks/${id}`, taskData);
+        await axios.put(`${BASE_URL}/api/tasks/${id}`, taskData);
       }
       
       message.success('Görev başarıyla güncellendi');
@@ -196,7 +198,7 @@ const TaskDetailPage = () => {
 
   const handleDeleteTask = async () => {
     try {
-      await axios.delete(`/api/tasks/${id}`);
+      await axios.delete(`${BASE_URL}/api/tasks/${id}`);
       message.success('Görev başarıyla silindi');
       navigate('/tasks');
     } catch (error) {

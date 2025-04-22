@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_API_URL;
 import { 
   Card, 
   Table, 
@@ -237,7 +239,7 @@ const TasksPage = () => {
         await axios.put(`/api/tasks/${editingTask._id}`, updatedData);
         message.success('Görev başarıyla güncellendi');
       } else {
-        await axios.post('/api/tasks', formattedValues);
+        await axios.post(`${BASE_URL}/api/tasks`, formattedValues);
         message.success('Görev başarıyla oluşturuldu');
       }
       

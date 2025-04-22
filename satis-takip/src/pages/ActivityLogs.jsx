@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Table, Typography, Card, Select, Input, DatePicker, Button, Space, Tag, Spin } from 'antd';
 import { SearchOutlined, ExportOutlined, FileSearchOutlined } from '@ant-design/icons';
 import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_API_URL;
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import dayjs from 'dayjs';
@@ -44,7 +46,7 @@ const ActivityLogs = () => {
         params.endDate = filters.dateRange[1].endOf('day').toISOString();
       }
 
-      const response = await axios.get('/api/logs', { params });
+      const response = await axios.get(`${BASE_URL}/api/logs`, { params });
       setLogs(response.data.logs);
       setPagination({
         ...pagination,

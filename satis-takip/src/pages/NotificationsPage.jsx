@@ -3,6 +3,8 @@ import { List, Card, Button, Typography, Space, Badge, Spin, message } from 'ant
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_API_URL;
 import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
@@ -17,7 +19,7 @@ const NotificationsPage = () => {
   const fetchNotifications = async (pageNumber = 1) => {
     try {
       setLoading(true);
-      const { data } = await axios.get(`/api/notifications?page=${pageNumber}&limit=10`);
+      const { data } = await axios.get(`${BASE_URL}/api/notifications?page=${pageNumber}&limit=10`);
       setNotifications(data.notifications);
       setTotal(data.total);
       setPage(pageNumber);

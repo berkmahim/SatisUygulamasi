@@ -6,7 +6,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
 const { Title, Paragraph } = Typography;
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 const TwoFactorDisablePage = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -25,7 +25,7 @@ const TwoFactorDisablePage = () => {
     setError('');
     
     try {
-      await axios.post('/api/auth/2fa/disable', {
+      await axios.post(`${BASE_URL}/api/auth/2fa/disable`, {
         token: values.token,
         password: values.password
       });

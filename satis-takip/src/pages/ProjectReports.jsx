@@ -17,7 +17,7 @@ import autoTable from 'jspdf-autotable';
 
 const { Title } = Typography;
 const { RangePicker } = DatePicker;
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 const ProjectReports = () => {
   const { id: projectId } = useParams();
   const [loading, setLoading] = useState(true);
@@ -38,7 +38,7 @@ const ProjectReports = () => {
   // Birim tipi ve oda sayısı dağılımını al
   const fetchUnitTypeDistribution = async () => {
     try {
-      const { data } = await axios.get(`/api/reports/projects/${projectId}/unit-types`);
+      const { data } = await axios.get(`${BASE_URL}/api/reports/projects/${projectId}/unit-types`);
       
       setUnitTypeData(data.unitStatus);
       setRoomCountData(data.roomCounts);
@@ -58,7 +58,7 @@ const ProjectReports = () => {
         endDate: dateRange[1].format('YYYY-MM-DD')
       });
       
-      const { data } = await axios.get(`/api/reports/projects/${projectId}/payments`, {
+      const { data } = await axios.get(`${BASE_URL}/api/reports/projects/${projectId}/payments`, {
         params: {
           startDate: dateRange[0].format('YYYY-MM-DD'),
           endDate: dateRange[1].format('YYYY-MM-DD')
@@ -83,7 +83,7 @@ const ProjectReports = () => {
   // Proje bilgilerini al
   const fetchProjectInfo = async () => {
     try {
-      const { data } = await axios.get(`/api/projects/${projectId}`);
+      const { data } = await axios.get(`${BASE_URL}/api/projects/${projectId}`);
       setProjectInfo(data);
     } catch (error) {
       console.error('Proje bilgileri alınamadı:', error);

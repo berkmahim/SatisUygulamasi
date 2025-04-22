@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 
 const { Title, Text, Paragraph } = Typography;
 const { Step } = Steps;
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 const TwoFactorSetupPage = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [qrCode, setQrCode] = useState('');
@@ -33,7 +33,7 @@ const TwoFactorSetupPage = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post('/api/auth/2fa/generate');
+      const response = await axios.post(`${BASE_URL}/api/auth/2fa/generate`);
       setQrCode(response.data.qrCodeUrl);
       setSecret(response.data.secret);
       setLoading(false);
@@ -52,7 +52,7 @@ const TwoFactorSetupPage = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post('/api/auth/2fa/verify', { token });
+      const response = await axios.post(`${BASE_URL}/api/auth/2fa/verify`, { token });
       setBackupCodes(response.data.backupCodes);
       
       // Kullanıcı bilgilerini güncelleme - twoFactorEnabled değerini true yap

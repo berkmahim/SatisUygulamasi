@@ -32,7 +32,7 @@ const CustomersPage = () => {
 
   const handleDeleteCustomer = async (id) => {
     try {
-      await axios.delete(`/api/customers/${id}`);
+      await axios.delete(`${BASE_URL}/api/customers/${id}`);
       message.success('Müşteri başarıyla silindi');
       fetchCustomers();
     } catch (error) {
@@ -43,7 +43,7 @@ const CustomersPage = () => {
   const handleUpdateCustomer = async (values) => {
     try {
       const customerId = selectedCustomer._id;
-      await axios.put(`/api/customers/${customerId}`, values);
+      await axios.put(`${BASE_URL}/api/customers/${customerId}`, values);
       message.success('Müşteri bilgileri güncellendi');
       setModalVisible(false);
       form.resetFields();
@@ -55,7 +55,7 @@ const CustomersPage = () => {
 
   const handleCreateCustomer = async (values) => {
     try {
-      await axios.post('/api/customers', values);
+      await axios.post(`${BASE_URL}/api/customers`, values);
       message.success('Müşteri başarıyla oluşturuldu');
       setModalVisible(false);
       form.resetFields();

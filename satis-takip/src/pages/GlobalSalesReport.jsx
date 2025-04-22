@@ -48,7 +48,7 @@ ChartJS.register(
   Tooltip,
   Legend
 );
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 const GlobalSalesReport = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -92,13 +92,13 @@ const GlobalSalesReport = () => {
         monthlySalesResponse,
         paymentResponse
       ] = await Promise.all([
-        axios.get('/api/reports/global/unit-types', {
+        axios.get(`${BASE_URL}/api/reports/global/unit-types`, {
           params: { startDate: formattedStartDate, endDate: formattedEndDate }
         }),
-        axios.get('/api/reports/global/monthly-sales', {
+        axios.get(`${BASE_URL}/api/reports/global/monthly-sales`, {
           params: { startDate: formattedStartDate, endDate: formattedEndDate }
         }),
-        axios.get('/api/reports/global/payments', {
+        axios.get(`${BASE_URL}/api/reports/global/payments`, {
           params: { startDate: formattedStartDate, endDate: formattedEndDate }
         })
       ]);

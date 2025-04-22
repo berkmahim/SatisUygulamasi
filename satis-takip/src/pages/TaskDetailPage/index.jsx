@@ -57,6 +57,7 @@ const TaskDetailPage = () => {
   const [users, setUsers] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [projects, setProjects] = useState([]);
+  const BASE_URL = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
     fetchTaskDetails();
@@ -68,7 +69,7 @@ const TaskDetailPage = () => {
   const fetchTaskDetails = async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(`/api/tasks/${id}`);
+      const { data } = await axios.get(`${BASE_URL}/api/tasks/${id}`);
       setTask(data);
     } catch (error) {
       console.error('Görev detayları getirme hatası:', error);
@@ -80,7 +81,7 @@ const TaskDetailPage = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data } = await axios.get('/api/users');
+      const { data } = await axios.get(`${BASE_URL}/api/users`);
       setUsers(data);
     } catch (error) {
       console.error('Kullanıcıları getirme hatası:', error);
@@ -89,7 +90,7 @@ const TaskDetailPage = () => {
 
   const fetchCustomers = async () => {
     try {
-      const { data } = await axios.get('/api/customers');
+      const { data } = await axios.get(`${BASE_URL}/api/customers`);
       setCustomers(data);
     } catch (error) {
       console.error('Müşterileri getirme hatası:', error);
@@ -98,7 +99,7 @@ const TaskDetailPage = () => {
 
   const fetchProjects = async () => {
     try {
-      const { data } = await axios.get('/api/projects');
+      const { data } = await axios.get(`${BASE_URL}/api/projects`);
       setProjects(data);
     } catch (error) {
       console.error('Projeleri getirme hatası:', error);
@@ -119,7 +120,7 @@ const TaskDetailPage = () => {
 
   const handleStatusChange = async (newStatus) => {
     try {
-      await axios.put(`/api/tasks/${id}`, { status: newStatus });
+      await axios.put(`${BASE_URL}/api/tasks/${id}`, { status: newStatus });
       message.success('Görev durumu güncellendi');
       fetchTaskDetails();
     } catch (error) {
@@ -161,7 +162,7 @@ const TaskDetailPage = () => {
       
       // Sadece atanan kişiyse ve oluşturucu değilse, sadece status alanını gönder
       if (isAssignee && !isCreator && !isAdmin) {
-        await axios.put(`/api/tasks/${id}`, {
+        await axios.put(`${BASE_URL}/api/tasks/${id}`, {
           status: values.status
         });
       } 

@@ -64,7 +64,7 @@ const ActivityLogs = () => {
   // Kullanıcı listesini yükle
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('/api/users');
+      const response = await axios.get(`${BASE_URL}/api/users`);
       setUsers(response.data);
     } catch (error) {
       console.error("Kullanıcılar yüklenirken hata oluştu:", error);
@@ -74,7 +74,7 @@ const ActivityLogs = () => {
   // Aksiyon tiplerini yükle
   const fetchActionTypes = async () => {
     try {
-      const response = await axios.get('/api/logs/types');
+      const response = await axios.get(`${BASE_URL}/api/logs/types`);
       setActionTypes(response.data);
     } catch (error) {
       console.error("Aksiyon tipleri yüklenirken hata oluştu:", error);
@@ -163,7 +163,7 @@ const ActivityLogs = () => {
         params.endDate = filters.dateRange[1].endOf('day').toISOString();
       }
 
-      const response = await axios.get('/api/logs/export', { 
+      const response = await axios.get(`${BASE_URL}/api/logs/export`, { 
         params,
         responseType: 'blob' 
       });

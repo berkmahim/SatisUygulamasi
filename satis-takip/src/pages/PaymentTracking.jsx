@@ -17,7 +17,7 @@ import ReportGenerator from '../components/ReportGenerator';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 // Ödeme durumu yardımcı fonksiyonları
 const getPaymentStatusText = (status) => {
     const statusTexts = {
@@ -64,7 +64,7 @@ const PaymentTracking = () => {
             setLoading(true);
             
             // Önce satış detaylarını al
-            const saleResponse = await axios.get(`/api/sales/${saleId}`);
+            const saleResponse = await axios.get(`${BASE_URL}/api/sales/${saleId}`);
             const saleData = saleResponse.data;
 
             // Satış verilerini state'e kaydet
@@ -77,7 +77,7 @@ const PaymentTracking = () => {
             }
 
             // Sonra ödeme detaylarını al
-            const response = await axios.get(`/api/payments/${saleId}`);
+            const response = await axios.get(`${BASE_URL}/api/payments/${saleId}`);
             const paymentData = response.data;
             console.log('Payment data:', paymentData);
             
@@ -110,7 +110,7 @@ const PaymentTracking = () => {
                 return;
             }
 
-            await axios.post(`/api/payments/${saleId}`, {
+            await axios.post(`${BASE_URL}/api/payments/${saleId}`, {
                 paymentId: selectedPayment.id,
                 paidAmount: paidAmount,
                 paymentMethod: values.paymentMethod,

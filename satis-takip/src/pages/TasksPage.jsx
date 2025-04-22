@@ -80,7 +80,7 @@ const TasksPage = () => {
 
   const fetchAllTasks = async () => {
     try {
-      const { data } = await axios.get('/api/tasks'); 
+      const { data } = await axios.get(`${BASE_URL}/api/tasks`); 
       setAllTasks(data);
     } catch (error) {
       console.error('Tüm görevleri getirme hatası:', error);
@@ -90,7 +90,7 @@ const TasksPage = () => {
   const fetchTasks = async (filter = '') => {
     setLoading(true);
     try {
-      const { data } = await axios.get(`/api/tasks${filter}`);
+      const { data } = await axios.get(`${BASE_URL}/api/tasks${filter}`);
       setTasks(data);
     } catch (error) {
       message.error('Görevler yüklenirken bir hata oluştu.');
@@ -102,7 +102,7 @@ const TasksPage = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data } = await axios.get('/api/auth/users');
+      const { data } = await axios.get(`${BASE_URL}/api/auth/users`);
       const processedUsers = data.map(user => ({
         ...user,
         name: user.fullName || user.username || 'İsimsiz Kullanıcı'
@@ -120,7 +120,7 @@ const TasksPage = () => {
 
   const fetchCustomers = async () => {
     try {
-      const { data } = await axios.get('/api/customers');
+      const { data } = await axios.get(`${BASE_URL}/api/customers`);
       setCustomers(data);
     } catch (error) {
       console.error('Müşterileri getirme hatası:', error);
@@ -129,7 +129,7 @@ const TasksPage = () => {
 
   const fetchProjects = async () => {
     try {
-      const { data } = await axios.get('/api/projects');
+      const { data } = await axios.get(`${BASE_URL}/api/projects`);
       setProjects(data);
     } catch (error) {
       console.error('Projeleri getirme hatası:', error);
@@ -236,7 +236,7 @@ const TasksPage = () => {
           updatedData = taskWithoutStatus;
         }
         
-        await axios.put(`/api/tasks/${editingTask._id}`, updatedData);
+        await axios.put(`${BASE_URL}/api/tasks/${editingTask._id}`, updatedData);
         message.success('Görev başarıyla güncellendi');
       } else {
         await axios.post(`${BASE_URL}/api/tasks`, formattedValues);
@@ -265,7 +265,7 @@ const TasksPage = () => {
       cancelText: 'Hayır',
       onOk: async () => {
         try {
-          await axios.delete(`/api/tasks/${task._id}`);
+          await axios.delete(`${BASE_URL}/api/tasks/${task._id}`);
           message.success('Görev başarıyla silindi');
           fetchAllTasks(); 
           fetchTasks(activeTab === 'assigned' ? '?type=assigned' : 
@@ -280,7 +280,7 @@ const TasksPage = () => {
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {
-      await axios.put(`/api/tasks/${taskId}`, { status: newStatus });
+      await axios.put(`${BASE_URL}/api/tasks/${taskId}`, { status: newStatus });
       message.success('Görev durumu güncellendi');
       fetchAllTasks(); 
       fetchTasks(activeTab === 'assigned' ? '?type=assigned' : 

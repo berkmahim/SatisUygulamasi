@@ -37,7 +37,7 @@ const NotificationsPage = () => {
 
   const handleNotificationClick = async (notification) => {
     try {
-      await axios.put(`/api/notifications/${notification._id}/read`);
+      await axios.put(`${BASE_URL}/api/notifications/${notification._id}/read`);
       
       // İlgili sayfaya yönlendir
       if (notification.type === 'PAYMENT_OVERDUE' && notification.relatedData?.customerId) {
@@ -58,7 +58,7 @@ const NotificationsPage = () => {
 
   const handleMarkAllAsRead = async () => {
     try {
-      await axios.put('/api/notifications/mark-all-read');
+      await axios.put(`${BASE_URL}/api/notifications/mark-all-read`);
       message.success('Tüm bildirimler okundu olarak işaretlendi');
       fetchNotifications(page);
     } catch (error) {

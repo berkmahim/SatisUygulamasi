@@ -5,7 +5,7 @@ import axios from 'axios';
 import { EditOutlined, SaveOutlined, CloseOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
 
 const { Title, Paragraph } = Typography;
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 const UserProfilePage = () => {
   const { user, updateUserInfo } = useAuth();
   const [form] = Form.useForm();
@@ -24,7 +24,7 @@ const UserProfilePage = () => {
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
-      const response = await axios.put('/api/users/update-profile', values);
+      const response = await axios.put(`${BASE_URL}/api/users/update-profile`, values);
       updateUserInfo(response.data);
       message.success('Profil başarıyla güncellendi');
     } catch (error) {

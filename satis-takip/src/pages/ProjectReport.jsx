@@ -28,7 +28,7 @@ ChartJS.register(
     Tooltip,
     Legend
 );
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 const ProjectReport = () => {
     const { projectId } = useParams();
     const [loading, setLoading] = useState(true);
@@ -44,8 +44,8 @@ const ProjectReport = () => {
                 setLoading(true);
                 
                 const [projectRes, statsRes] = await Promise.all([
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/projects/${projectId}`),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/reports/projects/${projectId}/stats`)
+                    axios.get(`${BASE_URL}/api/projects/${projectId}`),
+                    axios.get(`${BASE_URL}/api/reports/projects/${projectId}/stats`)
                 ]);
 
                 setProject(projectRes.data);

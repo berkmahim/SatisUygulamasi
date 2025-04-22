@@ -6,7 +6,7 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
 const { Title, Paragraph, Text } = Typography;
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 const TwoFactorBackupCodesPage = () => {
   const [form] = Form.useForm();
   const [backupCodes, setBackupCodes] = useState([]);
@@ -32,7 +32,7 @@ const TwoFactorBackupCodesPage = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await axios.get('/api/auth/2fa/backup-codes');
+      const response = await axios.get(`${BASE_URL}/api/auth/2fa/backup-codes`);
       setBackupCodes(response.data.backupCodes);
       setLoading(false);
     } catch (error) {
@@ -45,7 +45,7 @@ const TwoFactorBackupCodesPage = () => {
     setRegenerating(true);
     setError('');
     try {
-      const response = await axios.post('/api/auth/2fa/backup-codes', {
+      const response = await axios.post(`${BASE_URL}/api/auth/2fa/backup-codes`, {
         password: values.password
       });
       setBackupCodes(response.data.backupCodes);

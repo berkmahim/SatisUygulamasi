@@ -24,7 +24,7 @@ import { useAuth } from '../context/AuthContext';
 
 const { Title } = Typography;
 const { Option } = Select;
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 const UsersPage = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -36,7 +36,7 @@ const UsersPage = () => {
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const { data } = await axios.get('/api/auth/users');
+            const { data } = await axios.get(`${BASE_URL}/api/auth/users`);
             setUsers(data);
         } catch (error) {
             message.error('Kullanıcılar yüklenirken bir hata oluştu');
@@ -52,10 +52,10 @@ const UsersPage = () => {
     const handleAddEdit = async (values) => {
         try {
             if (editingUser) {
-                await axios.put(`/api/auth/users/${editingUser._id}`, values);
+                await axios.put(`${BASE_URL}/api/auth/users/${editingUser._id}`, values);
                 message.success('Kullanıcı güncellendi');
             } else {
-                await axios.post('/api/auth/register', values);
+                await axios.post(`${BASE_URL}/api/auth/register`, values);
                 message.success('Kullanıcı oluşturuldu');
             }
             setModalVisible(false);
@@ -68,7 +68,7 @@ const UsersPage = () => {
 
     const handleDelete = async (id) => {
         try {
-            await axios.delete(`/api/auth/users/${id}`);
+            await axios.delete(`${BASE_URL}/api/auth/users/${id}`);
             message.success('Kullanıcı silindi');
             fetchUsers();
         } catch (error) {

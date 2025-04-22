@@ -14,7 +14,7 @@ import axios from 'axios';
 const { Title, Text } = Typography;
 const { Search } = Input;
 const { Option } = Select;
-
+const BASE_URL = import.meta.env.VITE_API_URL;
 const ProjectDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -43,8 +43,8 @@ const ProjectDetail = () => {
             setError(null);
 
             const [projectResponse, salesResponse] = await Promise.all([
-                axios.get(`${import.meta.env.VITE_API_URL}/api/projects/${id}`),
-                axios.get(`${import.meta.env.VITE_API_URL}/api/sales/project/${id}?status=active`)
+                axios.get(`${BASE_URL}/api/projects/${id}`),
+                axios.get(`${BASE_URL}/api/sales/project/${id}?status=active`)
             ]);
 
             setProject(projectResponse.data);
@@ -61,7 +61,7 @@ const ProjectDetail = () => {
     const fetchCancelledSales = async () => {
         try {
             setLoadingCancelled(true);
-            const response = await axios.get(`/api/sales/project/${id}?status=cancelled`);
+            const response = await axios.get(`${BASE_URL}/api/sales/project/${id}?status=cancelled`);
             setCancelledSales(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             message.error('İptal edilmiş satışlar yüklenirken bir hata oluştu');
@@ -121,7 +121,7 @@ const ProjectDetail = () => {
                 ...values
             };
             
-            const response = await axios.post(`/api/sales/${selectedSale._id}/cancel`, payload);
+            const response = await axios.post(`${BASE_URL}/api/sales/${selectedSale._id}/cancel`, payload);
             
             // İptal edilen satışı listeden kaldır
             setSales(sales.filter(sale => sale._id !== selectedSale._id));
@@ -285,7 +285,7 @@ const ProjectDetail = () => {
             cancelText: 'İptal',
             onOk: async () => {
                 try {
-                    await axios.put(`/api/sales/${sale._id}/update-refund`, {
+                    await axios.put(`${BASE_URL}/api/sales/${sale._id}/update-refund`, {
                         hasRefund: true,
                         refundDate: new Date()
                     });

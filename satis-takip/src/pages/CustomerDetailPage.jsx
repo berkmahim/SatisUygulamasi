@@ -6,6 +6,7 @@ import CustomerNotes from '../components/CustomerNotes';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 const CustomerDetailPage = () => {
   const { id } = useParams();
@@ -18,7 +19,7 @@ const CustomerDetailPage = () => {
   useEffect(() => {
     const fetchCustomerDetails = async () => {
       try {
-        const { data } = await axios.get(`/api/customers/${id}/details`);
+        const { data } = await axios.get(`${BASE_URL}/api/customers/${id}/details`);
         setCustomerDetails(data);
         setLoading(false);
       } catch (err) {
@@ -30,7 +31,7 @@ const CustomerDetailPage = () => {
     const fetchCustomerTasks = async () => {
       setLoadingTasks(true);
       try {
-        const { data } = await axios.get(`/api/tasks?relatedCustomer=${id}`);
+        const { data } = await axios.get(`${BASE_URL}/api/tasks?relatedCustomer=${id}`);
         setCustomerTasks(data);
       } catch (err) {
         console.error('Müşteri görevleri yüklenirken bir hata oluştu:', err);

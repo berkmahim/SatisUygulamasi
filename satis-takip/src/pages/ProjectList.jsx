@@ -5,6 +5,8 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined
 import axios from 'axios';
 import { uploadImage } from '../utils/cloudinary';
 
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 const { Title } = Typography;
 
 const ProjectList = () => {
@@ -21,7 +23,7 @@ const ProjectList = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/projects');
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/projects`);
       setProjects(response.data);
     } catch (error) {
       message.error('Projeler yüklenirken bir hata oluştu');
@@ -56,10 +58,10 @@ const ProjectList = () => {
       };
 
       if (editingProject) {
-        await axios.put(`http://localhost:5000/api/projects/${editingProject._id}`, projectData);
+        await axios.put(`${import.meta.env.VITE_API_URL}/api/projects/${editingProject._id}`, projectData);
         message.success('Proje başarıyla güncellendi');
       } else {
-        await axios.post('http://localhost:5000/api/projects', projectData);
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/projects`, projectData);
         message.success('Proje başarıyla oluşturuldu');
       }
       fetchProjects();
@@ -71,7 +73,7 @@ const ProjectList = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/projects/${id}`);
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/projects/${id}`);
       message.success('Proje başarıyla silindi');
       fetchProjects();
     } catch (error) {

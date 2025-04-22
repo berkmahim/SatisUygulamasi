@@ -3,6 +3,8 @@ import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+
+const BASE_URL = import.meta.env.VITE_API_URL;
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const LoginPage = () => {
@@ -25,7 +27,7 @@ const LoginPage = () => {
     const handleSubmit = async (values) => {
         try {
             setLoading(true);
-            const response = await axios.post('/api/auth/login', values);
+            const response = await axios.post(`${BASE_URL}/api/auth/login`, values);
             
             // İki faktörlü kimlik doğrulama kontrolü
             if (response.data.requireTwoFactor) {

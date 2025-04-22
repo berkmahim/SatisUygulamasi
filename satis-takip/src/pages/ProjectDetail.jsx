@@ -43,8 +43,8 @@ const ProjectDetail = () => {
             setError(null);
 
             const [projectResponse, salesResponse] = await Promise.all([
-                axios.get(`/api/projects/${id}`),
-                axios.get(`/api/sales/project/${id}?status=active`)
+                axios.get(`${import.meta.env.VITE_API_URL}/api/projects/${id}`),
+                axios.get(`${import.meta.env.VITE_API_URL}/api/sales/project/${id}?status=active`)
             ]);
 
             setProject(projectResponse.data);

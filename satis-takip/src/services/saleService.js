@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = '/api/sales';
+const API_URL = `${import.meta.env.VITE_API_URL}/api/sales`;
 
 export const createSale = async (saleData) => {
     const response = await axios.post(API_URL, saleData);

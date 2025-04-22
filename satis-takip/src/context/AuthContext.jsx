@@ -4,7 +4,7 @@ import axios from 'axios';
 import { message } from 'antd';
 
 // API base URL'ini ayarla
-axios.defaults.baseURL = 'http://localhost:5000';
+axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 
 const AuthContext = createContext({
   user: null,

@@ -10,7 +10,7 @@ export const uploadImage = async (file) => {
   try {
     // Backend üzerinden yükleme yapıyoruz
     const response = await axios.post(
-      'http://localhost:5000/api/upload/image',
+      `${import.meta.env.VITE_API_URL}/api/upload/image`,
       formData,
       {
         headers: {

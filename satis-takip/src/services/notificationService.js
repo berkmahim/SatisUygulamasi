@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = '/api/notifications';
+const API_URL = `${import.meta.env.VITE_API_URL}/api/notifications`;
 
 export const sendPaymentReminder = async (paymentId) => {
     const response = await axios.post(`${API_URL}/payment-reminder/${paymentId}`);

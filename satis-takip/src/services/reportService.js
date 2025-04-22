@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = '/api/reports';
+const API_URL = `${import.meta.env.VITE_API_URL}/api/reports`;
 
 export const generateFinancialReport = async (filters) => {
     const response = await axios.post(`${API_URL}/financial`, filters);

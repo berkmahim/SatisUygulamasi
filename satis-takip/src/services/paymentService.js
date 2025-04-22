@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = '/api/payments';
+const API_URL = `${import.meta.env.VITE_API_URL}/api/payments`;
 
 export const recordPayment = async (saleId, paymentData) => {
     const response = await axios.post(`${API_URL}/${saleId}`, paymentData);

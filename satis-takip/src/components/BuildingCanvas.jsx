@@ -443,22 +443,199 @@ const BuildingCanvas = () => {
     const widthChange = newDimensions.width - oldDimensions.width;
     const depthChange = newDimensions.depth - oldDimensions.depth;
 
-    // Üstteki blokları bul
-    const blocksAbove = blocks.filter(block => {
-      if ((block._id || block.id) === selectedBlock) return false;
-      const [blockX, blockY, blockZ] = block.position;
-      
-      // X-Z düzleminde çakışma kontrolü
-      const hasXZOverlap = (
-        blockX < baseX + Math.max(oldDimensions.width, newDimensions.width) &&
-        blockX + block.dimensions.width > baseX &&
-        blockZ < baseZ + Math.max(oldDimensions.depth, newDimensions.depth) &&
-        blockZ + block.dimensions.depth > baseZ
-      );
+    // GERÇEK ZİNCİRLEME ALGORİTMA - İTERATİF
+    const affectedBlocks = new Map(); // blockId -> newPosition
+    let hasChanges = true;
+    let iteration = 0;
+    const maxIterations = 10;
 
-      // Üstte olma kontrolü - yükseklik değişiminde etkilenecek tüm blokları bul
-      return hasXZOverlap && blockY >= baseY + oldDimensions.height;
-    }).sort((a, b) => a.position[1] - b.position[1]); // Yüksekliğe göre sırala
+    // İlk hareket eden küpü ayarla
+    const blockBaseX = baseX;
+    const blockBaseY = baseY; 
+    const blockBaseZ = baseZ;
+
+    // Ana küpün boyut değişikliğini simüle et (trigger olarak)
+    const mainBlockMovement = {
+      oldPos: [blockBaseX, blockBaseY, blockBaseZ],
+      newPos: [blockBaseX, blockBaseY, blockBaseZ],
+      oldDims: oldDimensions,
+      newDims: newDimensions
+    };
+
+    // İlk iterasyonda ana küpün etkisini hesapla
+    blocks.forEach(targetBlock => {
+      const targetBlockId = targetBlock._id || targetBlock.id;
+      if (targetBlockId === selectedBlock) return;
+
+      const [targetX, targetY, targetZ] = targetBlock.position;
+
+             // Yükseklik değişimi kontrolü
+       if (heightChange !== 0) {
+         const hasXOverlap = targetX < blockBaseX + newDimensions.width && targetX + targetBlock.dimensions.width > blockBaseX;
+         const hasZOverlap = targetZ < blockBaseZ + newDimensions.depth && targetZ + targetBlock.dimensions.depth > blockBaseZ;
+         
+         // DOĞRU BOUNDARY KONTROLÜ - Gerçekten temas ediyor mu?
+         const wasTouchingTop = Math.abs(targetY - (blockBaseY + oldDimensions.height)) < 0.1;
+         const isAbove = targetY >= blockBaseY + oldDimensions.height && wasTouchingTop;
+
+         if (hasXOverlap && hasZOverlap && isAbove) {
+           const newPosition = [...targetBlock.position];
+           newPosition[1] = blockBaseY + newDimensions.height + (targetY - (blockBaseY + oldDimensions.height));
+           affectedBlocks.set(targetBlockId, newPosition);
+         }
+       }
+
+             // Genişlik değişimi kontrolü
+       if (widthChange !== 0) {
+         const hasYOverlap = targetY < blockBaseY + newDimensions.height && targetY + targetBlock.dimensions.height > blockBaseY;
+         const hasZOverlap = targetZ < blockBaseZ + newDimensions.depth && targetZ + targetBlock.dimensions.depth > blockBaseZ;
+         
+         // DOĞRU BOUNDARY KONTROLÜ - Gerçekten temas ediyor mu?
+         const wasTouchingRight = Math.abs(targetX - (blockBaseX + oldDimensions.width)) < 0.1;
+         const isRight = targetX >= blockBaseX + oldDimensions.width && wasTouchingRight;
+
+         if (hasYOverlap && hasZOverlap && isRight) {
+           const currentPos = affectedBlocks.has(targetBlockId) ? [...affectedBlocks.get(targetBlockId)] : [...targetBlock.position];
+           currentPos[0] = blockBaseX + newDimensions.width + (targetX - (blockBaseX + oldDimensions.width));
+           affectedBlocks.set(targetBlockId, currentPos);
+         }
+       }
+
+             // Derinlik değişimi kontrolü
+       if (depthChange !== 0) {
+         const hasXOverlap = targetX < blockBaseX + newDimensions.width && targetX + targetBlock.dimensions.width > blockBaseX;
+         const hasYOverlap = targetY < blockBaseY + newDimensions.height && targetY + targetBlock.dimensions.height > blockBaseY;
+         
+         // DOĞRU BOUNDARY KONTROLÜ - Gerçekten temas ediyor mu?
+         const wasTouchingFront = Math.abs(targetZ - (blockBaseZ + oldDimensions.depth)) < 0.1;
+         const isFront = targetZ >= blockBaseZ + oldDimensions.depth && wasTouchingFront;
+
+         if (hasXOverlap && hasYOverlap && isFront) {
+           const currentPos = affectedBlocks.has(targetBlockId) ? [...affectedBlocks.get(targetBlockId)] : [...targetBlock.position];
+           currentPos[2] = blockBaseZ + newDimensions.depth + (targetZ - (blockBaseZ + oldDimensions.depth));
+           affectedBlocks.set(targetBlockId, currentPos);
+         }
+       }
+    });
+
+    while (hasChanges && iteration < maxIterations) {
+      hasChanges = false;
+      iteration++;
+
+      // Mevcut tüm küp pozisyonlarını al (hareket etmiş olanlar dahil)
+      const currentBlocks = blocks.map(block => {
+        const blockId = block._id || block.id;
+        if (affectedBlocks.has(blockId)) {
+          return { ...block, position: affectedBlocks.get(blockId) };
+        }
+        return block;
+      });
+
+      // Her küpü kontrol et - hareket etmiş küpler de dahil
+      currentBlocks.forEach(checkingBlock => {
+        const checkingBlockId = checkingBlock._id || checkingBlock.id;
+        if (checkingBlockId === selectedBlock) return; // Ana küpü atla
+
+        // Bu küp hareket etmiş mi? O zaman eski ve yeni pozisyonlarını al
+        let checkingOldPos, checkingNewPos, checkingOldDims, checkingNewDims;
+        
+        if (checkingBlockId === selectedBlock) {
+          checkingOldPos = [blockBaseX, blockBaseY, blockBaseZ];
+          checkingNewPos = [blockBaseX, blockBaseY, blockBaseZ];
+          checkingOldDims = oldDimensions;
+          checkingNewDims = newDimensions;
+        } else if (affectedBlocks.has(checkingBlockId)) {
+          const originalBlock = blocks.find(b => (b._id || b.id) === checkingBlockId);
+          checkingOldPos = originalBlock.position;
+          checkingNewPos = affectedBlocks.get(checkingBlockId);
+          checkingOldDims = checkingBlock.dimensions;
+          checkingNewDims = checkingBlock.dimensions;
+        } else {
+          return; // Bu küp hareket etmemiş, diğer küpleri etkilemez
+        }
+
+        const [oldX, oldY, oldZ] = checkingOldPos;
+        const [newX, newY, newZ] = checkingNewPos;
+
+        // Bu küpün hareket etmesi başka küpleri etkiler mi?
+        blocks.forEach(targetBlock => {
+          const targetBlockId = targetBlock._id || targetBlock.id;
+          if (targetBlockId === selectedBlock || targetBlockId === checkingBlockId) return;
+
+          const [targetX, targetY, targetZ] = targetBlock.position;
+          const targetCurrentPos = affectedBlocks.has(targetBlockId) ? 
+            affectedBlocks.get(targetBlockId) : targetBlock.position;
+
+                     // X ekseni kontrolü (genişlik değişimi)
+           const xMovement = newX - oldX;
+           if (Math.abs(xMovement) > 0.001) {
+             // DOĞRU OVERLAP KONTROLÜ - Gerçekten temas ediyor mu?
+             const hasYOverlap = targetY < newY + checkingNewDims.height && targetY + targetBlock.dimensions.height > newY;
+             const hasZOverlap = targetZ < newZ + checkingNewDims.depth && targetZ + targetBlock.dimensions.depth > newZ;
+             
+             // DOĞRU BOUNDARY KONTROLÜ - Eski pozisyonda temas ediyor muydu?
+             const wasTouchingRight = Math.abs(targetX - (oldX + checkingOldDims.width)) < 0.1;
+             const isAffectedByX = targetX >= oldX + checkingOldDims.width && wasTouchingRight;
+
+             if (hasYOverlap && hasZOverlap && isAffectedByX) {
+               const newTargetPos = [...targetCurrentPos];
+               newTargetPos[0] = newX + checkingNewDims.width + (targetX - (oldX + checkingOldDims.width));
+               
+               if (Math.abs(newTargetPos[0] - targetCurrentPos[0]) > 0.001) {
+                 affectedBlocks.set(targetBlockId, newTargetPos);
+                 hasChanges = true;
+               }
+             }
+           }
+
+                     // Y ekseni kontrolü (yükseklik değişimi)
+           const yMovement = newY - oldY;
+           if (Math.abs(yMovement) > 0.001) {
+             // DOĞRU OVERLAP KONTROLÜ - Gerçekten temas ediyor mu?
+             const hasXOverlap = targetX < newX + checkingNewDims.width && targetX + targetBlock.dimensions.width > newX;
+             const hasZOverlap = targetZ < newZ + checkingNewDims.depth && targetZ + targetBlock.dimensions.depth > newZ;
+             
+             // DOĞRU BOUNDARY KONTROLÜ - Eski pozisyonda temas ediyor muydu?
+             const wasTouchingTop = Math.abs(targetY - (oldY + checkingOldDims.height)) < 0.1;
+             const isAffectedByY = targetY >= oldY + checkingOldDims.height && wasTouchingTop;
+
+             if (hasXOverlap && hasZOverlap && isAffectedByY) {
+               const newTargetPos = [...targetCurrentPos];
+               newTargetPos[1] = newY + checkingNewDims.height + (targetY - (oldY + checkingOldDims.height));
+               
+               if (Math.abs(newTargetPos[1] - targetCurrentPos[1]) > 0.001) {
+                 affectedBlocks.set(targetBlockId, newTargetPos);
+                 hasChanges = true;
+               }
+             }
+           }
+
+                     // Z ekseni kontrolü (derinlik değişimi)
+           const zMovement = newZ - oldZ;
+           if (Math.abs(zMovement) > 0.001) {
+             // DOĞRU OVERLAP KONTROLÜ - Gerçekten temas ediyor mu?
+             const hasXOverlap = targetX < newX + checkingNewDims.width && targetX + targetBlock.dimensions.width > newX;
+             const hasYOverlap = targetY < newY + checkingNewDims.height && targetY + targetBlock.dimensions.height > newY;
+             
+             // DOĞRU BOUNDARY KONTROLÜ - Eski pozisyonda temas ediyor muydu?
+             const wasTouchingFront = Math.abs(targetZ - (oldZ + checkingOldDims.depth)) < 0.1;
+             const isAffectedByZ = targetZ >= oldZ + checkingOldDims.depth && wasTouchingFront;
+
+             if (hasXOverlap && hasYOverlap && isAffectedByZ) {
+               const newTargetPos = [...targetCurrentPos];
+               newTargetPos[2] = newZ + checkingNewDims.depth + (targetZ - (oldZ + checkingOldDims.depth));
+               
+               if (Math.abs(newTargetPos[2] - targetCurrentPos[2]) > 0.001) {
+                 affectedBlocks.set(targetBlockId, newTargetPos);
+                 hasChanges = true;
+               }
+             }
+           }
+        });
+      });
+    }
+
+    
 
     const updatedBlockData = {
       ...blockToUpdate,
@@ -478,212 +655,37 @@ const BuildingCanvas = () => {
         ));
       }
 
-      // Yükseklik değişimi - tüm üstteki blokları güncelle
-      if (heightChange !== 0) {
-        const updatedBlocks = blocksAbove.map(block => {
-          const newBlockPosition = [...block.position];
-          // Yükseklik değişimi kadar yukarı/aşağı kaydır
-          newBlockPosition[1] = baseY + newDimensions.height + (block.position[1] - (baseY + oldDimensions.height));
-          return { 
-            ...block, 
-            position: newBlockPosition 
-          };
-        });
 
-        // Tüm blokları tek seferde güncelle
+
+      // Tüm etkilenen blokları tek seferde güncelle
+      if (affectedBlocks.size > 0) {
         setBlocks(prevBlocks => {
           const newBlocks = [...prevBlocks];
-          updatedBlocks.forEach(updatedBlock => {
-            const index = newBlocks.findIndex(b => (b._id || b.id) === (updatedBlock._id || updatedBlock.id));
+          affectedBlocks.forEach((newPosition, blockId) => {
+            const index = newBlocks.findIndex(b => (b._id || b.id) === blockId);
             if (index !== -1) {
-              newBlocks[index] = updatedBlock;
+              newBlocks[index] = { ...newBlocks[index], position: newPosition };
             }
           });
           return newBlocks;
         });
       }
 
-      // Genişlik değişimi - sağdaki tüm blokları güncelle
-      if (widthChange !== 0) {
-        const blocksOnXAxis = blocks.filter(block => {
-          if ((block._id || block.id) === selectedBlock) return false;
-          const [blockX, blockY, blockZ] = block.position;
-          const hasYOverlap = (
-            blockY < baseY + Math.max(oldDimensions.height, newDimensions.height) &&
-            blockY + block.dimensions.height > baseY
-          );
-          const hasZOverlap = (
-            blockZ < baseZ + Math.max(oldDimensions.depth, newDimensions.depth) &&
-            blockZ + block.dimensions.depth > baseZ
-          );
-          // Sadece sağdaki blokları bul (bloğun sağ kenarının sağında olan bloklar)
-          return hasYOverlap && hasZOverlap && blockX >= baseX + oldDimensions.width;
-        }).sort((a, b) => a.position[0] - b.position[0]);
-
-        const updatedBlocks = blocksOnXAxis.map(block => {
-          const newBlockPosition = [...block.position];
-          // Genişlik değişimi kadar sağa/sola kaydır
-          newBlockPosition[0] = baseX + newDimensions.width + (block.position[0] - (baseX + oldDimensions.width));
-          return { 
-            ...block, 
-            position: newBlockPosition 
-          };
-        });
-
-        // Tüm blokları tek seferde güncelle
-        setBlocks(prevBlocks => {
-          const newBlocks = [...prevBlocks];
-          updatedBlocks.forEach(updatedBlock => {
-            const index = newBlocks.findIndex(b => (b._id || b.id) === (updatedBlock._id || updatedBlock.id));
-            if (index !== -1) {
-              newBlocks[index] = updatedBlock;
-            }
-          });
-          return newBlocks;
-        });
-      }
-
-      // Derinlik değişimi - öndeki tüm blokları güncelle
-      if (depthChange !== 0) {
-        const blocksOnZAxis = blocks.filter(block => {
-          if ((block._id || block.id) === selectedBlock) return false;
-          const [blockX, blockY, blockZ] = block.position;
-          const hasXOverlap = (
-            blockX < baseX + Math.max(oldDimensions.width, newDimensions.width) &&
-            blockX + block.dimensions.width > baseX
-          );
-          const hasYOverlap = (
-            blockY < baseY + Math.max(oldDimensions.height, newDimensions.height) &&
-            blockY + block.dimensions.height > baseY
-          );
-          // Sadece öndeki blokları bul (bloğun ön kenarının önünde olan bloklar)
-          return hasXOverlap && hasYOverlap && blockZ >= baseZ + oldDimensions.depth;
-        }).sort((a, b) => a.position[2] - b.position[2]);
-
-        const updatedBlocks = blocksOnZAxis.map(block => {
-          const newBlockPosition = [...block.position];
-          // Derinlik değişimi kadar ileri/geri kaydır
-          newBlockPosition[2] = baseZ + newDimensions.depth + (block.position[2] - (baseZ + oldDimensions.depth));
-          return { 
-            ...block, 
-            position: newBlockPosition 
-          };
-        });
-
-        // Tüm blokları tek seferde güncelle
-        setBlocks(prevBlocks => {
-          const newBlocks = [...prevBlocks];
-          updatedBlocks.forEach(updatedBlock => {
-            const index = newBlocks.findIndex(b => (b._id || b.id) === (updatedBlock._id || updatedBlock.id));
-            if (index !== -1) {
-              newBlocks[index] = updatedBlock;
-            }
-          });
-          return newBlocks;
-        });
-      }
-
-      // Veritabanını güncelle
-      const blocksToUpdate = [];
-      
-      // Etkilenen blokları topla
-      if (heightChange !== 0) {
-        blocksAbove.forEach(block => {
-          if (block._id) {
-            const newBlockPosition = [...block.position];
-            // Yükseklik değişimi kadar yukarı/aşağı kaydır
-            newBlockPosition[1] = baseY + newDimensions.height + (block.position[1] - (baseY + oldDimensions.height));
-            blocksToUpdate.push({
-              _id: block._id,
-              position: newBlockPosition
-            });
-          }
-        });
-      }
-      
-      if (widthChange !== 0) {
-        // blocksOnXAxis'e erişmek için burada tekrar tanımlıyoruz
-        const blocksOnXAxis = blocks.filter(block => {
-          if ((block._id || block.id) === selectedBlock) return false;
-          const [blockX, blockY, blockZ] = block.position;
-          const hasYOverlap = (
-            blockY < baseY + Math.max(oldDimensions.height, newDimensions.height) &&
-            blockY + block.dimensions.height > baseY
-          );
-          const hasZOverlap = (
-            blockZ < baseZ + Math.max(oldDimensions.depth, newDimensions.depth) &&
-            blockZ + block.dimensions.depth > baseZ
-          );
-          // Sadece sağdaki blokları bul (bloğun sağ kenarının sağında olan bloklar)
-          return hasYOverlap && hasZOverlap && blockX >= baseX + oldDimensions.width;
-        }).sort((a, b) => a.position[0] - b.position[0]);
-
-        blocksOnXAxis.forEach(block => {
-          if (block._id) {
-            const newBlockPosition = [...block.position];
-            // Genişlik değişimi kadar sağa/sola kaydır
-            newBlockPosition[0] = baseX + newDimensions.width + (block.position[0] - (baseX + oldDimensions.width));
-            
-            // Eğer bu blok daha önce eklenmediyse ekle
-            const existingIndex = blocksToUpdate.findIndex(b => b._id === block._id);
-            if (existingIndex !== -1) {
-              blocksToUpdate[existingIndex].position[0] = newBlockPosition[0];
-            } else {
-              blocksToUpdate.push({
-                _id: block._id,
-                position: newBlockPosition
-              });
+      // Veritabanını güncelle - etkilenen bloklar için
+      if (affectedBlocks.size > 0) {
+        const updatePromises = Array.from(affectedBlocks.entries()).map(async ([blockId, newPosition]) => {
+          const block = blocks.find(b => (b._id || b.id) === blockId);
+          if (block && block._id) {
+            try {
+              await updateBlock(block._id, { position: newPosition });
+            } catch (error) {
+              console.error('Block update error:', error);
             }
           }
         });
-      }
-      
-      if (depthChange !== 0) {
-        // blocksOnZAxis'e erişmek için burada tekrar tanımlıyoruz
-        const blocksOnZAxis = blocks.filter(block => {
-          if ((block._id || block.id) === selectedBlock) return false;
-          const [blockX, blockY, blockZ] = block.position;
-          const hasXOverlap = (
-            blockX < baseX + Math.max(oldDimensions.width, newDimensions.width) &&
-            blockX + block.dimensions.width > baseX
-          );
-          const hasYOverlap = (
-            blockY < baseY + Math.max(oldDimensions.height, newDimensions.height) &&
-            blockY + block.dimensions.height > baseY
-          );
-          // Sadece öndeki blokları bul (bloğun ön kenarının önünde olan bloklar)
-          return hasXOverlap && hasYOverlap && blockZ >= baseZ + oldDimensions.depth;
-        }).sort((a, b) => a.position[2] - b.position[2]);
-
-        blocksOnZAxis.forEach(block => {
-          if (block._id) {
-            const newBlockPosition = [...block.position];
-            // Derinlik değişimi kadar ileri/geri kaydır
-            newBlockPosition[2] = baseZ + newDimensions.depth + (block.position[2] - (baseZ + oldDimensions.depth));
-            
-            // Eğer bu blok daha önce eklenmediyse ekle
-            const existingIndex = blocksToUpdate.findIndex(b => b._id === block._id);
-            if (existingIndex !== -1) {
-              blocksToUpdate[existingIndex].position[2] = newBlockPosition[2];
-            } else {
-              blocksToUpdate.push({
-                _id: block._id,
-                position: newBlockPosition
-              });
-            }
-          }
-        });
-      }
-      
-      // Veritabanını güncelle - sadece değişen bloklar için
-      for (const blockData of blocksToUpdate) {
-        try {
-          console.log("Veritabanı güncelleniyor:", blockData);
-          const updatedBlock = await updateBlock(blockData._id, { position: blockData.position });
-          console.log("Güncellenen blok:", updatedBlock);
-        } catch (error) {
-          console.error("Blok güncelleme hatası:", error);
-        }
+        
+        // Tüm güncellemeleri paralel olarak bekle
+        await Promise.all(updatePromises);
       }
     } catch (error) {
       // Hata durumunda sessizce devam et

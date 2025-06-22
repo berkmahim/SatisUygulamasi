@@ -470,7 +470,7 @@ const BuildingCanvas = () => {
       const [targetX, targetY, targetZ] = targetBlock.position;
 
              // Yükseklik değişimi kontrolü
-       if (heightChange !== 0) {
+      if (heightChange !== 0) {
          const hasXOverlap = targetX < blockBaseX + newDimensions.width && targetX + targetBlock.dimensions.width > blockBaseX;
          const hasZOverlap = targetZ < blockBaseZ + newDimensions.depth && targetZ + targetBlock.dimensions.depth > blockBaseZ;
          
@@ -486,7 +486,7 @@ const BuildingCanvas = () => {
        }
 
              // Genişlik değişimi kontrolü
-       if (widthChange !== 0) {
+      if (widthChange !== 0) {
          const hasYOverlap = targetY < blockBaseY + newDimensions.height && targetY + targetBlock.dimensions.height > blockBaseY;
          const hasZOverlap = targetZ < blockBaseZ + newDimensions.depth && targetZ + targetBlock.dimensions.depth > blockBaseZ;
          
@@ -502,7 +502,7 @@ const BuildingCanvas = () => {
        }
 
              // Derinlik değişimi kontrolü
-       if (depthChange !== 0) {
+      if (depthChange !== 0) {
          const hasXOverlap = targetX < blockBaseX + newDimensions.width && targetX + targetBlock.dimensions.width > blockBaseX;
          const hasYOverlap = targetY < blockBaseY + newDimensions.height && targetY + targetBlock.dimensions.height > blockBaseY;
          
@@ -649,7 +649,7 @@ const BuildingCanvas = () => {
         setBlocks(prevBlocks => prevBlocks.map(block => 
           (block._id || block.id) === selectedBlock ? updatedBlock : block
         ));
-      } else {
+            } else {
         setBlocks(prevBlocks => prevBlocks.map(block => 
           (block._id || block.id) === selectedBlock ? updatedBlockData : block
         ));
@@ -678,9 +678,9 @@ const BuildingCanvas = () => {
           if (block && block._id) {
             try {
               await updateBlock(block._id, { position: newPosition });
-            } catch (error) {
+        } catch (error) {
               console.error('Block update error:', error);
-            }
+        }
           }
         });
         

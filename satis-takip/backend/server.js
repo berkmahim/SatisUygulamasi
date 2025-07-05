@@ -40,6 +40,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Static file serving for uploads
+app.use('/uploads', express.static('backend/uploads'));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);

@@ -31,7 +31,7 @@ export const getProject = asyncHandler(async (req, res) => {
 // @route   POST /api/projects
 // @access  Public
 export const createProject = asyncHandler(async (req, res) => {
-    const { name, location, description } = req.body;
+    const { name, location, description, backgroundImage } = req.body;
 
     if (!name || !location || !description) {
         res.status(400);
@@ -41,7 +41,8 @@ export const createProject = asyncHandler(async (req, res) => {
     const project = await Project.create({
         name,
         location,
-        description
+        description,
+        backgroundImage
     });
 
     // Log kaydı oluştur
@@ -70,7 +71,8 @@ export const updateProject = asyncHandler(async (req, res) => {
     const updates = {
         name: req.body.name,
         location: req.body.location,
-        description: req.body.description
+        description: req.body.description,
+        backgroundImage: req.body.backgroundImage
     };
 
     // Değişiklikleri kaydet

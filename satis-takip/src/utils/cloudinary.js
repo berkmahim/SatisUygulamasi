@@ -1,8 +1,5 @@
 import axios from 'axios';
 
-const CLOUDINARY_CLOUD_NAME = 'dp4t73ywe';
-const CLOUDINARY_UPLOAD_PRESET = 'ml_default'; // Cloudinary'de preset oluşturabilirsiniz veya API anahtarınızı kullanabilirsiniz
-
 export const uploadImage = async (file) => {
   const formData = new FormData();
   formData.append('image', file);
@@ -10,7 +7,7 @@ export const uploadImage = async (file) => {
   try {
     // Backend üzerinden yükleme yapıyoruz
     const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/api/upload/image`,
+      '/api/upload/image',
       formData,
       {
         headers: {
@@ -26,16 +23,14 @@ export const uploadImage = async (file) => {
   }
 };
 
-export const deleteImage = async (publicId) => {
-  // Eğer bir görüntüyü silmek isterseniz, bu fonksiyonu kullanabilirsiniz
-  // NOT: Bu işlem için imzalı API anahtarlarına ihtiyaç duyacaksınız
-  // ve güvenlik nedeniyle sunucu tarafında yapılması önerilir
+export const deleteImage = async (filename) => {
+  // Yerel dosya silme işlemi için placeholder
+  // Gerekirse backend'de silme endpoint'i oluşturulabilir
   
-  if (!publicId) return;
+  if (!filename) return;
   
   try {
-    // Bu işlemi genellikle backend üzerinden yapmanız önerilir
-    console.log(`${publicId} ID'li görüntü silinmesi gereken bir işlem.`);
+    console.log(`${filename} dosyası silinmesi gereken bir işlem.`);
     return true;
   } catch (error) {
     console.error('Resim silme hatası:', error);
@@ -43,13 +38,12 @@ export const deleteImage = async (publicId) => {
   }
 };
 
-export const getPublicIdFromUrl = (url) => {
+export const getFilenameFromUrl = (url) => {
   if (!url) return null;
   
-  // Cloudinary URL'sinden public ID çıkarma
+  // Yerel dosya URL'sinden dosya adını çıkarma
   const parts = url.split('/');
   const filename = parts[parts.length - 1];
-  const publicId = filename.split('.')[0];
   
-  return publicId;
+  return filename;
 };

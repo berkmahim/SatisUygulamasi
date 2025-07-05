@@ -99,6 +99,8 @@ const BlockSalePage = () => {
                             onChange={handleSearch}
                             placeholder="Müşteri ara (TC, telefon veya isim)"
                             className="w-full p-3 border rounded-lg"
+                            style={{ backgroundColor: 'white' }}
+                            color="black"
                         />
                         {customers.length > 0 && (
                             <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">

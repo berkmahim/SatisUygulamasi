@@ -1,4 +1,3 @@
-import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -7,13 +6,6 @@ import multer from 'multer';
 // Doğru __dirname değerini almak için
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Cloudinary yapılandırması
-cloudinary.config({
-  cloud_name: 'dp4t73ywe', 
-  api_key: '164151982898828',
-  api_secret: 'ZW7N4-x6KMKxggctYDDQag4KSZk'
-});
 
 // Multer için depolama alanı oluşturma
 const storage = multer.diskStorage({
@@ -55,21 +47,15 @@ export const uploadImage = async (req, res) => {
       return res.status(400).json({ message: 'Lütfen bir resim yükleyin' });
     }
 
-    // Dosya yolunu al
-    const filePath = req.file.path;
-
-    // Cloudinary'ye yükle
-    const result = await cloudinary.uploader.upload(filePath, {
-      folder: 'satis-takip',
-      use_filename: true
-    });
-
-    // Geçici dosyayı sil
-    fs.unlinkSync(filePath);
+    // Dosya bilgilerini al
+    const filename = req.file.filename;
+    const filePath = `/uploads/${filename}`;
 
     res.status(200).json({
-      url: result.secure_url,
-      public_id: result.public_id
+      url: filePath,
+      filename: filename,
+      originalName: req.file.originalname,
+      size: req.file.size
     });
     
   } catch (error) {

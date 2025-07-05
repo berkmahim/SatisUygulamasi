@@ -53,12 +53,12 @@ const Header = () => {
       label: <Link to="/tasks">Görevler</Link>,
       permission: null
     },
-    {
+   /* {
       key: '/reports/sales',
       icon: <BarChartOutlined />,
       label: <Link to="/reports/sales">Raporlar</Link>,
       permission: 'reportManagement'
-    },
+    },*/
     {
       key: '/users',
       icon: <TeamOutlined />,

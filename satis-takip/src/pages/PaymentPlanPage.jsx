@@ -408,6 +408,8 @@ const PaymentPlanPage = () => {
                                 onChange={handleInputChange}
                                 className="w-full p-2 border rounded"
                                 required
+                                style={{ backgroundColor: 'white' }}
+                                color="black"
                             />
                         </div>
 
@@ -421,6 +423,8 @@ const PaymentPlanPage = () => {
                                 onChange={handleInputChange}
                                 className="w-full p-2 border rounded"
                                 required
+                                style={{ backgroundColor: 'white' }}
+                                color="black"
                             >
                                 <option value="cash">Peşin</option>
                                 <option value="cash-installment">Peşin + Taksit</option>
@@ -441,6 +445,8 @@ const PaymentPlanPage = () => {
                                     onChange={handleInputChange}
                                     className="w-full p-2 border rounded"
                                     required
+                                    style={{ backgroundColor: 'white' }}
+                                    color="black"
                                 />
                             </div>
                         )}
@@ -457,6 +463,8 @@ const PaymentPlanPage = () => {
                                     onChange={handleInputChange}
                                     className="w-full p-2 border rounded"
                                     required
+                                    style={{ backgroundColor: 'white' }}
+                                    color="black"
                                 />
                             </div>
                         )}
@@ -472,6 +480,8 @@ const PaymentPlanPage = () => {
                                 onChange={handleInputChange}
                                 className="w-full p-2 border rounded"
                                 required
+                                style={{ backgroundColor: 'white' }}
+                                color="black"
                             />
                         </div>
                     </div>
@@ -487,6 +497,8 @@ const PaymentPlanPage = () => {
                                         onChange={(e) => handleBalloonPaymentChange(index, e.target.value, balloonPayment.dueDate)}
                                         className="w-full p-2 border rounded"
                                         required
+                                        style={{ backgroundColor: 'white' }}
+                                        color="black"
                                     />
                                     <input
                                         type="date"
@@ -494,6 +506,8 @@ const PaymentPlanPage = () => {
                                         onChange={(e) => handleBalloonPaymentChange(index, balloonPayment.amount, e.target.value)}
                                         className="w-full p-2 border rounded"
                                         required
+                                        style={{ backgroundColor: 'white' }}
+                                        color="black"
                                     />
                                 </div>
                             ))}
@@ -541,6 +555,8 @@ const PaymentPlanPage = () => {
                                                             value={formatDateForInput(payment.dueDate)}
                                                             onChange={(e) => handlePaymentDateChange(payment.id, e.target.value)}
                                                             className="p-1 border rounded"
+                                                            style={{ backgroundColor: 'white' }}
+                                                            color="black"
                                                         />
                                                     </div>
                                                 </td>

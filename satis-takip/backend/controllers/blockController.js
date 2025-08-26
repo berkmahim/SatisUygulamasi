@@ -7,7 +7,8 @@ import Project from '../models/projectModel.js';
 // @access  Private
 const getBlocks = asyncHandler(async (req, res) => {
     const blocks = await Block.find({ projectId: req.params.projectId })
-        .populate('owner', 'firstName lastName');
+        .populate('owner', 'firstName lastName')
+        .populate('reference', 'name');
     res.json(blocks);
 });
 
@@ -16,7 +17,8 @@ const getBlocks = asyncHandler(async (req, res) => {
 // @access  Private
 const getBlockById = asyncHandler(async (req, res) => {
     const block = await Block.findById(req.params.id)
-        .populate('owner', 'firstName lastName');
+        .populate('owner', 'firstName lastName')
+        .populate('reference', 'name');
     
     if (block) {
         res.json(block);
@@ -64,6 +66,7 @@ const updateBlock = asyncHandler(async (req, res) => {
             ...(req.body.position && { position: req.body.position }),
             ...(req.body.unitNumber !== undefined && { unitNumber: req.body.unitNumber }),
             ...(req.body.owner && { owner: req.body.owner }),
+            ...(req.body.reference !== undefined && { reference: req.body.reference }),
             ...(req.body.squareMeters !== undefined && { squareMeters: req.body.squareMeters }),
             ...(req.body.roomCount !== undefined && { roomCount: req.body.roomCount }),
             ...(req.body.type && { type: req.body.type }),
@@ -82,7 +85,8 @@ const updateBlock = asyncHandler(async (req, res) => {
             req.params.id,
             updateData,
             { new: true, runValidators: true }
-        ).populate('owner', 'firstName lastName');
+        ).populate('owner', 'firstName lastName')
+         .populate('reference', 'name');
 
         if (!updatedBlock) {
             res.status(500);

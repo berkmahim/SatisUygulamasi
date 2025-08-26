@@ -25,6 +25,10 @@ const blockSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Customer'
     },
+    reference: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Reference'
+    },
     squareMeters: Number,
     roomCount: String,
     iskanPaymentDone: {

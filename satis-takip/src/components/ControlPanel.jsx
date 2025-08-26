@@ -14,6 +14,7 @@ import {
   Collapse,
   Space,
   Switch,
+  Select,
   message
 } from 'antd';
 import { 
@@ -32,10 +33,12 @@ import {
   SettingOutlined,
   EyeOutlined
 } from '@ant-design/icons';
+import { getAllReferences, createReference } from '../services/referenceService';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
 const { Panel } = Collapse;
+const { Option } = Select;
 
 const ControlPanel = ({ 
   editMode, 
@@ -62,10 +65,13 @@ const ControlPanel = ({
   const [blockDetails, setBlockDetails] = useState({
     unitNumber: '',
     owner: '',
+    reference: '',
     squareMeters: 0,
     type: 'apartment',
     iskanPaymentDone: false
   });
+  const [references, setReferences] = useState([]);
+  const [isCreatingReference, setIsCreatingReference] = useState(false);
 
   useEffect(() => {
     if (selectedBlock) {
@@ -74,6 +80,7 @@ const ControlPanel = ({
         setBlockDetails({
           unitNumber: block.unitNumber || '',
           owner: block.owner || '',
+          reference: block.reference?._id || '',
           squareMeters: block.squareMeters || 0,
           type: block.type || 'apartment',
           iskanPaymentDone: block.iskanPaymentDone || false
@@ -87,11 +94,48 @@ const ControlPanel = ({
     setDimensions(selectedBlockDimensions);
   }, [selectedBlockDimensions]);
 
+  // Load references on component mount
+  useEffect(() => {
+    const fetchReferences = async () => {
+      try {
+        const data = await getAllReferences();
+        setReferences(data);
+      } catch (error) {
+        console.error('Error fetching references:', error);
+      }
+    };
+    fetchReferences();
+  }, []);
+
   const handleDetailsChange = (field, value) => {
     setBlockDetails(prev => ({
       ...prev,
       [field]: value
     }));
+  };
+
+  const handleCreateReference = async (referenceName) => {
+    if (!referenceName || referenceName.trim() === '') {
+      message.error('Referans adı boş olamaz');
+      return;
+    }
+
+    setIsCreatingReference(true);
+    try {
+      const newReference = await createReference({ name: referenceName.trim() });
+      setReferences(prev => [...prev, newReference]);
+      setBlockDetails(prev => ({ ...prev, reference: newReference._id }));
+      message.success('Yeni referans oluşturuldu');
+    } catch (error) {
+      console.error('Error creating reference:', error);
+      if (error.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('Referans oluşturulurken hata oluştu');
+      }
+    } finally {
+      setIsCreatingReference(false);
+    }
   };
 
   const handleApplyDetails = () => {
@@ -233,6 +277,49 @@ const ControlPanel = ({
                   onChange={(e) => handleDetailsChange('unitNumber', e.target.value)}
                   style={{ marginTop: '5px', marginBottom: '12px' }}
                 />
+              </Col>
+              
+              <Col span={24}>
+                <Text strong>Referans:</Text>
+                <Select
+                  placeholder="Referans seçin veya yeni oluşturun"
+                  value={blockDetails.reference || undefined}
+                  onChange={(value) => handleDetailsChange('reference', value)}
+                  style={{ width: '100%', marginTop: '5px', marginBottom: '12px' }}
+                  showSearch
+                  allowClear
+                  dropdownRender={(menu) => (
+                    <>
+                      {menu}
+                      <div style={{ padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
+                        <Input.Search
+                          placeholder="Yeni referans adı girin"
+                          enterButton={
+                            <Button
+                              type="primary"
+                              size="small"
+                              icon={<PlusOutlined />}
+                              loading={isCreatingReference}
+                            >
+                              Ekle
+                            </Button>
+                          }
+                          size="small"
+                          onSearch={handleCreateReference}
+                        />
+                      </div>
+                    </>
+                  )}
+                  filterOption={(input, option) =>
+                    option?.children?.toLowerCase().includes(input.toLowerCase())
+                  }
+                >
+                  {references.map((ref) => (
+                    <Option key={ref._id} value={ref._id}>
+                      {ref.name}
+                    </Option>
+                  ))}
+                </Select>
               </Col>
               
               {/* <Col span={24}>

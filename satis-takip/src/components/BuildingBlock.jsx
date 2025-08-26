@@ -53,6 +53,7 @@ const BuildingBlock = ({
       
       onPointerDown(eventData);
     } else {
+      // Allow clicks even when not in edit mode for navigation purposes
       onSelect && onSelect(e);
     }
   };
@@ -109,11 +110,19 @@ const BuildingBlock = ({
           e.stopPropagation();
           setHovered(true);
           onHover && onHover(owner, true);
+          
+          // Change cursor to pointer for sold blocks when not in edit mode
+          if (!editMode && owner) {
+            document.body.style.cursor = 'pointer';
+          }
         }}
         onPointerOut={(e) => {
           e.stopPropagation();
           setHovered(false);
           onHover && onHover(null, false);
+          
+          // Reset cursor when leaving block
+          document.body.style.cursor = 'default';
         }}
       >
         <meshStandardMaterial

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import BuildingBlock from './BuildingBlock';
 import Text3D from './Text3D';
 import ControlPanel from './ControlPanel';
@@ -137,7 +137,7 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
           key={block._id || block.id}
           {...block}
           onPointerDown={handleBlockPointerDown}
-          onSelect={(e) => editMode && onBlockClick(block._id || block.id, e)}
+          onSelect={(e) => onBlockClick(block._id || block.id, e)}
           isSelected={selectedBlock === (block._id || block.id)}
           editMode={editMode}
           addMode={addMode}
@@ -180,6 +180,7 @@ const BuildingCanvas = () => {
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const { id: projectId } = useParams();
+  const navigate = useNavigate();
   const [blocks, setBlocks] = useState([]);
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [editMode, setEditMode] = useState(false);
@@ -427,6 +428,17 @@ const BuildingCanvas = () => {
 
   const handleBlockClick = (blockId, event) => {
     event.stopPropagation();
+    
+    // If not in edit mode and block is sold (has owner), navigate to customer detail
+    if (!editMode) {
+      const block = blocks.find(b => (b._id || b.id) === blockId);
+      if (block && block.owner && block.owner._id) {
+        navigate(`/customers/${block.owner._id}`);
+        return;
+      }
+    }
+    
+    // In edit mode, select/deselect the block
     setSelectedBlock(blockId === selectedBlock ? null : blockId);
   };
 

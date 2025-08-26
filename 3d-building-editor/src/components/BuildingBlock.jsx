@@ -1,0 +1,171 @@
+import React, { useRef, useState } from 'react';
+import { Box, Edges, Text } from '@react-three/drei';
+import * as THREE from 'three';
+
+const BuildingBlock = ({ 
+  position, 
+  dimensions = { width: 1, height: 1, depth: 1 },
+  color = '#8c8c8c', 
+  onPointerDown,
+  onSelect, 
+  isSelected, 
+  editMode, 
+  addMode,
+  owner = null,
+  onHover,
+  unitNumber = '',
+  status = 'available' // 'available', 'sold', 'reserved'
+}) => {
+  const [hovered, setHovered] = useState(false);
+  const meshRef = useRef();
+
+  const getEdgeColor = () => {
+    if (!editMode) return '#000000';
+    if (hovered) {
+      return addMode ? '#2196F3' : '#4CAF50';
+    }
+    return '#000000';
+  };
+
+  const getBlockColor = () => {
+    if (isSelected) return '#1890ff';
+    switch (status) {
+      case 'sold':
+        return '#ff4d4f';
+      case 'reserved':
+        return '#faad14';
+      case 'available':
+      default:
+        return '#52c41a';
+    }
+  };
+
+  // Calculate the center position based on dimensions
+  const centerPosition = [
+    position[0] + dimensions.width / 2,
+    position[1] + dimensions.height / 2,
+    position[2] + dimensions.depth / 2
+  ];
+
+  const handlePointerDown = (e) => {
+    if (editMode && addMode) {
+      if (!e.face) return;
+      
+      // Convert face normal from local to world coordinates
+      const normalMatrix = new THREE.Matrix3().getNormalMatrix(meshRef.current.matrixWorld);
+      const worldNormal = e.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+      
+      const eventData = {
+        point: e.point,
+        face: { normal: worldNormal },
+        blockData: {
+          position,
+          dimensions
+        },
+        nativeEvent: e
+      };
+      
+      onPointerDown && onPointerDown(eventData);
+    } else {
+      onSelect && onSelect(e);
+    }
+  };
+
+  // Unit number display, show "-" if empty
+  const displayNumber = unitNumber && unitNumber.trim() !== '' ? unitNumber : "-";
+  
+  // 6 face positions and rotations
+  const facePositions = [
+    // Front face
+    {
+      position: [0, 0, dimensions.depth / 2 + 0.01],
+      rotation: [0, 0, 0]
+    },
+    // Back face
+    {
+      position: [0, 0, -dimensions.depth / 2 - 0.01],
+      rotation: [0, Math.PI, 0]
+    },
+    // Right face
+    {
+      position: [dimensions.width / 2 + 0.01, 0, 0],
+      rotation: [0, Math.PI / 2, 0]
+    },
+    // Left face
+    {
+      position: [-dimensions.width / 2 - 0.01, 0, 0],
+      rotation: [0, -Math.PI / 2, 0]
+    },
+    // Top face
+    {
+      position: [0, dimensions.height / 2 + 0.01, 0],
+      rotation: [-Math.PI / 2, 0, 0]
+    },
+    // Bottom face
+    {
+      position: [0, -dimensions.height / 2 - 0.01, 0],
+      rotation: [Math.PI / 2, 0, 0]
+    }
+  ];
+
+  return (
+    <group>
+      <Box
+        ref={meshRef}
+        args={[dimensions.width, dimensions.height, dimensions.depth]}
+        position={centerPosition}
+        onPointerDown={handlePointerDown}
+        onContextMenu={(e) => {
+          e.stopPropagation();
+          onSelect && onSelect(e);
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          setHovered(true);
+          onHover && onHover(owner, true);
+        }}
+        onPointerOut={(e) => {
+          e.stopPropagation();
+          setHovered(false);
+          onHover && onHover(null, false);
+        }}
+      >
+        <meshStandardMaterial
+          color={getBlockColor()}
+          metalness={0.1}
+          roughness={0.5}
+        />
+        <Edges
+          scale={1}
+          threshold={15}
+          color={getEdgeColor()}
+        />
+      </Box>
+      
+      {/* Add unit numbers to all 6 faces */}
+      {facePositions.map((face, index) => (
+        <group 
+          key={index} 
+          position={[
+            centerPosition[0] + face.position[0], 
+            centerPosition[1] + face.position[1], 
+            centerPosition[2] + face.position[2]
+          ]}
+          rotation={face.rotation}
+        >
+          <Text
+            fontSize={Math.min(dimensions.width, dimensions.height, dimensions.depth) * 0.4}
+            color="#000000"
+            anchorX="center"
+            anchorY="middle"
+            fontWeight="bold"
+          >
+            {displayNumber}
+          </Text>
+        </group>
+      ))}
+    </group>
+  );
+};
+
+export default BuildingBlock;

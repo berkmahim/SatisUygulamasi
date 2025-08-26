@@ -9,7 +9,14 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "server": "node backend/server.js",
-    "dev": "concurrently \"npm start\" \"npm run server\""
+    "dev": "concurrently \"npm start\" \"npm run server\"",
+    "prisma-server": "node backend/serverPrisma.js",
+    "prisma-dev": "concurrently \"npm start\" \"npm run prisma-server\"",
+    "db:migrate": "npx prisma migrate dev",
+    "db:generate": "npx prisma generate",
+    "db:studio": "npx prisma studio",
+    "db:reset": "npx prisma migrate reset",
+    "db:deploy": "npx prisma migrate deploy"
   },
   "dependencies": {
     "@ant-design/charts": "^2.2.6",
@@ -20,6 +27,7 @@
     "@capacitor/core": "^5.5.1",
     "@capacitor/preferences": "^5.0.0",
     "@capacitor/push-notifications": "^5.1.0",
+    "@prisma/client": "^6.11.1",
     "@react-pdf/renderer": "^4.2.1",
     "@react-three/drei": "^9.121.4",
     "@react-three/fiber": "^8.17.14",
@@ -50,6 +58,7 @@
     "node-schedule": "^2.1.1",
     "nodemailer": "^6.10.0",
     "pdfkit": "^0.16.0",
+    "prisma": "^6.11.1",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.0",

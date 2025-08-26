@@ -1,0 +1,471 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and authorization
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  fullName  String
+  role      UserRole @default(USER)
+  isActive  Boolean  @default(true)
+  
+  // Two-factor authentication
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+  backupCodes      Json?   // Array of backup codes with usage tracking
+  
+  // Permissions (JSON object)
+  permissions Json? // Will store permission object
+  
+  // Notification preferences (JSON object)
+  notificationPreferences Json?
+  
+  lastLogin DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relationships
+  customerNotes    CustomerNote[]
+  tasksAssigned    Task[]         @relation("AssignedTasks")
+  tasksCreated     Task[]         @relation("CreatedTasks")
+  logs             Log[]
+  notificationRecipients NotificationRecipient[]
+
+  @@map("users")
+}
+
+// Project model for construction projects
+model Project {
+  id              String   @id @default(cuid())
+  name            String
+  location        String
+  description     String
+  backgroundImage String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relationships
+  blocks Block[]
+  sales  Sale[]
+  tasks  Task[]
+
+  @@map("projects")
+}
+
+// Block model for building units
+model Block {
+  id            String  @id @default(cuid())
+  projectId     String
+  unitNumber    String?
+  type          BlockType @default(APARTMENT)
+  squareMeters  Float?
+  roomCount     String?
+  
+  // 3D Position and dimensions
+  positionX     Float   @default(0)
+  positionY     Float   @default(0)
+  positionZ     Float   @default(0)
+  width         Float   @default(1)
+  height        Float   @default(1)
+  depth         Float   @default(1)
+  
+  // Owner and payment status
+  ownerId       String?
+  iskanPaymentDone Boolean @default(false)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relationships
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner         Customer? @relation(fields: [ownerId], references: [id])
+  sales         Sale[]
+  payments      Payment[]
+
+  @@map("blocks")
+}
+
+// Customer model for client management
+model Customer {
+  id             String         @id @default(cuid())
+  firstName      String
+  lastName       String
+  tcNo           String?        @unique
+  email          String?        @unique
+  phone          String
+  secondaryPhone String?
+  address        String?
+  city           String?
+  occupation     String?
+  birthDate      DateTime?
+  
+  // CRM fields
+  customerSource CustomerSource @default(OTHER)
+  customerStatus CustomerStatus @default(LEAD)
+  tags           String[]       // Array of tags
+  lastContactDate DateTime?
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  // Relationships
+  blocks         Block[]
+  sales          Sale[]
+  payments       Payment[]
+  notes          CustomerNote[]
+  tasks          Task[]
+
+  @@map("customers")
+}
+
+// Customer notes for communication history
+model CustomerNote {
+  id         String       @id @default(cuid())
+  customerId String
+  userId     String
+  title      String
+  content    String
+  type       NoteType     @default(OTHER)
+  isPrivate  Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // Relationships
+  customer   Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id])
+
+  @@map("customer_notes")
+}
+
+// Sale model for sales transactions
+model Sale {
+  id                String        @id @default(cuid())
+  projectId         String
+  blockId           String
+  customerId        String
+  type              SaleType      @default(SALE)
+  
+  // Payment details
+  totalAmount       Float
+  totalPaidAmount   Float         @default(0)
+  remainingAmount   Float
+  paymentPlan       PaymentPlan   @default(CASH)
+  downPayment       Float?
+  installmentCount  Int?
+  firstPaymentDate  DateTime
+  
+  // Status tracking
+  status            SaleStatus    @default(ACTIVE)
+  paymentStatus     PaymentStatus @default(NOT_STARTED)
+  
+  // Cancellation details (JSON)
+  cancellationDetails Json?
+  
+  // Calculated fields
+  lastPaymentDate   DateTime?
+  nextPaymentDate   DateTime?
+  nextPaymentAmount Float?
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relationships
+  project           Project       @relation(fields: [projectId], references: [id])
+  block             Block         @relation(fields: [blockId], references: [id])
+  customer          Customer      @relation(fields: [customerId], references: [id])
+  payments          SalePayment[]
+
+  @@map("sales")
+}
+
+// Sale payments (previously embedded in Sale)
+model SalePayment {
+  id                String            @id @default(cuid())
+  saleId            String
+  amount            Float
+  dueDate           DateTime
+  description       String
+  installmentNumber Int
+  status            SalePaymentStatus @default(PENDING)
+  
+  // Payment tracking
+  paidAmount        Float?            @default(0)
+  paidDate          DateTime?
+  paymentMethod     PaymentMethod?
+  transactionId     String?
+  notes             String?
+  remainingAmount   Float?
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relationships
+  sale              Sale              @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@map("sale_payments")
+}
+
+// Standalone payment model
+model Payment {
+  id          String             @id @default(cuid())
+  customerId  String
+  blockId     String
+  amount      Float
+  type        StandalonePaymentType @default(INSTALLMENT)
+  description String?
+  paymentDate DateTime           @default(now())
+  status      StandalonePaymentStatus @default(PENDING)
+  
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relationships
+  customer    Customer           @relation(fields: [customerId], references: [id])
+  block       Block              @relation(fields: [blockId], references: [id])
+
+  @@map("payments")
+}
+
+// Task model for work assignments
+model Task {
+  id              String       @id @default(cuid())
+  title           String
+  description     String?
+  assignedToId    String
+  createdById     String
+  relatedCustomerId String?
+  relatedProjectId  String?
+  
+  dueDate         DateTime
+  status          TaskStatus   @default(PENDING)
+  priority        TaskPriority @default(MEDIUM)
+  
+  reminderDate    DateTime?
+  reminderSent    Boolean      @default(false)
+  completedDate   DateTime?
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relationships
+  assignedTo      User         @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  createdBy       User         @relation("CreatedTasks", fields: [createdById], references: [id])
+  relatedCustomer Customer?    @relation(fields: [relatedCustomerId], references: [id])
+  relatedProject  Project?     @relation(fields: [relatedProjectId], references: [id])
+
+  @@map("tasks")
+}
+
+// Log model for audit trail
+model Log {
+  id         String     @id @default(cuid())
+  type       LogType
+  action     LogAction
+  description String
+  entityId   String?
+  userId     String?
+  metadata   Json?      // Flexible metadata storage
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime   @default(now())
+
+  // Relationships
+  user       User?      @relation(fields: [userId], references: [id])
+
+  @@index([type])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([entityId])
+  @@index([action])
+  @@map("logs")
+}
+
+// Notification model
+model Notification {
+  id          String             @id @default(cuid())
+  type        NotificationType
+  title       String
+  message     String
+  priority    NotificationPriority @default(MEDIUM)
+  
+  // Related data (JSON for flexibility)
+  relatedData Json?
+  
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relationships
+  recipients  NotificationRecipient[]
+
+  @@map("notifications")
+}
+
+// Notification recipients (previously embedded)
+model NotificationRecipient {
+  id             String       @id @default(cuid())
+  notificationId String
+  userId         String
+  read           Boolean      @default(false)
+  readAt         DateTime?
+  emailSent      Boolean      @default(false)
+  emailSentAt    DateTime?
+  
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relationships
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([notificationId, userId])
+  @@map("notification_recipients")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum BlockType {
+  APARTMENT
+  STORE
+  OFFICE
+  PARKING
+}
+
+enum CustomerSource {
+  REFERRAL
+  ADVERTISEMENT
+  WEBSITE
+  SOCIAL_MEDIA
+  DIRECT
+  OTHER
+}
+
+enum CustomerStatus {
+  LEAD
+  PROSPECT
+  ACTIVE
+  INACTIVE
+}
+
+enum NoteType {
+  MEETING
+  CALL
+  EMAIL
+  OTHER
+}
+
+enum SaleType {
+  SALE
+  RESERVATION
+}
+
+enum PaymentPlan {
+  CASH
+  CASH_INSTALLMENT
+  INSTALLMENT
+  BALLOON_PAYMENT
+}
+
+enum SaleStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  PENDING
+  PARTIAL
+  PAID
+}
+
+enum SalePaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  PARTIAL
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CREDIT_CARD
+  CHECK
+}
+
+enum StandalonePaymentType {
+  CASH
+  INSTALLMENT
+  PROMISSORY_NOTE
+}
+
+enum StandalonePaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum LogType {
+  SALE
+  SALE_CANCEL
+  PAYMENT
+  PROJECT
+  BLOCK
+  USER
+  CUSTOMER
+  OTHER
+}
+
+enum LogAction {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  EXPORT
+  OTHER
+}
+
+enum NotificationType {
+  PAYMENT_OVERDUE
+  PAYMENT_RECEIVED
+  CUSTOMER_ADDED
+  SALE_COMPLETED
+  TASK_UPDATED
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+}

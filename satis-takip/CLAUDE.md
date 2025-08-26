@@ -115,6 +115,7 @@ RESTful API with endpoints grouped by domain:
 - `/api/tasks` - Task management
 - `/api/upload` - File upload handling
 - `/api/logs` - Activity logging for audit trails
+- `/api/references` - Reference management for blocks
 
 **Important Backend Features**:
 - Automated payment status updates every hour via cron jobs

@@ -15,6 +15,8 @@ import {
   Space,
   Switch,
   Select,
+  Modal,
+  Popconfirm,
   message
 } from 'antd';
 import { 
@@ -33,7 +35,7 @@ import {
   SettingOutlined,
   EyeOutlined
 } from '@ant-design/icons';
-import { getAllReferences, createReference } from '../services/referenceService';
+import { getAllReferences, createReference, deleteReference } from '../services/referenceService';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -72,6 +74,7 @@ const ControlPanel = ({
   });
   const [references, setReferences] = useState([]);
   const [isCreatingReference, setIsCreatingReference] = useState(false);
+  const [referenceManagementVisible, setReferenceManagementVisible] = useState(false);
 
   useEffect(() => {
     if (selectedBlock) {
@@ -135,6 +138,27 @@ const ControlPanel = ({
       }
     } finally {
       setIsCreatingReference(false);
+    }
+  };
+
+  const handleDeleteReference = async (referenceId, referenceName) => {
+    try {
+      await deleteReference(referenceId);
+      setReferences(prev => prev.filter(ref => ref._id !== referenceId));
+      
+      // If current block has this reference, clear it
+      if (blockDetails.reference === referenceId) {
+        setBlockDetails(prev => ({ ...prev, reference: '' }));
+      }
+      
+      message.success(`"${referenceName}" referansı silindi`);
+    } catch (error) {
+      console.error('Error deleting reference:', error);
+      if (error.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('Referans silinirken hata oluştu');
+      }
     }
   };
 
@@ -280,7 +304,17 @@ const ControlPanel = ({
               </Col>
               
               <Col span={24}>
-                <Text strong>Referans:</Text>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text strong>Referans:</Text>
+                  <Button
+                    size="small"
+                    type="link"
+                    icon={<SettingOutlined />}
+                    onClick={() => setReferenceManagementVisible(true)}
+                  >
+                    Yönet
+                  </Button>
+                </div>
                 <Select
                   placeholder="Referans seçin veya yeni oluşturun"
                   value={blockDetails.reference || undefined}
@@ -291,7 +325,7 @@ const ControlPanel = ({
                   dropdownRender={(menu) => (
                     <>
                       {menu}
-                      <div style={{ padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
+                     {/*} <div style={{ padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
                         <Input.Search
                           placeholder="Yeni referans adı girin"
                           enterButton={
@@ -307,7 +341,7 @@ const ControlPanel = ({
                           size="small"
                           onSearch={handleCreateReference}
                         />
-                      </div>
+                      </div> */}
                     </>
                   )}
                   filterOption={(input, option) =>
@@ -316,7 +350,7 @@ const ControlPanel = ({
                 >
                   {references.map((ref) => (
                     <Option key={ref._id} value={ref._id}>
-                      {ref.name}
+                      {ref.name} {ref.usageCount > 0 && `(${ref.usageCount} birim)`}
                     </Option>
                   ))}
                 </Select>
@@ -542,6 +576,75 @@ const ControlPanel = ({
           <Text>Düzenlemek için bir blok veya metin seçin.</Text>
         </Card>
       )}
+      
+      {/* Reference Management Modal */}
+      <Modal
+        title="Referans Yönetimi"
+        open={referenceManagementVisible}
+        onCancel={() => setReferenceManagementVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setReferenceManagementVisible(false)}>
+            Kapat
+          </Button>
+        ]}
+        width={600}
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <Input.Search
+            placeholder="Yeni referans adı girin"
+            enterButton={
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                loading={isCreatingReference}
+              >
+                Referans Ekle
+              </Button>
+            }
+            onSearch={handleCreateReference}
+          />
+        </div>
+        
+        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          {references.length === 0 ? (
+            <Text type="secondary">Henüz referans oluşturulmamış.</Text>
+          ) : (
+            references.map((ref) => (
+              <Card key={ref._id} size="small" style={{ marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <Text strong>{ref.name}</Text>
+                    <br />
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      {ref.usageCount > 0 ? `${ref.usageCount} birimde kullanılıyor` : 'Henüz kullanılmıyor'}
+                    </Text>
+                  </div>
+                  <Popconfirm
+                    title="Referansı Sil"
+                    description={
+                      ref.usageCount > 0
+                        ? `Bu referans ${ref.usageCount} birimde kullanılıyor. Silinirse bu birimlerden kaldırılacak. Emin misiniz?`
+                        : 'Bu referansı silmek istediğinizden emin misiniz?'
+                    }
+                    onConfirm={() => handleDeleteReference(ref._id, ref.name)}
+                    okText="Evet"
+                    cancelText="Hayır"
+                  >
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      size="small"
+                    >
+                      Sil
+                    </Button>
+                  </Popconfirm>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -1,12 +1,25 @@
 import asyncHandler from 'express-async-handler';
 import Reference from '../models/referenceModel.js';
+import Block from '../models/blockModel.js';
 
 // @desc    Get all references
 // @route   GET /api/references
 // @access  Private
 const getReferences = asyncHandler(async (req, res) => {
     const references = await Reference.find({}).sort({ name: 1 });
-    res.json(references);
+    
+    // Add usage count for each reference
+    const referencesWithUsage = await Promise.all(
+        references.map(async (ref) => {
+            const usageCount = await Block.countDocuments({ reference: ref._id });
+            return {
+                ...ref.toObject(),
+                usageCount
+            };
+        })
+    );
+    
+    res.json(referencesWithUsage);
 });
 
 // @desc    Create a new reference
@@ -74,8 +87,16 @@ const deleteReference = asyncHandler(async (req, res) => {
         throw new Error('Referans bulunamadı');
     }
 
+    // Remove this reference from all blocks that use it
+    await Block.updateMany(
+        { reference: req.params.id },
+        { $unset: { reference: 1 } }
+    );
+
     await reference.deleteOne();
-    res.json({ message: 'Referans silindi' });
+    res.json({ 
+        message: 'Referans silindi ve ilgili birimlerden kaldırıldı' 
+    });
 });
 
 export {

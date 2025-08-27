@@ -312,21 +312,28 @@ const PaymentTracking = () => {
                     bordered={false}
                 >
                     <Row gutter={[16, 16]}>
-                        <Col xs={24} sm={12} md={8}>
+                        <Col xs={24} sm={12} md={6}>
                             <Statistic
                                 title="Müşteri Adı"
                                 value={`${saleDetails?.customer?.firstName || ''} ${saleDetails?.customer?.lastName || ''}`.trim() || '-'}
                                 valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
                             />
                         </Col>
-                        <Col xs={24} sm={12} md={8}>
+                        <Col xs={24} sm={12} md={6}>
                             <Statistic
                                 title="Daire No"
                                 value={saleDetails?.block?.unitNumber || '-'}
                                 valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
                             />
                         </Col>
-                        <Col xs={24} sm={12} md={8}>
+                        <Col xs={24} sm={12} md={6}>
+                            <Statistic
+                                title="Referans"
+                                value={saleDetails?.block?.reference?.name || '-'}
+                                valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
+                            />
+                        </Col>
+                        <Col xs={24} sm={12} md={6}>
                             <Statistic
                                 title="Toplam Tutar"
                                 value={saleDetails?.totalAmount || 0}

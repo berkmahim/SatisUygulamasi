@@ -106,7 +106,14 @@ const createSale = asyncHandler(async (req, res) => {
 const getSaleById = asyncHandler(async (req, res) => {
     try {
         const sale = await Sale.findById(req.params.id)
-            .populate('blockId', 'unitNumber type')
+            .populate({
+                path: 'blockId',
+                select: 'unitNumber type',
+                populate: {
+                    path: 'reference',
+                    select: 'name'
+                }
+            })
             .populate('customerId', 'firstName lastName tcNo phone');
 
         if (!sale) {

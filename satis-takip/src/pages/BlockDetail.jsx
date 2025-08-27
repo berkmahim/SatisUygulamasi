@@ -47,17 +47,18 @@ const BlockDetail = () => {
         setReferences(referencesData);
         
         // Set form values
+        const ownerName = blockData.owner 
+          ? `${blockData.owner.firstName || ''} ${blockData.owner.lastName || ''}`.trim()
+          : '';
+          
         const formValues = {
           type: blockData.type || 'apartment',
           unitNumber: blockData.unitNumber || '',
-          owner: blockData.owner || '',
+          owner: ownerName,
           reference: blockData.reference?._id || undefined,
           squareMeters: blockData.squareMeters || 0,
           roomCount: blockData.roomCount || ''
         };
-        
-        console.log('Setting form values:', formValues);
-        console.log('Block reference:', blockData.reference);
         
         form.setFieldsValue(formValues);
       } catch (error) {
@@ -180,8 +181,9 @@ const BlockDetail = () => {
           <Form.Item
             label="Sahibi"
             name="owner"
+            extra="Satılmış birimler için müşteri adı otomatik görüntülenir"
           >
-            <Input placeholder="Sahibi adını girin" />
+            <Input placeholder="Sahibi adını girin (manuel)" disabled={!!block?.owner} />
           </Form.Item>
 
           <Form.Item 

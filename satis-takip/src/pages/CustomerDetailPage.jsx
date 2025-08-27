@@ -78,6 +78,12 @@ const CustomerDetailPage = () => {
       key: 'unitNumber'
     },
     {
+      title: 'Referans',
+      dataIndex: ['reference', 'name'],
+      key: 'reference',
+      render: (referenceName) => referenceName || '-'
+    },
+    {
       title: 'Tipi',
       dataIndex: 'type',
       key: 'type',
@@ -219,7 +225,7 @@ const CustomerDetailPage = () => {
               <div>{new Date(customer.birthDate).toLocaleDateString('tr-TR')}</div>
             </Col>
           )}
-          {customer.customerStatus && (
+          {/*{customer.customerStatus && (
             <Col span={8}>
               <Text strong>Müşteri Durumu:</Text>
               <div>
@@ -242,7 +248,7 @@ const CustomerDetailPage = () => {
                 {customer.customerSource === 'other' && 'Diğer'}
               </div>
             </Col>
-          )}
+          )}*/}
         </Row>
       </Card>
 

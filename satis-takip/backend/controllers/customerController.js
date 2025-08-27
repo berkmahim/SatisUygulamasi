@@ -172,7 +172,8 @@ const getCustomerDetails = asyncHandler(async (req, res) => {
 
     // Müşterinin sahip olduğu blokları bul
     const blocks = await Block.find({ owner: customer._id })
-        .populate('projectId', 'name'); // Proje adını getir
+        .populate('projectId', 'name') // Proje adını getir
+        .populate('reference', 'name'); // Referans adını getir
 
     // Müşterinin ödeme geçmişini bul
     const payments = await Payment.find({ customer: customer._id })

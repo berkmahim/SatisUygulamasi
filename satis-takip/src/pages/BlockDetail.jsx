@@ -1,149 +1,326 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { 
+  Card, 
+  Form, 
+  Input, 
+  Select, 
+  InputNumber, 
+  Button, 
+  Typography, 
+  Spin, 
+  message,
+  Space,
+  Modal,
+  Popconfirm 
+} from 'antd';
+import { ArrowLeftOutlined, SaveOutlined, SettingOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { getBlockById, updateBlock } from '../services/blockService';
+import { getAllReferences, createReference, deleteReference } from '../services/referenceService';
+
+const { Title } = Typography;
+const { Option } = Select;
 
 const BlockDetail = () => {
   const { projectId, blockId } = useParams();
   const navigate = useNavigate();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
   const [block, setBlock] = useState(null);
-  const [formData, setFormData] = useState({
-    type: '',
-    unitNumber: '',
-    owner: '',
-    squareMeters: '',
-    roomCount: ''
-  });
+  const [references, setReferences] = useState([]);
+  const [isCreatingReference, setIsCreatingReference] = useState(false);
+  const [referenceManagementVisible, setReferenceManagementVisible] = useState(false);
 
   useEffect(() => {
-    const fetchBlock = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getBlockById(blockId);
-        setBlock(data);
-        setFormData({
-          type: data.type || '',
-          unitNumber: data.unitNumber || '',
-          owner: data.owner || '',
-          squareMeters: data.squareMeters || '',
-          roomCount: data.roomCount || ''
-        });
+        setLoading(true);
+        
+        // Fetch block data and references in parallel
+        const [blockData, referencesData] = await Promise.all([
+          getBlockById(blockId),
+          getAllReferences()
+        ]);
+        
+        setBlock(blockData);
+        setReferences(referencesData);
+        
+        // Set form values
+        const formValues = {
+          type: blockData.type || 'apartment',
+          unitNumber: blockData.unitNumber || '',
+          owner: blockData.owner || '',
+          reference: blockData.reference?._id || undefined,
+          squareMeters: blockData.squareMeters || 0,
+          roomCount: blockData.roomCount || ''
+        };
+        
+        console.log('Setting form values:', formValues);
+        console.log('Block reference:', blockData.reference);
+        
+        form.setFieldsValue(formValues);
       } catch (error) {
-        console.error('Error fetching block:', error);
-        alert('Blok bilgileri yüklenirken bir hata oluştu');
+        console.error('Error fetching data:', error);
+        message.error('Blok bilgileri yüklenirken bir hata oluştu');
+      } finally {
+        setLoading(false);
       }
     };
 
     if (blockId) {
-      fetchBlock();
+      fetchData();
     }
-  }, [blockId]);
+  }, [blockId, form]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const handleCreateReference = async (referenceName) => {
+    if (!referenceName || referenceName.trim() === '') {
+      message.error('Referans adı boş olamaz');
+      return;
+    }
+
+    setIsCreatingReference(true);
+    try {
+      const newReference = await createReference({ name: referenceName.trim() });
+      setReferences(prev => [...prev, newReference]);
+      form.setFieldValue('reference', newReference._id);
+      message.success('Yeni referans oluşturuldu');
+    } catch (error) {
+      console.error('Error creating reference:', error);
+      if (error.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('Referans oluşturulurken hata oluştu');
+      }
+    } finally {
+      setIsCreatingReference(false);
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleDeleteReference = async (referenceId, referenceName) => {
     try {
-      await updateBlock(blockId, formData);
-      alert('Blok başarıyla güncellendi');
+      await deleteReference(referenceId);
+      setReferences(prev => prev.filter(ref => ref._id !== referenceId));
+      
+      // If current block has this reference, clear it
+      if (form.getFieldValue('reference') === referenceId) {
+        form.setFieldValue('reference', undefined);
+      }
+      
+      message.success(`"${referenceName}" referansı silindi`);
+    } catch (error) {
+      console.error('Error deleting reference:', error);
+      if (error.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('Referans silinirken hata oluştu');
+      }
+    }
+  };
+
+  const handleSubmit = async (values) => {
+    try {
+      setUpdating(true);
+      await updateBlock(blockId, values);
+      message.success('Blok başarıyla güncellendi');
       navigate(`/projects/${projectId}`);
     } catch (error) {
       console.error('Error updating block:', error);
-      alert('Blok güncellenirken bir hata oluştu');
+      message.error('Blok güncellenirken bir hata oluştu');
+    } finally {
+      setUpdating(false);
     }
   };
 
-  if (!block) {
-    return <div className="container mx-auto px-4 py-8">Yükleniyor...</div>;
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <Spin size="large" />
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white shadow-md rounded-lg p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Blok Detayları</h1>
-            <button
-              onClick={() => navigate(`/projects/${projectId}`)}
-              className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+    <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto' }}>
+      <Card>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <Title level={2} style={{ margin: 0 }}>Blok Detayları</Title>
+          <Button 
+            icon={<ArrowLeftOutlined />}
+            onClick={() => navigate(`/projects/${projectId}`)}
+          >
+            Geri Dön
+          </Button>
+        </div>
+
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          style={{ maxWidth: '600px' }}
+        >
+          <Form.Item
+            label="Blok Tipi"
+            name="type"
+            rules={[{ required: true, message: 'Blok tipi seçiniz' }]}
+          >
+            <Select placeholder="Blok tipi seçiniz">
+              <Option value="apartment">Daire</Option>
+              <Option value="store">Dükkan</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="Birim Numarası"
+            name="unitNumber"
+          >
+            <Input placeholder="Birim numarası girin" />
+          </Form.Item>
+
+          <Form.Item
+            label="Sahibi"
+            name="owner"
+          >
+            <Input placeholder="Sahibi adını girin" />
+          </Form.Item>
+
+          <Form.Item 
+            label={
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>Referans</span>
+                <Button
+                  size="small"
+                  type="link"
+                  icon={<SettingOutlined />}
+                  onClick={() => setReferenceManagementVisible(true)}
+                  style={{ padding: '0 4px', fontSize: '12px' }}
+                >
+                  Yönet
+                </Button>
+              </div>
+            } 
+            name="reference"
+          >
+            <Select
+              placeholder="Referans seçin"
+              allowClear
+              showSearch
+              filterOption={(input, option) =>
+                option?.children?.toLowerCase().includes(input.toLowerCase())
+              }
             >
-              Geri Dön
-            </button>
-          </div>
+              {references.map((ref) => (
+                <Option key={ref._id} value={ref._id}>
+                  {ref.name} {ref.usageCount > 0 && `(${ref.usageCount} birim)`}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Blok Tipi</label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              >
-                <option value="store">Dükkan</option>
-                <option value="apartment">Daire</option>
-              </select>
-            </div>
+          <Form.Item
+            label="Metrekare"
+            name="squareMeters"
+          >
+            <InputNumber 
+              placeholder="Metrekare girin"
+              style={{ width: '100%' }}
+              min={0}
+            />
+          </Form.Item>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Birim Numarası</label>
-              <input
-                type="text"
-                name="unitNumber"
-                value={formData.unitNumber}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              />
-            </div>
+          <Form.Item
+            label="Oda Sayısı"
+            name="roomCount"
+          >
+            <Input placeholder="Oda sayısını girin" />
+          </Form.Item>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Sahibi</label>
-              <input
-                type="text"
-                name="owner"
-                value={formData.owner}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Metrekare</label>
-              <input
-                type="number"
-                name="squareMeters"
-                value={formData.squareMeters}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Oda Sayısı</label>
-              <input
-                type="text"
-                name="roomCount"
-                value={formData.roomCount}
-                onChange={handleInputChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          <Form.Item>
+            <Space>
+              <Button 
+                type="primary" 
+                htmlType="submit" 
+                icon={<SaveOutlined />}
+                loading={updating}
               >
                 Güncelle
-              </button>
-            </div>
-          </form>
+              </Button>
+              <Button onClick={() => navigate(`/projects/${projectId}`)}>
+                İptal
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Card>
+
+      {/* Reference Management Modal */}
+      <Modal
+        title="Referans Yönetimi"
+        open={referenceManagementVisible}
+        onCancel={() => setReferenceManagementVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setReferenceManagementVisible(false)}>
+            Kapat
+          </Button>
+        ]}
+        width={600}
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <Input.Search
+            placeholder="Yeni referans adı girin"
+            enterButton={
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                loading={isCreatingReference}
+              >
+                Referans Ekle
+              </Button>
+            }
+            onSearch={handleCreateReference}
+          />
         </div>
-      </div>
+        
+        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          {references.length === 0 ? (
+            <Typography.Text type="secondary">Henüz referans oluşturulmamış.</Typography.Text>
+          ) : (
+            references.map((ref) => (
+              <Card key={ref._id} size="small" style={{ marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <Typography.Text strong>{ref.name}</Typography.Text>
+                    <br />
+                    <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                      {ref.usageCount > 0 ? `${ref.usageCount} birimde kullanılıyor` : 'Henüz kullanılmıyor'}
+                    </Typography.Text>
+                  </div>
+                  <Popconfirm
+                    title="Referansı Sil"
+                    description={
+                      ref.usageCount > 0
+                        ? `Bu referans ${ref.usageCount} birimde kullanılıyor. Silinirse bu birimlerden kaldırılacak. Emin misiniz?`
+                        : 'Bu referansı silmek istediğinizden emin misiniz?'
+                    }
+                    onConfirm={() => handleDeleteReference(ref._id, ref.name)}
+                    okText="Evet"
+                    cancelText="Hayır"
+                  >
+                    <Button
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      size="small"
+                    >
+                      Sil
+                    </Button>
+                  </Popconfirm>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -265,7 +265,14 @@ const getUnitTypeDistribution = async (req, res) => {
 
         // Projeye ait satışları al
         const sales = await Sale.find({ blockId: { $in: blockIds }, status: { $ne: 'cancelled' } })
-            .populate('blockId', 'type roomCount unitNumber');
+            .populate({
+                path: 'blockId',
+                select: 'type roomCount unitNumber',
+                populate: {
+                    path: 'reference',
+                    select: 'name'
+                }
+            });
 
         // Satılmış blokların ID'lerini set olarak tut
         const soldBlockIds = new Set(sales.map(sale => sale.blockId._id.toString()));
@@ -281,12 +288,9 @@ const getUnitTypeDistribution = async (req, res) => {
 
         // Satılan dairelerin oda sayısı dağılımı
         const roomDistribution = sales
-            .filter(sale => 
-                sale.blockId.type === 'apartment' && 
-                sale.blockId.roomCount
-            )
+            .filter(sale => sale.blockId && sale.blockId.type && sale.blockId.type.toLowerCase() === 'apartment')
             .reduce((acc, sale) => {
-                const count = sale.blockId.roomCount;
+                const count = sale.blockId.roomCount || 'Belirtilmemiş';
                 if (!acc[count]) acc[count] = 0;
                 acc[count]++;
                 return acc;
@@ -294,14 +298,19 @@ const getUnitTypeDistribution = async (req, res) => {
 
         // Dükkanları da ekleyelim
         const shopCount = sales
-            .filter(sale => sale.blockId.type === 'store')
+            .filter(sale => sale.blockId && sale.blockId.type && sale.blockId.type.toLowerCase() === 'store')
             .length;
 
         // Tüm oda sayıları ve dükkanlar için sonuç
         const roomCountsArray = Object.entries(roomDistribution).map(([count, total]) => ({
-            type: `${count} Odalı`,
+            type: count === 'Belirtilmemiş' ? 'Belirtilmemiş' : `${count} Odalı`,
             count: total
-        })).sort((a, b) => parseInt(a.type) - parseInt(b.type));
+        })).sort((a, b) => {
+            // Belirtilmemiş'i sona koy
+            if (a.type === 'Belirtilmemiş') return 1;
+            if (b.type === 'Belirtilmemiş') return -1;
+            return parseInt(a.type) - parseInt(b.type);
+        });
         
         // Eğer dükkan satışı varsa, sonuç dizisine ekle
         if (shopCount > 0) {
@@ -311,10 +320,33 @@ const getUnitTypeDistribution = async (req, res) => {
             });
         }
 
+        // Eğer hiç veri yoksa ama satış varsa, genel bir kategori ekle
+        if (roomCountsArray.length === 0 && sales.length > 0) {
+            roomCountsArray.push({
+                type: 'Belirtilmemiş',
+                count: sales.length
+            });
+        }
+
+        // Referans dağılımı hesapla
+        const referenceDistribution = sales.reduce((acc, sale) => {
+            const referenceName = sale.blockId.reference?.name || 'Referanssız';
+            if (!acc[referenceName]) acc[referenceName] = 0;
+            acc[referenceName]++;
+            return acc;
+        }, {});
+
+        const referenceDistributionArray = Object.entries(referenceDistribution).map(([name, count]) => ({
+            type: name,
+            count: count
+        })).sort((a, b) => b.count - a.count); // En çok satışa göre sırala
+
         const result = {
             unitStatus: unitStatusData,
-            roomCounts: roomCountsArray
+            roomCounts: roomCountsArray,
+            referenceDistribution: referenceDistributionArray
         };
+
 
         res.json(result);
     } catch (error) {

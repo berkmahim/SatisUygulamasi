@@ -23,6 +23,7 @@ const ProjectReports = () => {
   const [loading, setLoading] = useState(true);
   const [unitTypeData, setUnitTypeData] = useState(null);
   const [roomCountData, setRoomCountData] = useState(null);
+  const [referenceDistributionData, setReferenceDistributionData] = useState(null);
   const [payments, setPayments] = useState({ receivedPayments: [], expectedPayments: [] });
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs().endOf('month')]);
   const [expectedPaymentDateRange, setExpectedPaymentDateRange] = useState([null, null]);
@@ -40,8 +41,10 @@ const ProjectReports = () => {
     try {
       const { data } = await axios.get(`${BASE_URL}/api/reports/projects/${projectId}/unit-types`);
       
+      
       setUnitTypeData(data.unitStatus);
       setRoomCountData(data.roomCounts);
+      setReferenceDistributionData(data.referenceDistribution);
     } catch (error) {
       message.error('Birim tipi dağılımı alınamadı');
       console.error(error);
@@ -309,6 +312,12 @@ const ProjectReports = () => {
       else if (type === 'roomCount') {
         newItem = {
           'Oda Sayısı': item.type,
+          'Satılan Adet': item.count
+        };
+      }
+      else if (type === 'referenceDistribution') {
+        newItem = {
+          'Referans': item.type,
           'Satılan Adet': item.count
         };
       }
@@ -590,6 +599,66 @@ const ProjectReports = () => {
                 </>
               ) : (
                 <Empty description="Henüz satılan daire bulunmamaktadır" />
+              )}
+            </Card>
+          </Col>
+
+          {/* Referans Dağılımı */}
+          <Col xs={24} lg={12}>
+            <Card 
+              title="Satılan Birimlerin Referans Dağılımı"
+              extra={
+                <Space>
+                  <Button 
+                    icon={<FileExcelOutlined />} 
+                    onClick={() => exportToExcel(referenceDistributionData || [], 'Referans_Dagilimi', 'referenceDistribution')}
+                    disabled={!referenceDistributionData || referenceDistributionData.length === 0}
+                  >
+                    Excel
+                  </Button>
+                  <Button 
+                    icon={<FilePdfOutlined />}
+                    onClick={() => exportToPDF(
+                      referenceDistributionData || [], 
+                      'Referans_Dagilimi',
+                      'referenceDistribution'
+                    )}
+                    disabled={!referenceDistributionData || referenceDistributionData.length === 0}
+                  >
+                    PDF
+                  </Button>
+                </Space>
+              }
+            >
+              {Array.isArray(referenceDistributionData) && referenceDistributionData.length > 0 ? (
+                <>
+                  <Table 
+                    dataSource={referenceDistributionData}
+                    columns={[
+                      { title: 'Referans', dataIndex: 'type', key: 'type' },
+                      { title: 'Satılan Adet', dataIndex: 'count', key: 'count' }
+                    ]}
+                    pagination={false}
+                    rowKey={(record) => record.type}
+                    style={{ marginBottom: 20 }}
+                  />
+                  <Spin spinning={loading}>
+                    {referenceDistributionData && referenceDistributionData.length > 0 ? (
+                      renderPieChart(
+                        referenceDistributionData.map(item => ({
+                          type: item.type,
+                          value: item.count
+                        })),
+                        'value',
+                        'type'
+                      )
+                    ) : (
+                      <Empty description="Veri yok" />
+                    )}
+                  </Spin>
+                </>
+              ) : (
+                <Empty description="Henüz referansla satılan birim bulunmamaktadır" />
               )}
             </Card>
           </Col>

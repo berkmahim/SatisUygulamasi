@@ -133,7 +133,7 @@ const ProjectList = () => {
                     }} 
                   />
                 ) : (
-                  <div style={{ height: 200, backgroundColor: '#f0f2f5', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <div style={{ height: 200, backgroundColor: '#ffffff', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                     <span style={{ color: '#bfbfbf' }}>Resim Yok</span>
                   </div>
                 )

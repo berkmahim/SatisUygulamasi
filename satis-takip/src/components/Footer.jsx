@@ -13,7 +13,7 @@ const Footer = () => {
 
   return (
     <AntFooter className="app-footer" style={{ 
-      background: isDarkMode ? '#141414' : '#f0f2f5',
+      background: isDarkMode ? '#141414' : '#ffffff',
       color: isDarkMode ? 'rgba(255, 255, 255, 0.65)' : undefined 
     }}>
       <div className="footer-content">

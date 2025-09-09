@@ -54,7 +54,7 @@ const LoginPage = () => {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            background: '#f0f2f5'
+            background: '#ffffff'
         }}>
             <Card
                 title="Satış Takip Sistemi"

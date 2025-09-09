@@ -6,24 +6,24 @@ import {
   exportLogs,
   getLogDetail
 } from '../controllers/logControllerPrisma.js';
-import { protect, admin } from '../middleware/authMiddleware.js';
+import { protect, checkPermission } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Log routes - Admin only
+// Log routes - Activity log management permission required
 router.route('/')
-  .get(protect, admin, getLogs);
+  .get(protect, checkPermission('activityLogManagement'), getLogs);
 
 router.route('/stats')
-  .get(protect, admin, getLogStats);
+  .get(protect, checkPermission('activityLogManagement'), getLogStats);
 
 router.route('/export')
-  .get(protect, admin, exportLogs);
+  .get(protect, checkPermission('activityLogManagement'), exportLogs);
 
 router.route('/entity/:entityId')
   .get(protect, getLogsByEntity);
 
 router.route('/:id')
-  .get(protect, admin, getLogDetail);
+  .get(protect, checkPermission('activityLogManagement'), getLogDetail);
 
 export default router;

@@ -118,7 +118,7 @@ function AppContent() {
               } />
               
               <Route path="/activity-logs" element={
-                <PermissionRoute adminOnly={true}>
+                <PermissionRoute permission="activityLogManagement">
                   <ActivityLogs />
                 </PermissionRoute>
               } />

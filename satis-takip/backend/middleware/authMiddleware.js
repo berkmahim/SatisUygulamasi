@@ -50,6 +50,7 @@ const admin = (req, res, next) => {
             paymentManagement: true,
             reportManagement: true,
             userManagement: true,
+            activityLogManagement: true,
             paymentOverdueNotification: true
         };
         next();

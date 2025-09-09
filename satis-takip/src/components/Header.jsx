@@ -69,7 +69,7 @@ const Header = () => {
       key: '/activity-logs',
       icon: <FileSearchOutlined />,
       label: <Link to="/activity-logs">İşlem Logları</Link>,
-      adminOnly: true // Sadece adminler görebilir
+      permission: 'activityLogManagement'
     }
   ];
 

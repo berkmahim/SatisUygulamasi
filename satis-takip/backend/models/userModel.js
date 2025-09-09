@@ -8,6 +8,7 @@ const permissionSchema = new mongoose.Schema({
     paymentManagement: { type: Boolean, default: false },
     reportManagement: { type: Boolean, default: false },
     userManagement: { type: Boolean, default: false },
+    activityLogManagement: { type: Boolean, default: false }, // İşlem loglarını görme izni
     paymentOverdueNotification: { type: Boolean, default: false } // Yeni eklenen bildirim izni
 });
 

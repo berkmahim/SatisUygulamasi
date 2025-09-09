@@ -206,6 +206,7 @@ const UsersPage = () => {
                                 paymentManagement: false,
                                 reportManagement: false,
                                 userManagement: false,
+                                activityLogManagement: false,
                                 paymentOverdueNotification: false
                             }
                         }}
@@ -302,6 +303,14 @@ const UsersPage = () => {
                             name={['permissions', 'userManagement']}
                             valuePropName="checked"
                             label="Kullanıcı Yönetimi"
+                        >
+                            <Switch />
+                        </Form.Item>
+
+                        <Form.Item
+                            name={['permissions', 'activityLogManagement']}
+                            valuePropName="checked"
+                            label="İşlem Logları"
                         >
                             <Switch />
                         </Form.Item>

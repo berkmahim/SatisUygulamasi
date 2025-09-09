@@ -111,10 +111,15 @@ const ControlPanel = ({
   }, []);
 
   const handleDetailsChange = (field, value) => {
-    setBlockDetails(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    console.log(`handleDetailsChange called: ${field} = ${value}`);
+    setBlockDetails(prev => {
+      const newDetails = {
+        ...prev,
+        [field]: value
+      };
+      console.log('Updated blockDetails:', newDetails);
+      return newDetails;
+    });
   };
 
   const handleCreateReference = async (referenceName) => {
@@ -163,6 +168,8 @@ const ControlPanel = ({
   };
 
   const handleApplyDetails = () => {
+    console.log('Applying details:', blockDetails);
+    console.log('Selected block:', selectedBlock);
     onUpdateBlockDetails(selectedBlock, blockDetails);
     message.success('Birim detayları güncellendi');
   };
@@ -306,14 +313,31 @@ const ControlPanel = ({
               <Col span={24}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text strong>Referans:</Text>
-                  <Button
-                    size="small"
-                    type="link"
-                    icon={<SettingOutlined />}
-                    onClick={() => setReferenceManagementVisible(true)}
-                  >
-                    Yönet
-                  </Button>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {blockDetails.reference && (
+                      <Button
+                        size="small"
+                        type="link"
+                        danger
+                        onClick={() => {
+                          console.log('Before removing reference:', blockDetails.reference);
+                          handleDetailsChange('reference', undefined);
+                          console.log('After removing reference:', blockDetails.reference);
+                          message.success('Referans kaldırıldı');
+                        }}
+                      >
+                        Kaldır
+                      </Button>
+                    )}
+                    <Button
+                      size="small"
+                      type="link"
+                      icon={<SettingOutlined />}
+                      onClick={() => setReferenceManagementVisible(true)}
+                    >
+                      Yönet
+                    </Button>
+                  </div>
                 </div>
                 <Select
                   placeholder="Referans seçin veya yeni oluşturun"

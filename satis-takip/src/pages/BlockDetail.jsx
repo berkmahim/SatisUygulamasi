@@ -122,7 +122,18 @@ const BlockDetail = () => {
   const handleSubmit = async (values) => {
     try {
       setUpdating(true);
-      await updateBlock(blockId, values);
+      
+      console.log('BlockDetail - Form values before submit:', values);
+      
+      // Eğer blok zaten satılmışsa (owner ObjectId var), owner field'ını gönderme
+      const submitValues = { ...values };
+      if (block?.owner && typeof block.owner === 'object') {
+        delete submitValues.owner;
+      }
+      
+      console.log('BlockDetail - Final submit values:', submitValues);
+      
+      await updateBlock(blockId, submitValues);
       message.success('Blok başarıyla güncellendi');
       navigate(`/projects/${projectId}`);
     } catch (error) {
@@ -190,6 +201,22 @@ const BlockDetail = () => {
             label={
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>Referans</span>
+                {form.getFieldValue('reference') && (
+                  <Button
+                    size="small"
+                    type="link"
+                    danger
+                    onClick={() => {
+                      console.log('BlockDetail - Before removing reference:', form.getFieldValue('reference'));
+                      form.setFieldValue('reference', undefined);
+                      console.log('BlockDetail - After removing reference:', form.getFieldValue('reference'));
+                      message.success('Referans kaldırıldı');
+                    }}
+                    style={{ padding: '0 4px', fontSize: '12px' }}
+                  >
+                    Kaldır
+                  </Button>
+                )}
                 <Button
                   size="small"
                   type="link"

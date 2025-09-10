@@ -11,6 +11,7 @@ const PaymentPlanPage = () => {
 
     const [block, setBlock] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [paymentPlan, setPaymentPlan] = useState({
         totalAmount: '',
         paymentType: 'cash', // cash, cash-installment, installment, balloon-payment
@@ -308,6 +309,11 @@ const PaymentPlanPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        // Prevent multiple submissions
+        if (submitting) return;
+        
+        setSubmitting(true);
+
         try {
             // Ödeme tarihlerini kontrol et ve geçerli tarihler olduğundan emin ol
             const formattedPayments = calculatedPayments.map(payment => ({
@@ -353,6 +359,8 @@ const PaymentPlanPage = () => {
         } catch (error) {
             console.error('Error creating sale:', error);
             alert('Satış oluşturulurken bir hata oluştu');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -578,9 +586,14 @@ const PaymentPlanPage = () => {
                         </button>
                         <button
                             type="submit"
-                            className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                            disabled={submitting}
+                            className={`px-6 py-2 text-white rounded ${
+                                submitting 
+                                    ? 'bg-gray-400 cursor-not-allowed' 
+                                    : 'bg-green-500 hover:bg-green-600'
+                            }`}
                         >
-                            Satışı Tamamla
+                            {submitting ? 'İşlem Yapılıyor...' : 'Satışı Tamamla'}
                         </button>
                     </div>
                 </form>

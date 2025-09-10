@@ -1,5 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Box, Edges, Text } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 const BuildingBlock = ({ 
@@ -13,10 +14,22 @@ const BuildingBlock = ({
   addMode,
   owner = null,
   onHover,
-  unitNumber = ''
+  unitNumber = '',
+  hasOverduePayment = false
 }) => {
   const [hovered, setHovered] = useState(false);
+  const [flashIntensity, setFlashIntensity] = useState(0);
   const meshRef = useRef();
+  
+  // Animation for overdue payment flashing
+  useFrame((state) => {
+    if (hasOverduePayment) {
+      // Create alternating flash between red and yellow with 0.6s total cycle time
+      const cycleTime = 0.6; // Total cycle time (red + yellow = 0.6s)
+      const time = (state.clock.elapsedTime % cycleTime) / cycleTime; // Normalize to 0-1
+      setFlashIntensity(time);
+    }
+  });
 
   const getEdgeColor = () => {
     if (!editMode) return '#000000';
@@ -126,7 +139,15 @@ const BuildingBlock = ({
         }}
       >
         <meshStandardMaterial
-          color={isSelected ? '#1890ff' : owner ? '#ff0000' : '#00ff00'}
+          color={
+            isSelected 
+              ? '#1890ff' 
+              : hasOverduePayment 
+                ? flashIntensity < 0.5 ? '#ff0000' : '#ffff00' // Red for first half (0.3s), yellow for second half (0.3s)
+                : owner 
+                  ? '#ff0000' 
+                  : '#00ff00'
+          }
           metalness={0.1}
           roughness={0.5}
         />

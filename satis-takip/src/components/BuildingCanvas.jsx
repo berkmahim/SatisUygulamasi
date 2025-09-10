@@ -144,6 +144,7 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
           owner={block.owner}
           onHover={onBlockHover}
           unitNumber={block.unitNumber}
+          hasOverduePayment={block.hasOverduePayment}
         />
       ))}
 

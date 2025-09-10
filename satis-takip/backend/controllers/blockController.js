@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import Block from '../models/blockModel.js';
 import Project from '../models/projectModel.js';
+import Sale from '../models/saleModel.js';
 
 // @desc    Get blocks for a project
 // @route   GET /api/blocks/:projectId
@@ -9,7 +10,31 @@ const getBlocks = asyncHandler(async (req, res) => {
     const blocks = await Block.find({ projectId: req.params.projectId })
         .populate('owner', 'firstName lastName')
         .populate('reference', 'name');
-    res.json(blocks);
+    
+    // Check for overdue payments for each block
+    const blocksWithPaymentInfo = await Promise.all(
+        blocks.map(async (block) => {
+            const blockObj = block.toObject();
+            
+            if (block.owner) {
+                // Find sales for this block
+                const sale = await Sale.findOne({ blockId: block._id })
+                    .populate('customerId', 'firstName lastName');
+                
+                if (sale) {
+                    // Check if any payments are overdue
+                    const hasOverduePayment = sale.payments.some(payment => 
+                        payment.status === 'overdue'
+                    );
+                    blockObj.hasOverduePayment = hasOverduePayment;
+                }
+            }
+            
+            return blockObj;
+        })
+    );
+    
+    res.json(blocksWithPaymentInfo);
 });
 
 // @desc    Get block by ID

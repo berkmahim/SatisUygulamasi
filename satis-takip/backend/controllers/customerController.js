@@ -175,9 +175,34 @@ const getCustomerDetails = asyncHandler(async (req, res) => {
         .populate('projectId', 'name') // Proje adını getir
         .populate('reference', 'name'); // Referans adını getir
 
-    // Müşterinin ödeme geçmişini bul
-    const payments = await Payment.find({ customer: customer._id })
-        .sort({ createdAt: -1 }); // En yeni ödemeler önce
+    // Müşterinin ödeme geçmişini bul (Sale modelindeki payments arrayinden)
+    const sales = await Sale.find({ customerId: customer._id })
+        .populate('blockId', 'unitNumber type')
+        .populate('projectId', 'name')
+        .sort({ createdAt: -1 });
+
+    // Tüm satışlardaki ödemeleri topluca al ve düzle
+    const payments = [];
+    sales.forEach(sale => {
+        sale.payments.forEach(payment => {
+            payments.push({
+                ...payment.toObject(),
+                _id: payment._id,
+                saleId: sale._id,
+                blockInfo: sale.blockId,
+                projectInfo: sale.projectId,
+                saleType: sale.type,
+                createdAt: payment.paidDate || sale.createdAt // Ödeme tarihi varsa onu, yoksa satış tarihini kullan
+            });
+        });
+    });
+
+    // Ödemeleri tarihe göre sırala (en yeni önce)
+    payments.sort((a, b) => {
+        const dateA = new Date(a.paidDate || a.createdAt);
+        const dateB = new Date(b.paidDate || b.createdAt);
+        return dateB - dateA;
+    });
 
     res.json({
         customer,

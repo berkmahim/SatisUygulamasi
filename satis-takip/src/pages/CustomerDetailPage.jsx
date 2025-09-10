@@ -103,32 +103,64 @@ const CustomerDetailPage = () => {
 
   const paymentColumns = [
     {
-      title: 'Tarih',
-      dataIndex: 'date',
-      key: 'date',
-      render: (date) => new Date(date).toLocaleDateString('tr-TR')
+      title: 'Proje/Birim',
+      key: 'projectUnit',
+      render: (_, record) => (
+        <div>
+          <div>{record.projectInfo?.name || '-'}</div>
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            {record.blockInfo?.unitNumber ? `Birim: ${record.blockInfo.unitNumber}` : '-'}
+          </div>
+        </div>
+      )
     },
     {
       title: 'Tutar',
       dataIndex: 'amount',
       key: 'amount',
-      render: (amount) => `${amount.toLocaleString('tr-TR')} ₺`
+      render: (amount) => `${amount?.toLocaleString('tr-TR')} ₺`
     },
     {
-      title: 'Ödeme Tipi',
-      dataIndex: 'paymentType',
-      key: 'paymentType'
+      title: 'Vade Tarihi',
+      dataIndex: 'dueDate',
+      key: 'dueDate',
+      render: (date) => new Date(date).toLocaleDateString('tr-TR')
+    },
+    {
+      title: 'Durum',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => {
+        const statusMap = {
+          'pending': { text: 'Beklemede', color: '#faad14' },
+          'paid': { text: 'Ödendi', color: '#52c41a' },
+          'overdue': { text: 'Gecikmiş', color: '#f5222d' },
+          'partial': { text: 'Kısmi Ödeme', color: '#1890ff' }
+        };
+        const statusInfo = statusMap[status] || { text: status, color: '#666' };
+        return (
+          <span style={{ color: statusInfo.color, fontWeight: 'bold' }}>
+            {statusInfo.text}
+          </span>
+        );
+      }
+    },
+    {
+      title: 'Ödeme Tarihi',
+      dataIndex: 'paidDate',
+      key: 'paidDate',
+      render: (date) => date ? new Date(date).toLocaleDateString('tr-TR') : '-'
+    },
+    {
+      title: 'Ödenen Tutar',
+      dataIndex: 'paidAmount',
+      key: 'paidAmount',
+      render: (amount) => amount > 0 ? `${amount?.toLocaleString('tr-TR')} ₺` : '-'
     },
     {
       title: 'Açıklama',
       dataIndex: 'description',
       key: 'description'
-    },
-    {
-      title: 'Kayıt Tarihi',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date) => new Date(date).toLocaleDateString('tr-TR')
     }
   ];
 

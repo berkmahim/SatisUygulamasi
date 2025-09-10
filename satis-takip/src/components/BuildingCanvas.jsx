@@ -7,9 +7,10 @@ import BuildingBlock from './BuildingBlock';
 import Text3D from './Text3D';
 import ControlPanel from './ControlPanel';
 import SoldBlockPanel from './SoldBlockPanel';
+import BlockContextMenu from './BlockContextMenu';
 import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '../services/blockService';
 
-const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addMode, onBlockHover, texts, onAddText, onTextClick, selectedText, onTextHover, textMode }) => {
+const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, onBlockContextMenu, editMode, addMode, onBlockHover, texts, onAddText, onTextClick, selectedText, onTextHover, textMode }) => {
   const { camera } = useThree();
   const groundRef = useRef();
   const clickedRef = useRef(false);
@@ -139,6 +140,7 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addM
           {...block}
           onPointerDown={handleBlockPointerDown}
           onSelect={(e) => onBlockClick(block._id || block.id, e)}
+          onContextMenu={(e) => onBlockContextMenu(block._id || block.id, e)}
           isSelected={selectedBlock === (block._id || block.id)}
           editMode={editMode}
           addMode={addMode}
@@ -193,6 +195,9 @@ const BuildingCanvas = () => {
   const [showControlPanel, setShowControlPanel] = useState(true);
   const [soldBlockPanelVisible, setSoldBlockPanelVisible] = useState(false);
   const [selectedSoldBlockId, setSelectedSoldBlockId] = useState(null);
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [contextMenuBlockId, setContextMenuBlockId] = useState(null);
   // Sabit genişleme yönleri
   const expansionDirections = {
     width: 'right',    // Sağa doğru
@@ -213,6 +218,36 @@ const BuildingCanvas = () => {
       fetchBlocks();
     }
   }, [projectId]);
+
+  // Close context menu when clicking outside and prevent browser context menu
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (contextMenuVisible) {
+        setContextMenuVisible(false);
+        setContextMenuBlockId(null);
+      }
+    };
+
+    const handleGlobalContextMenu = (e) => {
+      // Prevent browser context menu on canvas elements
+      const canvas = e.target.closest('canvas');
+      if (canvas) {
+        e.preventDefault();
+      }
+    };
+
+    if (contextMenuVisible) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    
+    // Prevent browser context menu
+    document.addEventListener('contextmenu', handleGlobalContextMenu);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('contextmenu', handleGlobalContextMenu);
+    };
+  }, [contextMenuVisible]);
 
   const getSelectedBlockDimensions = () => {
     if (!selectedBlock) return { width: 1, height: 1, depth: 1 };
@@ -446,6 +481,21 @@ const BuildingCanvas = () => {
     
     // In edit mode, select/deselect the block
     setSelectedBlock(blockId === selectedBlock ? null : blockId);
+  };
+
+  const handleBlockContextMenu = (blockId, event) => {
+    console.log('Context menu handler called', blockId, event);
+    setContextMenuBlockId(blockId);
+    setContextMenuPosition({
+      x: event.clientX,
+      y: event.clientY
+    });
+    setContextMenuVisible(true);
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenuVisible(false);
+    setContextMenuBlockId(null);
   };
 
   const handleUpdateBlockDimensions = async (newDimensions) => {
@@ -865,6 +915,7 @@ const BuildingCanvas = () => {
             selectedBlock={selectedBlock}
             onAddBlock={addBlock}
             onBlockClick={handleBlockClick}
+            onBlockContextMenu={handleBlockContextMenu}
             editMode={editMode}
             addMode={addMode}
             onBlockHover={(owner, visible) => {
@@ -889,6 +940,14 @@ const BuildingCanvas = () => {
         visible={soldBlockPanelVisible}
         onClose={() => setSoldBlockPanelVisible(false)}
         blockId={selectedSoldBlockId}
+      />
+      
+      {/* Block Context Menu */}
+      <BlockContextMenu
+        visible={contextMenuVisible}
+        position={contextMenuPosition}
+        blockId={contextMenuBlockId}
+        onClose={handleCloseContextMenu}
       />
     </div>
   );

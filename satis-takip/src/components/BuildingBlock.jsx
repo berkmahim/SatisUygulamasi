@@ -9,6 +9,7 @@ const BuildingBlock = ({
   color = '#8c8c8c', 
   onPointerDown,
   onSelect, 
+  onContextMenu,
   isSelected, 
   editMode, 
   addMode,
@@ -121,9 +122,22 @@ const BuildingBlock = ({
         position={centerPosition}
         onPointerDown={handlePointerDown}
         onContextMenu={(e) => {
+          console.log('BuildingBlock onContextMenu called', e);
           e.stopPropagation();
-          e.preventDefault();
-          // Right-click does nothing for now
+          
+          // Create a proper event object for the context menu handler
+          const contextEvent = {
+            clientX: e.nativeEvent?.clientX || e.clientX || 0,
+            clientY: e.nativeEvent?.clientY || e.clientY || 0,
+            preventDefault: () => {
+              if (e.nativeEvent?.preventDefault) e.nativeEvent.preventDefault();
+            },
+            stopPropagation: () => {
+              if (e.nativeEvent?.stopPropagation) e.nativeEvent.stopPropagation();
+            }
+          };
+          
+          onContextMenu && onContextMenu(contextEvent);
         }}
         onPointerOver={(e) => {
           e.stopPropagation();

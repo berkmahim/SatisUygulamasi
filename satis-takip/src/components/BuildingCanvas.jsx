@@ -6,6 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import BuildingBlock from './BuildingBlock';
 import Text3D from './Text3D';
 import ControlPanel from './ControlPanel';
+import SoldBlockPanel from './SoldBlockPanel';
 import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '../services/blockService';
 
 const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, editMode, addMode, onBlockHover, texts, onAddText, onTextClick, selectedText, onTextHover, textMode }) => {
@@ -189,6 +190,9 @@ const BuildingCanvas = () => {
   const [texts, setTexts] = useState([]);
   const [selectedText, setSelectedText] = useState(null);
   const [textMode, setTextMode] = useState(false);
+  const [showControlPanel, setShowControlPanel] = useState(true);
+  const [soldBlockPanelVisible, setSoldBlockPanelVisible] = useState(false);
+  const [selectedSoldBlockId, setSelectedSoldBlockId] = useState(null);
   // Sabit genişleme yönleri
   const expansionDirections = {
     width: 'right',    // Sağa doğru
@@ -430,11 +434,12 @@ const BuildingCanvas = () => {
   const handleBlockClick = (blockId, event) => {
     event.stopPropagation();
     
-    // If not in edit mode and block is sold (has owner), navigate to customer detail
+    // If not in edit mode and block is sold (has owner), show side panel
     if (!editMode) {
       const block = blocks.find(b => (b._id || b.id) === blockId);
       if (block && block.owner && block.owner._id) {
-        navigate(`/customers/${block.owner._id}`);
+        setSelectedSoldBlockId(blockId);
+        setSoldBlockPanelVisible(true);
         return;
       }
     }
@@ -878,6 +883,13 @@ const BuildingCanvas = () => {
           />
         </Canvas>
       </div>
+      
+      {/* Sold Block Details Panel */}
+      <SoldBlockPanel
+        visible={soldBlockPanelVisible}
+        onClose={() => setSoldBlockPanelVisible(false)}
+        blockId={selectedSoldBlockId}
+      />
     </div>
   );
 };

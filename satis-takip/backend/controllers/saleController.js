@@ -467,9 +467,12 @@ const getSalesByCustomerId = asyncHandler(async (req, res) => {
 // @access  Private
 const getSalesByBlockId = asyncHandler(async (req, res) => {
     try {
-        const sales = await Sale.find({ blockId: req.params.blockId })
+        const sales = await Sale.find({ 
+            blockId: req.params.blockId,
+            status: { $ne: 'cancelled' } // Only active sales
+        })
             .populate('blockId', 'unitNumber type')
-            .populate('customerId', 'firstName lastName tcNo phone');
+            .populate('customerId', 'firstName lastName tcNo phone email');
 
         res.json(sales);
     } catch (error) {

@@ -12,6 +12,13 @@ export const getSaleById = async (id) => {
     return response.data;
 };
 
+export const getSaleByBlockId = async (blockId) => {
+    const response = await axios.get(`${API_URL}/block/${blockId}`);
+    // Return the first active sale (backend returns array)
+    const sales = response.data;
+    return sales && sales.length > 0 ? sales[0] : null;
+};
+
 export const updatePaymentPlan = async (id, payments) => {
     const response = await axios.put(`${API_URL}/${id}/payment-plan`, { payments });
     return response.data;

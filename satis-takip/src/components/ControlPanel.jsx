@@ -329,7 +329,7 @@ const ControlPanel = ({
                         danger
                         onClick={() => {
                           console.log('Before removing reference:', blockDetails.reference);
-                          handleDetailsChange('reference', undefined);
+                          handleDetailsChange('reference', null);
                           console.log('After removing reference:', blockDetails.reference);
                           message.success('Referans kaldırıldı');
                         }}
@@ -350,7 +350,7 @@ const ControlPanel = ({
                 <Select
                   placeholder="Referans seçin veya yeni oluşturun"
                   value={blockDetails.reference || undefined}
-                  onChange={(value) => handleDetailsChange('reference', value)}
+                  onChange={(value) => handleDetailsChange('reference', value || null)}
                   style={{ width: '100%', marginTop: '5px', marginBottom: '12px' }}
                   showSearch
                   allowClear

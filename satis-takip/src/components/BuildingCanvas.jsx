@@ -713,13 +713,27 @@ const BuildingCanvas = () => {
       // Önce seçili bloğu güncelle
       if (blockToUpdate._id) {
         const updatedBlock = await updateBlock(selectedBlock, updatedBlockData);
-        setBlocks(prevBlocks => prevBlocks.map(block => 
-          (block._id || block.id) === selectedBlock ? updatedBlock : block
-        ));
+        setBlocks(prevBlocks => prevBlocks.map(block => {
+          if ((block._id || block.id) === selectedBlock) {
+            // Preserve the hasOverduePayment flag from the existing block
+            return {
+              ...updatedBlock,
+              hasOverduePayment: block.hasOverduePayment
+            };
+          }
+          return block;
+        }));
             } else {
-        setBlocks(prevBlocks => prevBlocks.map(block => 
-          (block._id || block.id) === selectedBlock ? updatedBlockData : block
-        ));
+        setBlocks(prevBlocks => prevBlocks.map(block => {
+          if ((block._id || block.id) === selectedBlock) {
+            // Preserve the hasOverduePayment flag from the existing block
+            return {
+              ...updatedBlockData,
+              hasOverduePayment: block.hasOverduePayment
+            };
+          }
+          return block;
+        }));
       }
 
 
@@ -762,9 +776,16 @@ const BuildingCanvas = () => {
   const handleUpdateBlockDetails = async (blockId, details) => {
     try {
       const updatedBlock = await updateBlock(blockId, details);
-      setBlocks(prevBlocks => prevBlocks.map(block => 
-        (block._id || block.id) === blockId ? updatedBlock : block
-      ));
+      setBlocks(prevBlocks => prevBlocks.map(block => {
+        if ((block._id || block.id) === blockId) {
+          // Preserve the hasOverduePayment flag from the existing block
+          return {
+            ...updatedBlock,
+            hasOverduePayment: block.hasOverduePayment
+          };
+        }
+        return block;
+      }));
     } catch (error) {
       // Hata durumunda sessizce devam et
     }

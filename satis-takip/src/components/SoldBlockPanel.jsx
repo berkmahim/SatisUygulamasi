@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Card, Descriptions, Badge, Button, Spin, Alert, Tag } from 'antd';
-import { CloseOutlined, UserOutlined, HomeOutlined, CreditCardOutlined } from '@ant-design/icons';
+import { CloseOutlined, UserOutlined, HomeOutlined, CreditCardOutlined, DollarOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { getBlockById } from '../services/blockService';
 import { getSaleByBlockId } from '../services/saleService';
 
 const SoldBlockPanel = ({ visible, onClose, blockId }) => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [blockData, setBlockData] = useState(null);
   const [saleData, setSaleData] = useState(null);
@@ -68,7 +70,17 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
   };
 
   const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('tr-TR');
+    if (!date) return '-';
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return '-';
+    return dateObj.toLocaleDateString('tr-TR');
+  };
+
+  const handlePaymentCollection = () => {
+    if (saleData && saleData._id) {
+      navigate(`/sales/${saleData._id}/payments`);
+      onClose(); // Close the panel after navigation
+    }
   };
 
   const nextPayment = getNextPayment();
@@ -242,6 +254,22 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
                   />
                 </Descriptions.Item>
               </Descriptions>
+              
+              {/* Payment Collection Button for Overdue Payments */}
+              {nextPayment.isOverdue && (
+                <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                  <Button
+                    type="primary"
+                    danger
+                    icon={<DollarOutlined />}
+                    onClick={handlePaymentCollection}
+                    size="large"
+                    style={{ width: '100%' }}
+                  >
+                    Ödeme Tahsil Et
+                  </Button>
+                </div>
+              )}
             </Card>
           )}
 

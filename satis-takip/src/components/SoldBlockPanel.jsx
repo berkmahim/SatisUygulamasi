@@ -191,7 +191,7 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
                   {saleData.customerId.email || '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label="Satış Tarihi">
-                  {formatDate(saleData.saleDate)}
+                  {formatDate(saleData.createdAt)}
                 </Descriptions.Item>
                 <Descriptions.Item label="Toplam Tutar">
                   {formatCurrency(saleData.totalAmount)}

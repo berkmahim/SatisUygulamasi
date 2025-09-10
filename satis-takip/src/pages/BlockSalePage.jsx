@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Card, Input, Button, Modal, Form, message, Space } from 'antd';
+import { PlusOutlined, UserOutlined } from '@ant-design/icons';
 import { getBlockById } from '../services/blockService';
-import { searchCustomers } from '../services/customerService';
+import { searchCustomers, createCustomer } from '../services/customerService';
 
 const BlockSalePage = () => {
     const { projectId, blockId } = useParams();
@@ -11,6 +13,8 @@ const BlockSalePage = () => {
     const [customers, setCustomers] = useState([]);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showCustomerModal, setShowCustomerModal] = useState(false);
+    const [customerForm] = Form.useForm();
 
     useEffect(() => {
         const fetchBlock = async () => {
@@ -57,6 +61,19 @@ const BlockSalePage = () => {
         }
     };
 
+    const handleCreateCustomer = async (values) => {
+        try {
+            const newCustomer = await createCustomer(values);
+            setSelectedCustomer(newCustomer);
+            setShowCustomerModal(false);
+            customerForm.resetFields();
+            message.success('Müşteri başarıyla oluşturuldu');
+        } catch (error) {
+            console.error('Error creating customer:', error);
+            message.error(error.response?.data?.message || 'Müşteri oluşturulurken bir hata oluştu');
+        }
+    };
+
     if (loading) {
         return <div className="flex justify-center items-center h-screen">Yükleniyor...</div>;
     }
@@ -91,7 +108,16 @@ const BlockSalePage = () => {
 
                 {/* Müşteri Arama */}
                 <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-                    <h2 className="text-xl font-semibold mb-4">Müşteri Seçimi</h2>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold">Müşteri Seçimi</h2>
+                        <Button 
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={() => setShowCustomerModal(true)}
+                        >
+                            Yeni Müşteri Ekle
+                        </Button>
+                    </div>
                     <div className="relative">
                         <input
                             type="text"
@@ -163,6 +189,69 @@ const BlockSalePage = () => {
                         Satış Yap
                     </button>
                 </div>
+
+                {/* Customer Creation Modal */}
+                <Modal
+                    title="Yeni Müşteri Ekle"
+                    open={showCustomerModal}
+                    onOk={() => customerForm.submit()}
+                    onCancel={() => {
+                        setShowCustomerModal(false);
+                        customerForm.resetFields();
+                    }}
+                    okText="Müşteri Ekle"
+                    cancelText="İptal"
+                    width={600}
+                >
+                    <Form
+                        form={customerForm}
+                        layout="vertical"
+                        onFinish={handleCreateCustomer}
+                    >
+                        <Form.Item
+                            name="firstName"
+                            label="Ad"
+                            rules={[{ required: true, message: 'Lütfen adı giriniz' }]}
+                        >
+                            <Input placeholder="Müşteri adını giriniz" />
+                        </Form.Item>
+                        
+                        <Form.Item
+                            name="lastName"
+                            label="Soyad"
+                            rules={[{ required: true, message: 'Lütfen soyadı giriniz' }]}
+                        >
+                            <Input placeholder="Müşteri soyadını giriniz" />
+                        </Form.Item>
+                        
+                        <Form.Item
+                            name="tcNo"
+                            label="TC Kimlik No"
+                            rules={[{ required: true, message: 'Lütfen TC kimlik numarasını giriniz' }]}
+                        >
+                            <Input placeholder="TC kimlik numarasını giriniz" maxLength={11} />
+                        </Form.Item>
+                        
+                        <Form.Item
+                            name="phone"
+                            label="Telefon"
+                            rules={[{ required: true, message: 'Lütfen telefon numarasını giriniz' }]}
+                        >
+                            <Input placeholder="Telefon numarasını giriniz" />
+                        </Form.Item>
+                        
+                        <Form.Item
+                            name="email"
+                            label="E-posta"
+                            rules={[
+                                { required: true, message: 'Lütfen e-posta adresi giriniz' },
+                                { type: 'email', message: 'Geçerli bir e-posta adresi giriniz' }
+                            ]}
+                        >
+                            <Input placeholder="E-posta adresini giriniz" />
+                        </Form.Item>
+                    </Form>
+                </Modal>
             </div>
         </div>
     );

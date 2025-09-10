@@ -47,6 +47,11 @@ const BuildingBlock = ({
   ];
 
   const handlePointerDown = (e) => {
+    // Only respond to left clicks (button 0), ignore right clicks (button 2)
+    if (e.button === 2) {
+      return;
+    }
+    
     if (editMode && addMode) {
       if (!e.face) return;
       
@@ -117,7 +122,8 @@ const BuildingBlock = ({
         onPointerDown={handlePointerDown}
         onContextMenu={(e) => {
           e.stopPropagation();
-          onSelect && onSelect(e);
+          e.preventDefault();
+          // Right-click does nothing for now
         }}
         onPointerOver={(e) => {
           e.stopPropagation();

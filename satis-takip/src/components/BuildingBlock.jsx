@@ -122,7 +122,6 @@ const BuildingBlock = ({
         position={centerPosition}
         onPointerDown={handlePointerDown}
         onContextMenu={(e) => {
-          console.log('BuildingBlock onContextMenu called', e);
           e.stopPropagation();
           
           // Create a proper event object for the context menu handler

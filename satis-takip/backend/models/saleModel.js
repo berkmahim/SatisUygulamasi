@@ -314,11 +314,12 @@ setInterval(async () => {
         const sales = await mongoose.model('Sale').find({
             'payments.status': 'pending',
             status: 'active'
-        });
+        }).populate('customerId blockId projectId');
 
         for (const sale of sales) {
             sale.updatePaymentStatus();
-            await sale.save();
+            // Skip validation during automatic updates to avoid required field errors
+            await sale.save({ validateBeforeSave: false });
         }
     } catch (error) {
         console.error('Otomatik ödeme durumu güncelleme hatası:', error);

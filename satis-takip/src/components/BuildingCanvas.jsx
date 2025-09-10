@@ -484,7 +484,6 @@ const BuildingCanvas = () => {
   };
 
   const handleBlockContextMenu = (blockId, event) => {
-    console.log('Context menu handler called', blockId, event);
     setContextMenuBlockId(blockId);
     setContextMenuPosition({
       x: event.clientX,

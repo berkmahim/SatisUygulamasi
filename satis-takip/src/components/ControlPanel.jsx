@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Input, 
@@ -75,9 +75,10 @@ const ControlPanel = ({
   const [references, setReferences] = useState([]);
   const [isCreatingReference, setIsCreatingReference] = useState(false);
   const [referenceManagementVisible, setReferenceManagementVisible] = useState(false);
+  const userIsEditing = useRef(false);
 
   useEffect(() => {
-    if (selectedBlock) {
+    if (selectedBlock && !userIsEditing.current) {
       const block = blocks.find(b => (b._id || b.id) === selectedBlock);
       if (block) {
         setBlockDetails({
@@ -91,6 +92,11 @@ const ControlPanel = ({
       }
     }
   }, [selectedBlock, blocks]);
+
+  // Reset editing flag when a different block is selected
+  useEffect(() => {
+    userIsEditing.current = false;
+  }, [selectedBlock]);
 
   // selectedBlockDimensions değiştiğinde dimensions state'ini güncelle
   useEffect(() => {
@@ -112,6 +118,7 @@ const ControlPanel = ({
 
   const handleDetailsChange = (field, value) => {
     console.log(`handleDetailsChange called: ${field} = ${value}`);
+    userIsEditing.current = true;
     setBlockDetails(prev => {
       const newDetails = {
         ...prev,
@@ -171,6 +178,7 @@ const ControlPanel = ({
     console.log('Applying details:', blockDetails);
     console.log('Selected block:', selectedBlock);
     onUpdateBlockDetails(selectedBlock, blockDetails);
+    userIsEditing.current = false; // Reset editing flag after applying
     message.success('Birim detayları güncellendi');
   };
 

@@ -208,7 +208,7 @@ const BlockDetail = () => {
                     danger
                     onClick={() => {
                       console.log('BlockDetail - Before removing reference:', form.getFieldValue('reference'));
-                      form.setFieldValue('reference', undefined);
+                      form.setFieldValue('reference', null);
                       console.log('BlockDetail - After removing reference:', form.getFieldValue('reference'));
                       message.success('Referans kaldırıldı');
                     }}

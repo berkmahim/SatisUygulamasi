@@ -92,7 +92,7 @@ const updateBlock = asyncHandler(async (req, res) => {
             ...(req.body.unitNumber !== undefined && { unitNumber: req.body.unitNumber }),
             // Owner field'ı manuel string girişlerde güncelle, formatlanmış customer names'leri ignore et
             ...(req.body.owner && typeof req.body.owner === 'string' && !req.body.owner.includes(' ') && { owner: req.body.owner }),
-            ...(req.body.reference !== undefined && { reference: req.body.reference }),
+            ...('reference' in req.body && { reference: req.body.reference || null }),
             ...(req.body.squareMeters !== undefined && { squareMeters: req.body.squareMeters }),
             ...(req.body.roomCount !== undefined && { roomCount: req.body.roomCount }),
             ...(req.body.type && { type: req.body.type }),

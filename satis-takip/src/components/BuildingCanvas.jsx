@@ -200,6 +200,9 @@ const BuildingCanvas = () => {
   const [contextMenuVisible, setContextMenuVisible] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [contextMenuBlockId, setContextMenuBlockId] = useState(null);
+  const [blockHistory, setBlockHistory] = useState([]); // Track added blocks for undo
+  const [undoInProgress, setUndoInProgress] = useState(false);
+  const undoIntervalRef = useRef(null);
   // Sabit genişleme yönleri
   const expansionDirections = {
     width: 'right',    // Sağa doğru
@@ -426,6 +429,70 @@ const BuildingCanvas = () => {
 
   useEffect(() => {
     const handleKeyDown = async (e) => {
+      // Prevent shortcuts when typing in input fields
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Ctrl + E: Toggle edit mode
+      if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault();
+        setEditMode(prev => {
+          const newEditMode = !prev;
+          // If turning off edit mode, also turn off add mode
+          if (!newEditMode) {
+            setAddMode(false);
+          }
+          return newEditMode;
+        });
+        return;
+      }
+
+      // Ctrl + A: Toggle add mode (keeps edit mode active)
+      if (e.ctrlKey && e.key === 'a') {
+        e.preventDefault();
+        if (!editMode) {
+          // If edit mode is off, turn on both edit and add mode
+          setEditMode(true);
+          setAddMode(true);
+        } else {
+          // If edit mode is on, just toggle add mode
+          setAddMode(prev => !prev);
+        }
+        return;
+      }
+
+      // Ctrl + Z: Undo last added block (only in edit mode)
+      if (e.ctrlKey && e.key === 'z' && editMode) {
+        e.preventDefault();
+        
+        if (!undoInProgress) {
+          // Start undo process
+          setUndoInProgress(true);
+          
+          // Perform first undo immediately
+          performUndo();
+          
+          // Set up continuous undo with delay
+          undoIntervalRef.current = setTimeout(() => {
+            if (blockHistory.length > 0) {
+              const continuousUndo = setInterval(() => {
+                if (blockHistory.length === 0) {
+                  clearInterval(continuousUndo);
+                  return;
+                }
+                performUndo();
+              }, 150); // Continue removing blocks every 150ms
+              
+              // Store reference for cleanup
+              undoIntervalRef.current = continuousUndo;
+            }
+          }, 500); // Wait 500ms before starting continuous undo
+        }
+        return;
+      }
+
+      // Delete key: Delete selected block (existing functionality)
       if (editMode && e.key === 'Delete' && selectedBlock !== null) {
         try {
           const blockToDelete = blocks.find(b => (b._id || b.id) === selectedBlock);
@@ -433,6 +500,8 @@ const BuildingCanvas = () => {
             await deleteBlock(selectedBlock);
           }
           setBlocks(prevBlocks => prevBlocks.filter(block => (block._id || block.id) !== selectedBlock));
+          // Remove from history if it exists
+          setBlockHistory(prevHistory => prevHistory.filter(id => id !== selectedBlock));
           setSelectedBlock(null);
         } catch (error) {
           // Hata durumunda sessizce devam et
@@ -440,9 +509,50 @@ const BuildingCanvas = () => {
       }
     };
 
+    const performUndo = async () => {
+      if (blockHistory.length > 0) {
+        const lastAddedBlockId = blockHistory[blockHistory.length - 1];
+        try {
+          const blockToDelete = blocks.find(b => (b._id || b.id) === lastAddedBlockId);
+          if (blockToDelete && blockToDelete._id) {
+            await deleteBlock(lastAddedBlockId);
+          }
+          setBlocks(prevBlocks => prevBlocks.filter(block => (block._id || block.id) !== lastAddedBlockId));
+          setBlockHistory(prevHistory => prevHistory.slice(0, -1));
+          if (selectedBlock === lastAddedBlockId) {
+            setSelectedBlock(null);
+          }
+        } catch (error) {
+          // Hata durumunda sessizce devam et
+        }
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      // Reset undo in progress when Ctrl+Z is released
+      if (e.key === 'z' || e.key === 'Control') {
+        setUndoInProgress(false);
+        // Clear any ongoing intervals
+        if (undoIntervalRef.current) {
+          clearInterval(undoIntervalRef.current);
+          clearTimeout(undoIntervalRef.current);
+          undoIntervalRef.current = null;
+        }
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedBlock, editMode]);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      // Cleanup interval on unmount
+      if (undoIntervalRef.current) {
+        clearInterval(undoIntervalRef.current);
+        clearTimeout(undoIntervalRef.current);
+      }
+    };
+  }, [selectedBlock, editMode, blocks, blockHistory, undoInProgress]);
 
   const addBlock = async (position) => {
     const exists = blocks.some(block =>
@@ -462,6 +572,8 @@ const BuildingCanvas = () => {
       try {
         const savedBlock = await createBlock(projectId, newBlockData);
         setBlocks(prevBlocks => [...prevBlocks, savedBlock]);
+        // Add to history for undo functionality
+        setBlockHistory(prevHistory => [...prevHistory, savedBlock._id || savedBlock.id]);
       } catch (error) {
         // Hata durumunda sessizce devam et
       }
@@ -820,6 +932,8 @@ const BuildingCanvas = () => {
         await deleteBlock(blockId);
       }
       setBlocks(prevBlocks => prevBlocks.filter(block => (block._id || block.id) !== blockId));
+      // Remove from history if it exists
+      setBlockHistory(prevHistory => prevHistory.filter(id => id !== blockId));
       setSelectedBlock(null);
     } catch (error) {
       // Hata durumunda sessizce devam et
@@ -905,7 +1019,11 @@ const BuildingCanvas = () => {
   };
 
   return (
-    <div style={{ width: '100%', height: '100vh', position: 'relative', display: 'flex' }} tabIndex={0}>
+    <div 
+      style={{ width: '100%', height: '100vh', position: 'relative', display: 'flex' }} 
+      tabIndex={0}
+      title="Kısayollar: Ctrl+E (Düzenleme), Ctrl+A (Blok Ekleme), Ctrl+Z (Geri Al)"
+    >
       <div style={{ width: '300px', height: '100%', overflow: 'auto', borderRight: '1px solid #e8e8e8' }}>
         <ControlPanel 
           editMode={editMode} 

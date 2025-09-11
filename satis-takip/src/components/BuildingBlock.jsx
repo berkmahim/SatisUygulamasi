@@ -16,7 +16,8 @@ const BuildingBlock = ({
   owner = null,
   onHover,
   unitNumber = '',
-  hasOverduePayment = false
+  hasOverduePayment = false,
+  isPending = false
 }) => {
   const [hovered, setHovered] = useState(false);
   const [flashIntensity, setFlashIntensity] = useState(0);
@@ -159,16 +160,20 @@ const BuildingBlock = ({
       >
         <meshStandardMaterial
           color={
-            isSelected 
-              ? '#1890ff' 
-              : hasOverduePayment 
-                ? flashIntensity < 0.5 ? '#ff0000' : '#ffff00' // Red for first half (0.3s), yellow for second half (0.3s)
-                : owner 
-                  ? '#ff0000' 
-                  : '#00ff00'
+            isPending
+              ? '#ffa500' // Orange color for pending blocks
+              : isSelected 
+                ? '#1890ff' 
+                : hasOverduePayment 
+                  ? flashIntensity < 0.5 ? '#ff0000' : '#ffff00' // Red for first half (0.3s), yellow for second half (0.3s)
+                  : owner 
+                    ? '#ff0000' 
+                    : '#00ff00'
           }
           metalness={0.1}
           roughness={0.5}
+          transparent={isPending}
+          opacity={isPending ? 0.7 : 1.0} // Make pending blocks semi-transparent
         />
         <Edges
           scale={1}

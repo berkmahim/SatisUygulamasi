@@ -10,7 +10,7 @@ import SoldBlockPanel from './SoldBlockPanel';
 import BlockContextMenu from './BlockContextMenu';
 import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '../services/blockService';
 
-const Scene = ({ onAddBlock, blocks, selectedBlock, selectedBlocks, bulkSaleMode, onBlockClick, onBlockContextMenu, editMode, addMode, onBlockHover, texts, onAddText, onTextClick, selectedText, onTextHover, textMode }) => {
+const Scene = ({ onAddBlock, blocks, pendingBlocks, selectedBlock, selectedBlocks, bulkSaleMode, onBlockClick, onBlockContextMenu, editMode, addMode, onBlockHover, texts, onAddText, onTextClick, selectedText, onTextHover, textMode }) => {
   const { camera } = useThree();
   const groundRef = useRef();
   const clickedRef = useRef(false);
@@ -134,6 +134,7 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, selectedBlocks, bulkSaleMode
         sectionSize={3}
       />
 
+      {/* Render actual blocks */}
       {blocks.map((block) => (
         <BuildingBlock
           key={block._id || block.id}
@@ -148,6 +149,25 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, selectedBlocks, bulkSaleMode
           onHover={onBlockHover}
           unitNumber={block.unitNumber}
           hasOverduePayment={block.hasOverduePayment}
+        />
+      ))}
+      
+      {/* Render pending blocks with different appearance */}
+      {pendingBlocks.map((block) => (
+        <BuildingBlock
+          key={block.id}
+          {...block}
+          onPointerDown={handleBlockPointerDown}
+          onSelect={() => {}} // Disable selection for pending blocks
+          onContextMenu={() => {}} // Disable context menu for pending blocks
+          isSelected={false}
+          editMode={editMode}
+          addMode={addMode}
+          owner={null}
+          onHover={onBlockHover}
+          unitNumber=""
+          hasOverduePayment={false}
+          isPending={true} // Pass pending state to BuildingBlock
         />
       ))}
 
@@ -202,6 +222,7 @@ const BuildingCanvas = () => {
   const [contextMenuBlockId, setContextMenuBlockId] = useState(null);
   const [blockHistory, setBlockHistory] = useState([]); // Track added blocks for undo
   const [undoInProgress, setUndoInProgress] = useState(false);
+  const [pendingBlocks, setPendingBlocks] = useState([]); // Track blocks being added
   const undoIntervalRef = useRef(null);
   // Sabit genişleme yönleri
   const expansionDirections = {
@@ -555,27 +576,59 @@ const BuildingCanvas = () => {
   }, [selectedBlock, editMode, blocks, blockHistory, undoInProgress]);
 
   const addBlock = async (position) => {
-    const exists = blocks.some(block =>
+    // Check if block already exists at this position (including pending blocks)
+    const existsInBlocks = blocks.some(block =>
+      block.position.every((coord, index) => Math.abs(coord - position[index]) < 0.1)
+    );
+    
+    const existsInPending = pendingBlocks.some(block =>
       block.position.every((coord, index) => Math.abs(coord - position[index]) < 0.1)
     );
 
-    if (!exists) {
+    if (!existsInBlocks && !existsInPending) {
+      // Create temporary block ID
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      
       const newBlockData = {
+        id: tempId,
+        _id: tempId,
         position,
         dimensions: { width: 1, height: 1, depth: 1 },
         type: position[1] === 0 ? 'store' : 'apartment', 
         unitNumber: '',
         squareMeters: 0,
-        roomCount: ''
+        roomCount: '',
+        isPending: true // Mark as pending
       };
 
+      // Immediately add to pending blocks for visual feedback
+      setPendingBlocks(prevPending => [...prevPending, newBlockData]);
+
       try {
-        const savedBlock = await createBlock(projectId, newBlockData);
+        // Save to database
+        const savedBlock = await createBlock(projectId, {
+          position: newBlockData.position,
+          dimensions: newBlockData.dimensions,
+          type: newBlockData.type,
+          unitNumber: newBlockData.unitNumber,
+          squareMeters: newBlockData.squareMeters,
+          roomCount: newBlockData.roomCount
+        });
+        
+        // Remove from pending and add to actual blocks
+        setPendingBlocks(prevPending => 
+          prevPending.filter(block => block.id !== tempId)
+        );
         setBlocks(prevBlocks => [...prevBlocks, savedBlock]);
+        
         // Add to history for undo functionality
         setBlockHistory(prevHistory => [...prevHistory, savedBlock._id || savedBlock.id]);
       } catch (error) {
-        // Hata durumunda sessizce devam et
+        // Remove from pending blocks if save failed
+        setPendingBlocks(prevPending => 
+          prevPending.filter(block => block.id !== tempId)
+        );
+        console.error('Block creation failed:', error);
       }
     }
   };
@@ -1083,6 +1136,7 @@ const BuildingCanvas = () => {
         >
           <Scene
             blocks={blocks}
+            pendingBlocks={pendingBlocks}
             selectedBlock={selectedBlock}
             selectedBlocks={selectedBlocks}
             bulkSaleMode={bulkSaleMode}

@@ -491,12 +491,35 @@ const getSalesByCustomerId = asyncHandler(async (req, res) => {
 // @access  Private
 const getSalesByBlockId = asyncHandler(async (req, res) => {
     try {
+        // Search for both individual sales and bulk sales that include this block
         const sales = await Sale.find({ 
-            blockId: req.params.blockId,
-            status: { $ne: 'cancelled' } // Only active sales
+            $or: [
+                // Individual sales with this blockId
+                { 
+                    blockId: req.params.blockId,
+                    status: { $ne: 'cancelled' }
+                },
+                // Bulk sales that include this blockId
+                { 
+                    blockIds: req.params.blockId,
+                    isBulkSale: true,
+                    status: { $ne: 'cancelled' }
+                }
+            ]
         })
-            .populate('blockId', 'unitNumber type')
             .populate('customerId', 'firstName lastName tcNo phone email');
+
+        // Populate different fields based on sale type
+        for (const sale of sales) {
+            if (sale.isBulkSale) {
+                // For bulk sales, populate all block information
+                await sale.populate('blockIds', 'unitNumber type');
+                await sale.populate('bulkSaleBlocks.blockId', 'unitNumber type');
+            } else {
+                // For individual sales, populate the single block
+                await sale.populate('blockId', 'unitNumber type');
+            }
+        }
 
         res.json(sales);
     } catch (error) {

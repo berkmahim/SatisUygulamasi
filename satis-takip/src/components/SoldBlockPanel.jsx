@@ -166,7 +166,7 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
             </Descriptions>
           </Card>
 
-          {/* Customer Details */}
+          {/* Customer Details - Show for both individual and bulk sales */}
           {saleData && saleData.customerId && (
             <Card
               title={
@@ -196,6 +196,35 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
                 <Descriptions.Item label="Toplam Tutar">
                   {formatCurrency(saleData.totalAmount)}
                 </Descriptions.Item>
+                {/* Show bulk sale specific information */}
+                {saleData.isBulkSale && (
+                  <>
+                    <Descriptions.Item label="Satış Tipi">
+                      <Tag color="purple">Toplu Satış</Tag>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Toplam Birim Sayısı">
+                      {saleData.bulkSaleBlocks?.length || saleData.blockIds?.length || 0} birim
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Bulk ID">
+                      {saleData.bulkSaleId?.slice(-8) || '-'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Tüm Birimler">
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {saleData.blockIds?.map((block, index) => (
+                          <Tag key={index} color="blue" size="small">
+                            {block.unitNumber}
+                          </Tag>
+                        ))}
+                      </div>
+                    </Descriptions.Item>
+                  </>
+                )}
+                {/* Show individual sale specific information */}
+                {!saleData.isBulkSale && (
+                  <Descriptions.Item label="Satış Tipi">
+                    <Tag color="green">Tekil Satış</Tag>
+                  </Descriptions.Item>
+                )}
                 <Descriptions.Item label="Ödeme Durumu">
                   <Tag color={
                     saleData.paymentStatus === 'completed' ? 'success' :
@@ -215,7 +244,7 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
             </Card>
           )}
 
-          {/* Next Payment */}
+          {/* Next Payment - Works for both individual and bulk sales */}
           {nextPayment && (
             <Card
               title={

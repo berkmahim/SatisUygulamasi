@@ -49,7 +49,11 @@ const ControlPanel = ({
   setAddMode,
   textMode,
   setTextMode,
+  bulkSaleMode,
+  setBulkSaleMode,
   selectedBlock,
+  selectedBlocks,
+  setSelectedBlocks,
   onUpdateBlockDimensions,
   selectedBlockDimensions,
   onUpdateBlockDetails,
@@ -59,7 +63,8 @@ const ControlPanel = ({
   onUpdateText,
   onDeleteText,
   texts,
-  onMoveText
+  onMoveText,
+  onProceedToBulkSale
 }) => {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
@@ -255,6 +260,62 @@ const ControlPanel = ({
                     </Col>
                   </Row>
                 </>
+              )}
+              
+              <Row align="middle" justify="space-between" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
+                <Col><Text strong>Toplu Satış Modu</Text></Col>
+                <Col>
+                  <Switch 
+                    checked={bulkSaleMode} 
+                    onChange={(checked) => {
+                      setBulkSaleMode(checked);
+                      if (checked) {
+                        // When entering bulk sale mode, disable other modes
+                        setEditMode(false);
+                        setAddMode(false);
+                        setTextMode(false);
+                        setSelectedBlocks([]);
+                      } else {
+                        // Clear selections when exiting bulk sale mode
+                        setSelectedBlocks([]);
+                      }
+                    }} 
+                    checkedChildren="Aktif" 
+                    unCheckedChildren="Kapalı"
+                  />
+                </Col>
+              </Row>
+              
+              {bulkSaleMode && (
+                <Card size="small" style={{ marginTop: '12px', backgroundColor: '#f6ffed', border: '1px solid #b7eb8f' }}>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Text strong style={{ color: '#52c41a' }}>
+                      {selectedBlocks?.length || 0} birim seçildi
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                      Satmak istediğiniz birimleri tıklayarak seçin
+                    </Text>
+                    {selectedBlocks && selectedBlocks.length > 0 && (
+                      <>
+                        <Button 
+                          type="primary" 
+                          onClick={onProceedToBulkSale}
+                          block
+                          style={{ marginTop: '8px' }}
+                        >
+                          Devam Et
+                        </Button>
+                        <Button 
+                          onClick={() => setSelectedBlocks([])}
+                          block
+                          size="small"
+                        >
+                          Seçimi Temizle
+                        </Button>
+                      </>
+                    )}
+                  </Space>
+                </Card>
               )}
             </Space>
           </Card>

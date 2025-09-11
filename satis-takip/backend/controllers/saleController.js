@@ -540,8 +540,128 @@ const updateRefundStatus = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Create a unified bulk sale with multiple blocks
+// @route   POST /api/sales/bulk
+// @access  Private
+const createBulkSale = asyncHandler(async (req, res) => {
+    try {
+        const {
+            isBulkSale,
+            bulkSaleId,
+            projectId,
+            customerId,
+            type,
+            paymentPlan,
+            totalAmount,
+            downPayment,
+            installmentCount,
+            firstPaymentDate,
+            payments,
+            bulkSaleBlocks
+        } = req.body;
+
+        // Validate bulk sale data
+        if (!isBulkSale || !bulkSaleBlocks || !Array.isArray(bulkSaleBlocks) || bulkSaleBlocks.length === 0) {
+            return res.status(400).json({ message: 'Bulk sale data is required' });
+        }
+
+        // Validate customer
+        const customer = await Customer.findById(customerId);
+        if (!customer) {
+            return res.status(404).json({ message: 'Müşteri bulunamadı' });
+        }
+
+        // Validate all blocks and check availability
+        for (const blockInfo of bulkSaleBlocks) {
+            const block = await Block.findById(blockInfo.blockId);
+            if (!block) {
+                return res.status(404).json({ message: `Blok bulunamadı: ${blockInfo.blockId}` });
+            }
+            if (block.status === 'sold') {
+                return res.status(400).json({ message: `Bu birim zaten satılmış: ${block.unitNumber || blockInfo.blockId}` });
+            }
+        }
+
+        // Vade tarihlerini düzenle
+        let paymentDates = [];
+        if (payments && Array.isArray(payments)) {
+            paymentDates = payments.map((p, index) => ({
+                ...p,
+                dueDate: new Date(p.dueDate),
+                installmentNumber: index + 1,
+                status: p.paidAmount && p.paidAmount >= p.amount ? 'paid' : 'pending'
+            }));
+        }
+
+        // Yeni bulk satış kaydı oluştur
+        const sale = new Sale({
+            customerId,
+            projectId,
+            type: type || 'sale',
+            paymentPlan,
+            totalAmount,
+            downPayment: downPayment || 0,
+            installmentCount,
+            firstPaymentDate: new Date(firstPaymentDate),
+            payments: paymentDates.length > 0 ? paymentDates : [],
+            createdBy: req.user._id,
+            // Bulk sale specific fields
+            isBulkSale: true,
+            bulkSaleId,
+            bulkSaleBlocks
+        });
+
+        await sale.save();
+
+        // Tüm blokları "satıldı" olarak işaretle
+        for (const blockInfo of bulkSaleBlocks) {
+            await Block.findByIdAndUpdate(blockInfo.blockId, {
+                status: 'sold',
+                owner: customerId,
+                saleId: sale._id
+            });
+        }
+
+        // E-posta bildirimi için admin kullanıcılarını bul
+        const adminUsers = await User.find({ role: 'admin' });
+        
+        // Bulk satış için e-posta gönder
+        if (adminUsers && adminUsers.length > 0) {
+            try {
+                // İlk bloğu temsili olarak kullan
+                const firstBlock = await Block.findById(bulkSaleBlocks[0].blockId).populate('projectId', 'name');
+                if (firstBlock) {
+                    await sendSaleEmail(sale, firstBlock, customer, req.user, adminUsers);
+                }
+            } catch (emailError) {
+                console.warn('Toplu satış e-posta gönderimi hatası:', emailError);
+            }
+        }
+
+        // Log kaydı oluştur
+        await createLog({
+            type: 'sale',
+            action: 'create',
+            description: `${customer.firstName} ${customer.lastName} müşterisine toplu satış yapıldı. ${bulkSaleBlocks.length} birim, toplam ${totalAmount.toLocaleString('tr-TR')} TL tutarla satıldı. Bulk ID: ${bulkSaleId}`,
+            entityId: sale._id.toString(),
+            userId: req.user._id
+        }, req);
+
+        return res.status(201).json({
+            message: 'Toplu satış başarıyla oluşturuldu',
+            sale,
+            bulkSaleId
+        });
+
+    } catch (error) {
+        console.error('Error creating bulk sales:', error);
+        res.status(400).json({ message: error.message });
+    }
+});
+
 export {
     createSale,
+    createBulkSale,
     getSaleById,
     updatePaymentPlan,
     getSales,

@@ -1,6 +1,7 @@
 import express from 'express';
 import {
     createSale,
+    createBulkSale,
     getSaleById,
     updatePaymentPlan,
     getSales,
@@ -21,6 +22,7 @@ router.use(protect);
 
 // Ana route'lar
 router.post('/', createSale);
+router.post('/bulk', createBulkSale);
 router.get('/', getSales);
 
 // İptal edilen satışlar

@@ -10,7 +10,7 @@ import SoldBlockPanel from './SoldBlockPanel';
 import BlockContextMenu from './BlockContextMenu';
 import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '../services/blockService';
 
-const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, onBlockContextMenu, editMode, addMode, onBlockHover, texts, onAddText, onTextClick, selectedText, onTextHover, textMode }) => {
+const Scene = ({ onAddBlock, blocks, selectedBlock, selectedBlocks, bulkSaleMode, onBlockClick, onBlockContextMenu, editMode, addMode, onBlockHover, texts, onAddText, onTextClick, selectedText, onTextHover, textMode }) => {
   const { camera } = useThree();
   const groundRef = useRef();
   const clickedRef = useRef(false);
@@ -141,7 +141,7 @@ const Scene = ({ onAddBlock, blocks, selectedBlock, onBlockClick, onBlockContext
           onPointerDown={handleBlockPointerDown}
           onSelect={(e) => onBlockClick(block._id || block.id, e)}
           onContextMenu={(e) => onBlockContextMenu(block._id || block.id, e)}
-          isSelected={selectedBlock === (block._id || block.id)}
+          isSelected={bulkSaleMode ? selectedBlocks.includes(block._id || block.id) : selectedBlock === (block._id || block.id)}
           editMode={editMode}
           addMode={addMode}
           owner={block.owner}
@@ -187,6 +187,8 @@ const BuildingCanvas = () => {
   const navigate = useNavigate();
   const [blocks, setBlocks] = useState([]);
   const [selectedBlock, setSelectedBlock] = useState(null);
+  const [selectedBlocks, setSelectedBlocks] = useState([]); // For bulk selection
+  const [bulkSaleMode, setBulkSaleMode] = useState(false); // Bulk sale mode
   const [editMode, setEditMode] = useState(false);
   const [addMode, setAddMode] = useState(false);
   const [texts, setTexts] = useState([]);
@@ -469,9 +471,29 @@ const BuildingCanvas = () => {
   const handleBlockClick = (blockId, event) => {
     event.stopPropagation();
     
+    const block = blocks.find(b => (b._id || b.id) === blockId);
+    
+    // Bulk sale mode - multi-selection
+    if (bulkSaleMode) {
+      // Only allow selection of available blocks (not sold)
+      if (block && block.owner && block.owner._id) {
+        return; // Block is already sold, can't be selected for bulk sale
+      }
+      
+      setSelectedBlocks(prev => {
+        if (prev.includes(blockId)) {
+          // Deselect block
+          return prev.filter(id => id !== blockId);
+        } else {
+          // Select block
+          return [...prev, blockId];
+        }
+      });
+      return;
+    }
+    
     // If not in edit mode and block is sold (has owner), show side panel
     if (!editMode) {
-      const block = blocks.find(b => (b._id || b.id) === blockId);
       if (block && block.owner && block.owner._id) {
         setSelectedSoldBlockId(blockId);
         setSoldBlockPanelVisible(true);
@@ -892,7 +914,11 @@ const BuildingCanvas = () => {
           setAddMode={setAddMode}
           textMode={textMode}
           setTextMode={setTextMode}
+          bulkSaleMode={bulkSaleMode}
+          setBulkSaleMode={setBulkSaleMode}
           selectedBlock={selectedBlock}
+          selectedBlocks={selectedBlocks}
+          setSelectedBlocks={setSelectedBlocks}
           selectedBlockDimensions={getSelectedBlockDimensions()}
           onUpdateBlockDimensions={handleUpdateBlockDimensions}
           onUpdateBlockDetails={handleUpdateBlockDetails}
@@ -903,6 +929,13 @@ const BuildingCanvas = () => {
           onDeleteText={handleDeleteText}
           texts={texts}
           onMoveText={moveText}
+          onProceedToBulkSale={() => {
+            if (selectedBlocks.length > 0) {
+              navigate(`/projects/${projectId}/blocks/bulk-sale`, {
+                state: { selectedBlockIds: selectedBlocks }
+              });
+            }
+          }}
         />
       </div>
       <div style={{ flex: '1', position: 'relative' }}>
@@ -933,6 +966,8 @@ const BuildingCanvas = () => {
           <Scene
             blocks={blocks}
             selectedBlock={selectedBlock}
+            selectedBlocks={selectedBlocks}
+            bulkSaleMode={bulkSaleMode}
             onAddBlock={addBlock}
             onBlockClick={handleBlockClick}
             onBlockContextMenu={handleBlockContextMenu}

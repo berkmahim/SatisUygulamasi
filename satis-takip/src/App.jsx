@@ -28,6 +28,8 @@ import TwoFactorDisablePage from './pages/TwoFactorDisablePage';
 import TwoFactorBackupCodesPage from './pages/TwoFactorBackupCodesPage';
 import TasksPage from './pages/TasksPage';
 import TaskDetailPage from './pages/TaskDetailPage';
+import BulkSaleCustomerPage from './pages/BulkSaleCustomerPage';
+import BulkPaymentPlanPage from './pages/BulkPaymentPlanPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Footer from './components/Footer';
@@ -144,6 +146,18 @@ function AppContent() {
               <Route path="/projects/:projectId/blocks/:blockId/payment-plan" element={
                 <PermissionRoute permission="paymentManagement">
                   <PaymentPlanPage />
+                </PermissionRoute>
+              } />
+              
+              <Route path="/projects/:projectId/blocks/bulk-sale" element={
+                <PermissionRoute permission="salesManagement">
+                  <BulkSaleCustomerPage />
+                </PermissionRoute>
+              } />
+              
+              <Route path="/projects/:projectId/blocks/bulk-payment-plan" element={
+                <PermissionRoute permission="paymentManagement">
+                  <BulkPaymentPlanPage />
                 </PermissionRoute>
               } />
               

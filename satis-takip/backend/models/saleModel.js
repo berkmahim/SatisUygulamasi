@@ -62,7 +62,31 @@ const saleSchema = new mongoose.Schema({
     blockId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Block',
-        required: true
+        required: function() {
+            return !this.isBulkSale; // blockId not required for bulk sales
+        }
+    },
+    // Bulk sale support
+    isBulkSale: {
+        type: Boolean,
+        default: false
+    },
+    bulkSaleBlocks: [{
+        blockId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Block',
+            required: true
+        },
+        unitPrice: {
+            type: Number,
+            required: true
+        }
+    }],
+    bulkSaleId: {
+        type: String,
+        required: function() {
+            return this.isBulkSale;
+        }
     },
     customerId: {
         type: mongoose.Schema.Types.ObjectId,

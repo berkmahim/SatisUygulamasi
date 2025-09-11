@@ -17,17 +17,33 @@ const getBlocks = asyncHandler(async (req, res) => {
             const blockObj = block.toObject();
             
             if (block.owner) {
-                // Find sales for this block
-                const sale = await Sale.findOne({ blockId: block._id })
+                let hasOverduePayment = false;
+                
+                // First, check for individual block sales
+                const individualSale = await Sale.findOne({ blockId: block._id, isBulkSale: { $ne: true } })
                     .populate('customerId', 'firstName lastName');
                 
-                if (sale) {
-                    // Check if any payments are overdue
-                    const hasOverduePayment = sale.payments.some(payment => 
+                if (individualSale) {
+                    hasOverduePayment = individualSale.payments.some(payment => 
                         payment.status === 'overdue'
                     );
-                    blockObj.hasOverduePayment = hasOverduePayment;
                 }
+                
+                // Then, check for bulk sales that include this block
+                if (!hasOverduePayment) {
+                    const bulkSale = await Sale.findOne({ 
+                        'bulkSaleBlocks.blockId': block._id,
+                        isBulkSale: true
+                    }).populate('customerId', 'firstName lastName');
+                    
+                    if (bulkSale) {
+                        hasOverduePayment = bulkSale.payments.some(payment => 
+                            payment.status === 'overdue'
+                        );
+                    }
+                }
+                
+                blockObj.hasOverduePayment = hasOverduePayment;
             }
             
             return blockObj;

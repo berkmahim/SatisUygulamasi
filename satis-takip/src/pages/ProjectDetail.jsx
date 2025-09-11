@@ -155,10 +155,33 @@ const ProjectDetail = () => {
 
     const columns = [
         {
-            title: 'Blok/Daire',
-            dataIndex: ['blockId', 'unitNumber'],
-            key: 'unitNumber',
-            sorter: (a, b) => a.blockId.unitNumber.localeCompare(b.blockId.unitNumber),
+            title: 'Birim(ler)',
+            key: 'units',
+            render: (_, record) => {
+                if (record.isBulkSale) {
+                    return (
+                        <div>
+                            <strong style={{ color: '#1890ff' }}>
+                                Toplu Satış ({record.bulkSaleBlocks?.length || 0} birim)
+                            </strong>
+                            <br />
+                            <small style={{ color: '#666' }}>
+                                ID: {record.bulkSaleId?.slice(-8)}
+                            </small>
+                        </div>
+                    );
+                } else {
+                    return record.blockId?.unitNumber || 'N/A';
+                }
+            },
+            sorter: (a, b) => {
+                if (a.isBulkSale && b.isBulkSale) {
+                    return (a.bulkSaleBlocks?.length || 0) - (b.bulkSaleBlocks?.length || 0);
+                }
+                if (a.isBulkSale) return 1;
+                if (b.isBulkSale) return -1;
+                return (a.blockId?.unitNumber || '').localeCompare(b.blockId?.unitNumber || '');
+            },
         },
         {
             title: 'Müşteri',
@@ -378,10 +401,19 @@ const ProjectDetail = () => {
                                     dataSource={sales.filter(sale => {
                                         const searchLower = searchTerm.toLowerCase();
                                         const customerName = `${sale.customerId.firstName} ${sale.customerId.lastName}`.toLowerCase();
-                                        const unitInfo = sale.blockId.unitNumber.toLowerCase();
                                         
-                                        return customerName.includes(searchLower) || 
-                                              unitInfo.includes(searchLower);
+                                        if (sale.isBulkSale) {
+                                            // For bulk sales, also search in bulk sale ID
+                                            const bulkSaleId = (sale.bulkSaleId || '').toLowerCase();
+                                            return customerName.includes(searchLower) || 
+                                                   bulkSaleId.includes(searchLower) ||
+                                                   'toplu'.includes(searchLower);
+                                        } else {
+                                            // For individual sales, search in unit number
+                                            const unitInfo = (sale.blockId?.unitNumber || '').toLowerCase();
+                                            return customerName.includes(searchLower) || 
+                                                   unitInfo.includes(searchLower);
+                                        }
                                     })}
                                     rowKey="_id"
                                     pagination={{ pageSize: 10 }}

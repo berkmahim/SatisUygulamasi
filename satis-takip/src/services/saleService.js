@@ -7,6 +7,11 @@ export const createSale = async (saleData) => {
     return response.data;
 };
 
+export const createBulkSale = async (bulkSaleData) => {
+    const response = await axios.post(`${API_URL}/bulk`, bulkSaleData);
+    return response.data;
+};
+
 export const getSaleById = async (id) => {
     const response = await axios.get(`${API_URL}/${id}`);
     return response.data;

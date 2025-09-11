@@ -36,6 +36,7 @@ import {
   EyeOutlined
 } from '@ant-design/icons';
 import { getAllReferences, createReference, deleteReference } from '../services/referenceService';
+import { createBulkBlocks } from '../services/blockService';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -80,6 +81,9 @@ const ControlPanel = ({
   const [references, setReferences] = useState([]);
   const [isCreatingReference, setIsCreatingReference] = useState(false);
   const [referenceManagementVisible, setReferenceManagementVisible] = useState(false);
+  const [bulkDuplicationVisible, setBulkDuplicationVisible] = useState(false);
+  const [duplicationDirection, setDuplicationDirection] = useState('left'); // 'left' or 'right'
+  const [duplicationCount, setDuplicationCount] = useState(1);
   const userIsEditing = useRef(false);
 
   useEffect(() => {
@@ -201,6 +205,49 @@ const ControlPanel = ({
   const handleSellBlock = () => {
     // Navigate to the block sale page
     navigate(`/projects/${projectId}/blocks/${selectedBlock}/sell`);
+  };
+
+  const handleBulkDuplicate = (direction) => {
+    setDuplicationDirection(direction);
+    setBulkDuplicationVisible(true);
+    setDuplicationCount(1); // Reset count
+  };
+
+  const handleConfirmBulkDuplication = async () => {
+    if (!selectedBlock || duplicationCount < 1) {
+      message.error('Lütfen geçerli bir sayı girin');
+      return;
+    }
+
+    try {
+      const selectedBlockData = blocks.find(b => (b._id || b.id) === selectedBlock);
+      if (!selectedBlockData) {
+        message.error('Seçili blok bulunamadı');
+        return;
+      }
+
+      // Create the bulk duplication request
+      const bulkDuplicationData = {
+        sourceBlockId: selectedBlock,
+        direction: duplicationDirection,
+        count: duplicationCount,
+        projectId: projectId
+      };
+
+      message.loading('Bloklar oluşturuluyor...', 2);
+      
+      // Call backend API for bulk duplication
+      await createBulkBlocks(projectId, bulkDuplicationData);
+      
+      setBulkDuplicationVisible(false);
+      message.success(`${duplicationCount} adet blok ${duplicationDirection === 'left' ? 'sola' : 'sağa'} eklendi`);
+      
+      // Refresh the blocks to show the new ones
+      window.location.reload();
+    } catch (error) {
+      console.error('Bulk duplication error:', error);
+      message.error('Bloklar oluşturulurken hata oluştu');
+    }
   };
 
   const toggleTextMode = () => {
@@ -545,6 +592,34 @@ const ControlPanel = ({
                 </Button>
               </Col>
             </Row>
+
+            {/* Bulk Duplication Buttons */}
+            <Row gutter={8} style={{ marginTop: '12px' }}>
+              <Col span={12}>
+                <Button 
+                  type="default"
+                  style={{ width: '100%' }}
+                  icon={<LeftOutlined />}
+                  onClick={() => handleBulkDuplicate('left')}
+                  disabled={!editMode}
+                  title="Seçili bloğun soluna yeni bloklar ekle"
+                >
+                  Sola Çoğalt
+                </Button>
+              </Col>
+              <Col span={12}>
+                <Button 
+                  type="default"
+                  style={{ width: '100%' }}
+                  icon={<RightOutlined />}
+                  onClick={() => handleBulkDuplicate('right')}
+                  disabled={!editMode}
+                  title="Seçili bloğun sağına yeni bloklar ekle"
+                >
+                  Sağa Çoğalt
+                </Button>
+              </Col>
+            </Row>
           </Panel>
         </Collapse>
       )}
@@ -736,6 +811,42 @@ const ControlPanel = ({
               </Card>
             ))
           )}
+        </div>
+      </Modal>
+
+      {/* Bulk Duplication Modal */}
+      <Modal
+        title={`Blok Çoğaltma - ${duplicationDirection === 'left' ? 'Sola' : 'Sağa'}`}
+        open={bulkDuplicationVisible}
+        onOk={handleConfirmBulkDuplication}
+        onCancel={() => setBulkDuplicationVisible(false)}
+        okText="Çoğalt"
+        cancelText="İptal"
+        width={400}
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <Text>
+            Seçili bloğun <strong>{duplicationDirection === 'left' ? 'soluna' : 'sağına'}</strong> kaç adet blok eklemek istiyorsunuz?
+          </Text>
+        </div>
+        
+        <div style={{ marginBottom: '16px' }}>
+          <Text strong>Blok Sayısı:</Text>
+          <InputNumber
+            min={1}
+            max={50}
+            value={duplicationCount}
+            onChange={(value) => setDuplicationCount(value || 1)}
+            style={{ width: '100%', marginTop: '8px' }}
+            placeholder="Eklenecek blok sayısı"
+          />
+        </div>
+
+        <div style={{ backgroundColor: '#f6ffed', padding: '12px', borderRadius: '6px', border: '1px solid #b7eb8f' }}>
+          <Text style={{ fontSize: '12px', color: '#52c41a' }}>
+            <strong>Not:</strong> Yeni bloklar seçili bloğun tüm özelliklerini (boyut, tip, referans vb.) miras alacak. 
+            Birim numarası varsa otomatik olarak artırılacak.
+          </Text>
         </div>
       </Modal>
     </div>

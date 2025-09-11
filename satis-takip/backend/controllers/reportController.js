@@ -263,10 +263,24 @@ const getUnitTypeDistribution = async (req, res) => {
         const blocks = await Block.find({ projectId });
         const blockIds = blocks.map(block => block._id);
 
-        // Projeye ait satışları al
-        const sales = await Sale.find({ blockId: { $in: blockIds }, status: { $ne: 'cancelled' } })
+        // Projeye ait satışları al (hem individual hem bulk sales)
+        const sales = await Sale.find({ 
+            $or: [
+                { blockId: { $in: blockIds } }, // Individual sales
+                { blockIds: { $in: blockIds } } // Bulk sales
+            ],
+            status: { $ne: 'cancelled' } 
+        })
             .populate({
                 path: 'blockId',
+                select: 'type roomCount unitNumber',
+                populate: {
+                    path: 'reference',
+                    select: 'name'
+                }
+            })
+            .populate({
+                path: 'blockIds',
                 select: 'type roomCount unitNumber',
                 populate: {
                     path: 'reference',
@@ -275,7 +289,20 @@ const getUnitTypeDistribution = async (req, res) => {
             });
 
         // Satılmış blokların ID'lerini set olarak tut
-        const soldBlockIds = new Set(sales.map(sale => sale.blockId._id.toString()));
+        const soldBlockIds = new Set();
+        sales.forEach(sale => {
+            if (sale.isBulkSale && sale.blockIds) {
+                // Bulk sale - add all block IDs
+                sale.blockIds.forEach(block => {
+                    if (block && block._id) {
+                        soldBlockIds.add(block._id.toString());
+                    }
+                });
+            } else if (sale.blockId && sale.blockId._id) {
+                // Individual sale - add single block ID
+                soldBlockIds.add(sale.blockId._id.toString());
+            }
+        });
 
         // Birimlerin satış durumlarını hazırla
         const unitStatusData = blocks.map(block => ({
@@ -287,19 +314,24 @@ const getUnitTypeDistribution = async (req, res) => {
         }));
 
         // Satılan dairelerin oda sayısı dağılımı
-        const roomDistribution = sales
-            .filter(sale => sale.blockId && sale.blockId.type && sale.blockId.type.toLowerCase() === 'apartment')
-            .reduce((acc, sale) => {
-                const count = sale.blockId.roomCount || 'Belirtilmemiş';
-                if (!acc[count]) acc[count] = 0;
-                acc[count]++;
-                return acc;
-            }, {});
+        const roomDistribution = {};
+        let shopCount = 0;
 
-        // Dükkanları da ekleyelim
-        const shopCount = sales
-            .filter(sale => sale.blockId && sale.blockId.type && sale.blockId.type.toLowerCase() === 'store')
-            .length;
+        sales.forEach(sale => {
+            const blocks = sale.isBulkSale ? sale.blockIds : [sale.blockId];
+            
+            blocks.forEach(block => {
+                if (block && block.type) {
+                    if (block.type.toLowerCase() === 'apartment') {
+                        const count = block.roomCount || 'Belirtilmemiş';
+                        if (!roomDistribution[count]) roomDistribution[count] = 0;
+                        roomDistribution[count]++;
+                    } else if (block.type.toLowerCase() === 'store') {
+                        shopCount++;
+                    }
+                }
+            });
+        });
 
         // Tüm oda sayıları ve dükkanlar için sonuç
         const roomCountsArray = Object.entries(roomDistribution).map(([count, total]) => ({
@@ -329,12 +361,19 @@ const getUnitTypeDistribution = async (req, res) => {
         }
 
         // Referans dağılımı hesapla
-        const referenceDistribution = sales.reduce((acc, sale) => {
-            const referenceName = sale.blockId.reference?.name || 'Referanssız';
-            if (!acc[referenceName]) acc[referenceName] = 0;
-            acc[referenceName]++;
-            return acc;
-        }, {});
+        const referenceDistribution = {};
+        
+        sales.forEach(sale => {
+            const blocks = sale.isBulkSale ? sale.blockIds : [sale.blockId];
+            
+            blocks.forEach(block => {
+                if (block) {
+                    const referenceName = block.reference?.name || 'Referanssız';
+                    if (!referenceDistribution[referenceName]) referenceDistribution[referenceName] = 0;
+                    referenceDistribution[referenceName]++;
+                }
+            });
+        });
 
         const referenceDistributionArray = Object.entries(referenceDistribution).map(([name, count]) => ({
             type: name,
@@ -383,6 +422,13 @@ const getProjectPayments = async (req, res) => {
             .populate('customerId', 'firstName lastName')
             .populate('blockId', 'unitNumber');
 
+        // Bulk sales için blockIds'leri de populate et
+        for (const sale of sales) {
+            if (sale.isBulkSale && sale.blockIds) {
+                await sale.populate('blockIds', 'unitNumber');
+            }
+        }
+
         // Alınan ödemeler listesi oluştur
         const receivedPayments = [];
         const expectedPayments = [];
@@ -391,10 +437,22 @@ const getProjectPayments = async (req, res) => {
         for (const sale of sales) {
             // Ödemeler içinde dön
             for (const payment of sale.payments) {
+                // Block bilgisini düzgün şekilde al (individual veya bulk sale)
+                let blockNumber = '';
+                if (sale.isBulkSale) {
+                    // Bulk sale için tüm unit numaralarını birleştir
+                    const unitNumbers = sale.blockIds?.map(block => block.unitNumber).filter(Boolean);
+                    blockNumber = unitNumbers?.length > 0 ? unitNumbers.join(', ') : 'Toplu Satış';
+                } else {
+                    // Individual sale için tek unit number
+                    blockNumber = sale.blockId?.unitNumber || 'N/A';
+                }
+
                 const paymentData = {
                     _id: payment._id,
                     customerName: `${sale.customerId.firstName} ${sale.customerId.lastName}`,
-                    blockNumber: sale.blockId.unitNumber,
+                    blockNumber: blockNumber,
+                    unitNumber: blockNumber, // Frontend compatibility için
                     description: payment.description,
                     saleId: sale._id
                 };

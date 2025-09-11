@@ -158,10 +158,118 @@ const deleteBlock = asyncHandler(async (req, res) => {
     res.json({ message: 'Blok silindi' });
 });
 
+// @desc    Create bulk blocks (duplicate from a source block)
+// @route   POST /api/blocks/:projectId/bulk
+// @access  Private
+const createBulkBlocks = asyncHandler(async (req, res) => {
+    try {
+        const { sourceBlockId, direction, count, projectId: reqProjectId } = req.body;
+        const { projectId } = req.params;
+
+        // Validate input
+        if (!sourceBlockId || !direction || !count || count < 1 || count > 50) {
+            return res.status(400).json({ message: 'Geçersiz parametreler' });
+        }
+
+        if (!['left', 'right'].includes(direction)) {
+            return res.status(400).json({ message: 'Geçersiz yön. "left" veya "right" olmalı' });
+        }
+
+        // Get the source block
+        const sourceBlock = await Block.findById(sourceBlockId).populate('reference', 'name');
+        if (!sourceBlock) {
+            return res.status(404).json({ message: 'Kaynak blok bulunamadı' });
+        }
+
+        // Check if project exists
+        const project = await Project.findById(projectId);
+        if (!project) {
+            return res.status(404).json({ message: 'Proje bulunamadı' });
+        }
+
+        const createdBlocks = [];
+        const basePosition = sourceBlock.position;
+        const baseDimensions = sourceBlock.dimensions;
+        
+        // Validate position and dimensions
+        if (!Array.isArray(basePosition) || basePosition.length < 3) {
+            return res.status(400).json({ message: 'Kaynak bloğun pozisyon bilgisi geçersiz' });
+        }
+        
+        if (!baseDimensions || !baseDimensions.width || !baseDimensions.height || !baseDimensions.depth) {
+            return res.status(400).json({ message: 'Kaynak bloğun boyut bilgisi geçersiz' });
+        }
+        
+        console.log('Source block position:', basePosition);
+        console.log('Source block dimensions:', baseDimensions);
+        
+        // Calculate the starting unit number for auto-increment
+        let currentUnitNumber = null;
+        if (sourceBlock.unitNumber && !isNaN(parseInt(sourceBlock.unitNumber))) {
+            currentUnitNumber = parseInt(sourceBlock.unitNumber);
+        }
+
+        for (let i = 1; i <= count; i++) {
+            // Calculate new position based on direction
+            // Position is an array [x, y, z] in the database
+            let newPosition = [...basePosition]; // Copy the array
+            
+            if (direction === 'left') {
+                // Place blocks to the left of source block
+                newPosition[0] = basePosition[0] - (baseDimensions.width * i);
+            } else { // right
+                // Place blocks to the right of source block  
+                newPosition[0] = basePosition[0] + (baseDimensions.width * i);
+            }
+
+            console.log(`Creating block ${i}:`, {
+                newPosition,
+                basePosition,
+                direction,
+                width: baseDimensions.width
+            });
+
+            // Create new unit number if source had one
+            let newUnitNumber = sourceBlock.unitNumber;
+            if (currentUnitNumber !== null) {
+                newUnitNumber = (currentUnitNumber + i).toString();
+            }
+
+            // Create new block with same properties as source
+            const newBlockData = {
+                projectId,
+                position: newPosition,
+                dimensions: { ...baseDimensions },
+                unitNumber: newUnitNumber,
+                type: sourceBlock.type,
+                squareMeters: sourceBlock.squareMeters,
+                roomCount: sourceBlock.roomCount,
+                reference: sourceBlock.reference?._id || null,
+                iskanPaymentDone: sourceBlock.iskanPaymentDone
+            };
+
+            console.log('Block data to create:', newBlockData);
+
+            const newBlock = await Block.create(newBlockData);
+            createdBlocks.push(newBlock);
+        }
+
+        res.status(201).json({
+            message: `${count} adet blok başarıyla oluşturuldu`,
+            blocks: createdBlocks,
+            sourceBlock: sourceBlock
+        });
+    } catch (error) {
+        console.error('Bulk block creation error:', error);
+        res.status(500).json({ message: 'Bloklar oluşturulurken hata oluştu' });
+    }
+});
+
 export {
     getBlocks,
     getBlockById,
     createBlock,
     updateBlock,
-    deleteBlock
+    deleteBlock,
+    createBulkBlocks
 };

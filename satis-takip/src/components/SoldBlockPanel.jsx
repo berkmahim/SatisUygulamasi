@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Card, Descriptions, Badge, Button, Spin, Alert, Tag, Space, Tooltip } from 'antd';
-import { CloseOutlined, UserOutlined, HomeOutlined, CreditCardOutlined, DollarOutlined, WhatsAppOutlined } from '@ant-design/icons';
+import { CloseOutlined, UserOutlined, HomeOutlined, CreditCardOutlined, DollarOutlined, WhatsAppOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getBlockById } from '../services/blockService';
 import { getSaleByBlockId } from '../services/saleService';
@@ -103,6 +103,16 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
     
     // Open in new tab
     window.open(whatsappUrl, '_blank');
+  };
+
+  const handleEmailClick = (email) => {
+    if (!email) return;
+    
+    // Create mailto URL
+    const mailtoUrl = `mailto:${email}`;
+    
+    // Open default email client
+    window.location.href = mailtoUrl;
   };
 
   const nextPayment = getNextPayment();
@@ -228,7 +238,25 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
                   ) : '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label="E-posta">
-                  {saleData.customerId.email || '-'}
+                  {saleData.customerId.email ? (
+                    <Space>
+                      <span>{saleData.customerId.email}</span>
+                      <Tooltip title="E-posta gönder">
+                        <Button
+                          type="text"
+                          icon={<MailOutlined />}
+                          size="small"
+                          style={{ 
+                            color: '#1890ff', 
+                            padding: '0 4px',
+                            height: '20px',
+                            minWidth: '20px'
+                          }}
+                          onClick={() => handleEmailClick(saleData.customerId.email)}
+                        />
+                      </Tooltip>
+                    </Space>
+                  ) : '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label="Satış Tarihi">
                   {formatDate(saleData.createdAt)}

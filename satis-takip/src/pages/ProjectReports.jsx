@@ -179,16 +179,29 @@ const ProjectReports = () => {
       return <Empty description="Veri yok" />;
     }
 
+    // Filter out any invalid data entries
+    const validData = data.filter(item => item && typeof item === 'object' && item[angleField] != null && item[colorField] != null);
+    
+    if (validData.length === 0) {
+      return <Empty description="Veri yok" />;
+    }
+
     return (
       <Pie
-        data={data}
+        data={validData}
         angleField={angleField}
         colorField={colorField}
         radius={0.8}
         label={{
           type: 'inner',
           offset: '-30%',
-          formatter: (datum) => `${datum[angleField]}`,
+          formatter: (datum) => {
+            // Safety check for datum and the required field
+            if (!datum || datum[angleField] == null) {
+              return '';
+            }
+            return `${datum[angleField]}`;
+          },
           style: {
             fontSize: 14,
             textAlign: 'center',
@@ -493,16 +506,16 @@ const ProjectReports = () => {
 
   return (
     <Spin spinning={loading}>
-      <div style={{ padding: '24px' }}>
-        <Title level={2}>Proje Raporları</Title>
+      <div style={{ padding: '12px 24px' }}>
+        <Title level={2} style={{ marginBottom: '24px' }}>Proje Raporları</Title>
         
         <Row gutter={[16, 16]}>
           {/* Birim Tipi Dağılımı */}
-          <Col xs={24} lg={12}>
+          <Col xs={24} sm={24} md={24} lg={12} xl={12}>
             <Card 
               title="Birim Satış Durumu"
               extra={
-                <Space>
+                <Space wrap>
                   <Button 
                     type="text"
                     icon={unitStatusCollapsed ? <DownOutlined /> : <UpOutlined />}
@@ -513,6 +526,7 @@ const ProjectReports = () => {
                     icon={<FileExcelOutlined />} 
                     onClick={() => exportToExcel(unitTypeData || [], 'Birim_Satis_Durumu', 'unitType')}
                     disabled={!unitTypeData || unitTypeData.length === 0}
+                    size="small"
                   >
                     Excel
                   </Button>
@@ -524,6 +538,7 @@ const ProjectReports = () => {
                       'unitType'
                     )}
                     disabled={!unitTypeData || unitTypeData.length === 0}
+                    size="small"
                   >
                     PDF
                   </Button>
@@ -533,6 +548,8 @@ const ProjectReports = () => {
               {!unitStatusCollapsed && (
                 <Table
                   dataSource={unitTypeData}
+                  scroll={{ x: 600 }}
+                  size="small"
                   columns={[
                     { 
                       title: 'Tip', 
@@ -606,15 +623,16 @@ const ProjectReports = () => {
           </Col>
 
           {/* Oda Sayısı Dağılımı */}
-          <Col xs={24} lg={12}>
+          <Col xs={24} sm={24} md={24} lg={12} xl={12}>
             <Card 
               title="Satılan Birimlerin Dağılımı"
               extra={
-                <Space>
+                <Space wrap>
                   <Button 
                     icon={<FileExcelOutlined />} 
                     onClick={() => exportToExcel(roomCountData || [], 'Birim_Dagilimi', 'roomCount')}
                     disabled={!roomCountData || roomCountData.length === 0}
+                    size="small"
                   >
                     Excel
                   </Button>
@@ -626,6 +644,7 @@ const ProjectReports = () => {
                       'roomCount'
                     )}
                     disabled={!roomCountData || roomCountData.length === 0}
+                    size="small"
                   >
                     PDF
                   </Button>
@@ -639,6 +658,8 @@ const ProjectReports = () => {
                     columns={roomCountColumns}
                     pagination={false}
                     rowKey={(record) => record.type}
+                    size="small"
+                    scroll={{ x: 300 }}
                     style={{ marginBottom: 20 }}
                   />
                   <Spin spinning={loading}>
@@ -663,15 +684,16 @@ const ProjectReports = () => {
           </Col>
 
           {/* Referans Dağılımı */}
-          <Col xs={24} lg={12}>
+          <Col xs={24} sm={24} md={24} lg={12} xl={12}>
             <Card 
               title="Satılan Birimlerin Referans Dağılımı"
               extra={
-                <Space>
+                <Space wrap>
                   <Button 
                     icon={<FileExcelOutlined />} 
                     onClick={() => exportToExcel(referenceDistributionData || [], 'Referans_Dagilimi', 'referenceDistribution')}
                     disabled={!referenceDistributionData || referenceDistributionData.length === 0}
+                    size="small"
                   >
                     Excel
                   </Button>
@@ -683,6 +705,7 @@ const ProjectReports = () => {
                       'referenceDistribution'
                     )}
                     disabled={!referenceDistributionData || referenceDistributionData.length === 0}
+                    size="small"
                   >
                     PDF
                   </Button>
@@ -699,6 +722,8 @@ const ProjectReports = () => {
                     ]}
                     pagination={false}
                     rowKey={(record) => record.type}
+                    size="small"
+                    scroll={{ x: 300 }}
                     style={{ marginBottom: 20 }}
                   />
                   <Spin spinning={loading}>
@@ -735,23 +760,35 @@ const ProjectReports = () => {
                     setDateRange(dates);
                   }}
                   format="DD.MM.YYYY"
+                  size="small"
                 />
               }
             >
               <Row gutter={[16, 16]}>
                 <Col span={24}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <Title level={4} style={{ margin: 0 }}>Alınan Ödemeler</Title>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'flex-start', 
+                    marginBottom: '16px',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}>
+                    <Title level={4} style={{ margin: 0, flex: '1', minWidth: '200px' }}>Alınan Ödemeler</Title>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '12px'
+                    }}>
                       <Statistic 
                         title="Toplam Alınan" 
                         value={totals.received} 
                         precision={2} 
                         suffix="₺" 
-                        style={{ marginRight: '24px' }}
                         valueStyle={{ color: '#3f8600' }}
                       />
-                      <Space>
+                      <Space wrap>
                         <Button 
                           icon={<FileExcelOutlined />} 
                           onClick={() => exportToExcel(
@@ -760,6 +797,7 @@ const ProjectReports = () => {
                             'received'
                           )}
                           disabled={!payments.receivedPayments || payments.receivedPayments.length === 0}
+                          size="small"
                         >
                           Excel
                         </Button>
@@ -771,6 +809,7 @@ const ProjectReports = () => {
                             'received'
                           )}
                           disabled={!payments.receivedPayments || payments.receivedPayments.length === 0}
+                          size="small"
                         >
                           PDF
                         </Button>
@@ -781,6 +820,8 @@ const ProjectReports = () => {
                     dataSource={payments.receivedPayments}
                     columns={receivedColumns}
                     rowKey={(record) => `received-${record._id || `${record.customerName}-${record.paidDate}-${record.amount}`}`}
+                    scroll={{ x: 800 }}
+                    size="small"
                     summary={pageData => {
                       let totalPaid = 0;
                       pageData.forEach(({ paidAmount }) => {
@@ -801,18 +842,29 @@ const ProjectReports = () => {
                   />
                 </Col>
                 <Col span={24}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <Title level={4} style={{ margin: 0 }}>Beklenen Ödemeler</Title>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'flex-start', 
+                    marginBottom: '16px',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}>
+                    <Title level={4} style={{ margin: 0, flex: '1', minWidth: '200px' }}>Beklenen Ödemeler</Title>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '12px'
+                    }}>
                       <Statistic 
                         title="Toplam Beklenen" 
                         value={totals.expected} 
                         precision={2} 
                         suffix="₺" 
-                        style={{ marginRight: '24px' }}
                         valueStyle={{ color: '#1890ff' }}
                       />
-                      <Space>
+                      <Space wrap>
                         <Button 
                           icon={<FileExcelOutlined />} 
                           onClick={() => exportToExcel(
@@ -821,6 +873,7 @@ const ProjectReports = () => {
                             'expected'
                           )}
                           disabled={!filteredExpectedPayments || filteredExpectedPayments.length === 0}
+                          size="small"
                         >
                           Excel
                         </Button>
@@ -832,13 +885,19 @@ const ProjectReports = () => {
                             'expected'
                           )}
                           disabled={!filteredExpectedPayments || filteredExpectedPayments.length === 0}
+                          size="small"
                         >
                           PDF
                         </Button>
                       </Space>
                     </div>
                   </div>
-                  <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <div style={{ 
+                    marginBottom: '16px', 
+                    display: 'flex', 
+                    justifyContent: 'flex-end',
+                    flexWrap: 'wrap'
+                  }}>
                     <RangePicker
                       locale={locale}
                       value={expectedPaymentDateRange}
@@ -848,12 +907,15 @@ const ProjectReports = () => {
                       }}
                       placeholder={['Vade başlangıç', 'Vade bitiş']}
                       format="DD.MM.YYYY"
+                      size="small"
                     />
                   </div>
                   <Table 
                     dataSource={filteredExpectedPayments}
                     columns={expectedColumns.filter(col => col.key !== 'status')} // Durum sütununu kaldır
                     rowKey={(record) => `expected-${record._id || `${record.customerName}-${record.dueDate}-${record.amount}`}`}
+                    scroll={{ x: 700 }}
+                    size="small"
                     summary={pageData => {
                       let totalExpected = 0;
                       pageData.forEach(({ amount }) => {
@@ -875,18 +937,29 @@ const ProjectReports = () => {
                 </Col>
 
                 <Col span={24}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <Title level={4} style={{ margin: 0, color: '#ff4d4f' }}>Gecikmiş Ödemeler</Title>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'flex-start', 
+                    marginBottom: '16px',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                  }}>
+                    <Title level={4} style={{ margin: 0, color: '#ff4d4f', flex: '1', minWidth: '200px' }}>Gecikmiş Ödemeler</Title>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      gap: '12px'
+                    }}>
                       <Statistic 
                         title="Toplam Gecikmiş" 
                         value={totals.overdue} 
                         precision={2} 
                         suffix="₺" 
-                        style={{ marginRight: '24px' }}
                         valueStyle={{ color: '#ff4d4f' }}
                       />
-                      <Space>
+                      <Space wrap>
                         <Button 
                           icon={<FileExcelOutlined />} 
                           onClick={() => exportToExcel(
@@ -896,6 +969,7 @@ const ProjectReports = () => {
                           )}
                           disabled={!overduePayments || overduePayments.length === 0}
                           style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
+                          size="small"
                         >
                           Excel
                         </Button>
@@ -908,6 +982,7 @@ const ProjectReports = () => {
                           )}
                           disabled={!overduePayments || overduePayments.length === 0}
                           style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
+                          size="small"
                         >
                           PDF
                         </Button>
@@ -916,6 +991,8 @@ const ProjectReports = () => {
                   </div>
                   <Table 
                     dataSource={overduePayments}
+                    scroll={{ x: 800 }}
+                    size="small"
                     columns={[
                       { title: 'Müşteri', dataIndex: 'customerName', key: 'customerName' },
                       { title: 'Birim', dataIndex: 'blockNumber', key: 'blockNumber' },

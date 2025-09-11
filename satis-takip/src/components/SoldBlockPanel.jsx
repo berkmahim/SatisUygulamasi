@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Card, Descriptions, Badge, Button, Spin, Alert, Tag } from 'antd';
-import { CloseOutlined, UserOutlined, HomeOutlined, CreditCardOutlined, DollarOutlined } from '@ant-design/icons';
+import { Drawer, Card, Descriptions, Badge, Button, Spin, Alert, Tag, Space, Tooltip } from 'antd';
+import { CloseOutlined, UserOutlined, HomeOutlined, CreditCardOutlined, DollarOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getBlockById } from '../services/blockService';
 import { getSaleByBlockId } from '../services/saleService';
@@ -81,6 +81,28 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
       navigate(`/sales/${saleData._id}/payments`);
       onClose(); // Close the panel after navigation
     }
+  };
+
+  const handleWhatsAppClick = (phoneNumber) => {
+    if (!phoneNumber) return;
+    
+    // Clean phone number (remove spaces, dashes, parentheses)
+    let cleanPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    
+    // If phone starts with 0, replace with +90 (Turkey country code)
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '+90' + cleanPhone.substring(1);
+    }
+    // If phone doesn't start with +, assume it's Turkish and add +90
+    else if (!cleanPhone.startsWith('+')) {
+      cleanPhone = '+90' + cleanPhone;
+    }
+    
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/${cleanPhone.replace('+', '')}`;
+    
+    // Open in new tab
+    window.open(whatsappUrl, '_blank');
   };
 
   const nextPayment = getNextPayment();
@@ -185,7 +207,25 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
                   {saleData.customerId.tcNo || '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label="Telefon">
-                  {saleData.customerId.phone || '-'}
+                  {saleData.customerId.phone ? (
+                    <Space>
+                      <span>{saleData.customerId.phone}</span>
+                      <Tooltip title="WhatsApp ile mesaj gönder">
+                        <Button
+                          type="text"
+                          icon={<WhatsAppOutlined />}
+                          size="small"
+                          style={{ 
+                            color: '#25D366', 
+                            padding: '0 4px',
+                            height: '20px',
+                            minWidth: '20px'
+                          }}
+                          onClick={() => handleWhatsAppClick(saleData.customerId.phone)}
+                        />
+                      </Tooltip>
+                    </Space>
+                  ) : '-'}
                 </Descriptions.Item>
                 <Descriptions.Item label="E-posta">
                   {saleData.customerId.email || '-'}

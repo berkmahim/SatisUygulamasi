@@ -3,10 +3,10 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import {
   Row, Col, Card, Table, DatePicker, Typography,
-  Statistic, Tag, Spin, Empty, Divider, message, Button, Space
+  Statistic, Tag, Spin, Empty, Divider, message, Button, Space, Collapse
 } from 'antd';
 import { Pie } from '@ant-design/plots';
-import { DownloadOutlined, FilePdfOutlined, FileExcelOutlined } from '@ant-design/icons';
+import { DownloadOutlined, FilePdfOutlined, FileExcelOutlined, UpOutlined, DownOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/tr';
 import locale from 'antd/es/date-picker/locale/tr_TR';
@@ -35,6 +35,7 @@ const ProjectReports = () => {
     expected: 0,
     overdue: 0
   });
+  const [unitStatusCollapsed, setUnitStatusCollapsed] = useState(false);
 
   // Birim tipi ve oda sayısı dağılımını al
   const fetchUnitTypeDistribution = async () => {
@@ -503,6 +504,12 @@ const ProjectReports = () => {
               extra={
                 <Space>
                   <Button 
+                    type="text"
+                    icon={unitStatusCollapsed ? <DownOutlined /> : <UpOutlined />}
+                    onClick={() => setUnitStatusCollapsed(!unitStatusCollapsed)}
+                    style={{ border: 'none' }}
+                  />
+                  <Button 
                     icon={<FileExcelOutlined />} 
                     onClick={() => exportToExcel(unitTypeData || [], 'Birim_Satis_Durumu', 'unitType')}
                     disabled={!unitTypeData || unitTypeData.length === 0}
@@ -523,26 +530,78 @@ const ProjectReports = () => {
                 </Space>
               }
             >
-              <Table
-                dataSource={unitTypeData}
-                columns={[
-                  { title: 'Tip', dataIndex: 'type', key: 'type' },
-                  { title: 'Birim No', dataIndex: 'unitNumber', key: 'unitNumber' },
-                  { title: 'Oda Sayısı', dataIndex: 'roomCount', key: 'roomCount' },
-                  {
-                    title: 'Durum',
-                    dataIndex: 'status',
-                    key: 'status',
-                    render: (status) => (
-                      <Tag color={status === 'Satıldı' ? 'red' : 'green'}>
-                        {status}
-                      </Tag>
-                    ),
-                  },
-                ]}
-                pagination={false}
-                rowKey={(record) => record._id}
-              />
+              {!unitStatusCollapsed && (
+                <Table
+                  dataSource={unitTypeData}
+                  columns={[
+                    { 
+                      title: 'Tip', 
+                      dataIndex: 'type', 
+                      key: 'type',
+                      sorter: (a, b) => (a.type || '').localeCompare(b.type || '', 'tr', { numeric: true })
+                    },
+                    { 
+                      title: 'Birim No', 
+                      dataIndex: 'unitNumber', 
+                      key: 'unitNumber',
+                      sorter: (a, b) => (a.unitNumber || '').localeCompare(b.unitNumber || '', 'tr', { numeric: true })
+                    },
+                    { 
+                      title: 'Oda Sayısı', 
+                      dataIndex: 'roomCount', 
+                      key: 'roomCount',
+                      sorter: (a, b) => {
+                        const aRoom = a.roomCount || '';
+                        const bRoom = b.roomCount || '';
+                        // Handle numeric and non-numeric room counts
+                        if (aRoom === bRoom) return 0;
+                        if (aRoom === '') return 1;
+                        if (bRoom === '') return -1;
+                        if (aRoom === 'Belirtilmemiş') return 1;
+                        if (bRoom === 'Belirtilmemiş') return -1;
+                        if (aRoom === '-') return 1;
+                        if (bRoom === '-') return -1;
+                        // Try numeric comparison first
+                        const aNum = parseInt(aRoom);
+                        const bNum = parseInt(bRoom);
+                        if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+                        return aRoom.localeCompare(bRoom, 'tr', { numeric: true });
+                      }
+                    },
+                    {
+                      title: 'Durum',
+                      dataIndex: 'status',
+                      key: 'status',
+                      sorter: (a, b) => {
+                        const statusOrder = { 'Müsait': 0, 'Satıldı': 1 };
+                        const aStatus = a.status || 'Müsait';
+                        const bStatus = b.status || 'Müsait';
+                        return (statusOrder[aStatus] || 0) - (statusOrder[bStatus] || 0);
+                      },
+                      render: (status) => (
+                        <Tag color={status === 'Satıldı' ? 'red' : 'green'}>
+                          {status}
+                        </Tag>
+                      ),
+                    },
+                  ]}
+                  pagination={false}
+                  rowKey={(record) => record._id}
+                />
+              )}
+              {unitStatusCollapsed && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100px',
+                  backgroundColor: '#f0f2f5',
+                  color: '#8c8c8c',
+                  fontSize: '14px'
+                }}>
+                  Tablo Kapatıldı
+                </div>
+              )}
             </Card>
           </Col>
 

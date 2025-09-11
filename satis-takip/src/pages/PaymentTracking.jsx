@@ -72,7 +72,9 @@ const PaymentTracking = () => {
                 setSaleDetails({
                     ...saleData,
                     customer: saleData.customerId || {},
-                    block: saleData.blockId || {}
+                    block: saleData.blockId || {},
+                    // For bulk sales, include unit numbers from API response
+                    unitNumbers: saleData.unitNumbers || (saleData.blockId?.unitNumber || '-')
                 });
             }
 
@@ -82,6 +84,14 @@ const PaymentTracking = () => {
             console.log('Payment data:', paymentData);
             
             setPaymentDetails(paymentData);
+            
+            // Update saleDetails with unit numbers from payment data if not already set
+            if (paymentData.unitNumbers && saleData) {
+                setSaleDetails(prev => ({
+                    ...prev,
+                    unitNumbers: paymentData.unitNumbers
+                }));
+            }
         } catch (error) {
             console.error('Payment details error:', error);
             setError(error.response?.data?.message || 'Bir hata oluştu');
@@ -322,7 +332,7 @@ const PaymentTracking = () => {
                         <Col xs={24} sm={12} md={6}>
                             <Statistic
                                 title="Daire No"
-                                value={saleDetails?.block?.unitNumber || '-'}
+                                value={saleDetails?.unitNumbers || '-'}
                                 valueStyle={{ fontSize: '16px', fontWeight: 'bold' }}
                             />
                         </Col>
@@ -504,7 +514,7 @@ const PaymentTracking = () => {
                         ...selectedPayment,
                         customerName: selectedPayment.customer?.name || selectedPayment.customerName || selectedPayment.customer?.customerName,
                         projectName: selectedPayment.project?.name || selectedPayment.projectName || selectedPayment.project?.projectName,
-                        unitNumber: selectedPayment.unit?.number || selectedPayment.unitNumber || selectedPayment.unit?.unitNumber,
+                        unitNumber: paymentDetails?.unitNumbers || selectedPayment.unit?.number || selectedPayment.unitNumber || selectedPayment.unit?.unitNumber,
                         paymentDate: selectedPayment.paymentDate || new Date().toISOString(),
                         paidAmount: parseFloat(selectedPayment.paidAmount) || 0
                     }}

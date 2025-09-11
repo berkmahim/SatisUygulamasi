@@ -88,6 +88,11 @@ const saleSchema = new mongoose.Schema({
             return this.isBulkSale;
         }
     },
+    // Array of all block IDs for bulk sales (for easier querying and display)
+    blockIds: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Block'
+    }],
     customerId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Customer',

@@ -106,21 +106,45 @@ const createSale = asyncHandler(async (req, res) => {
 const getSaleById = asyncHandler(async (req, res) => {
     try {
         const sale = await Sale.findById(req.params.id)
-            .populate({
-                path: 'blockId',
-                select: 'unitNumber type',
-                populate: {
-                    path: 'reference',
-                    select: 'name'
-                }
-            })
             .populate('customerId', 'firstName lastName tcNo phone');
 
         if (!sale) {
             return res.status(404).json({ message: 'Satış bulunamadı' });
         }
 
-        res.json(sale);
+        // Populate different fields based on sale type
+        if (sale.isBulkSale) {
+            // For bulk sales, populate all block IDs
+            await sale.populate('blockIds', 'unitNumber type');
+            await sale.populate('bulkSaleBlocks.blockId', 'unitNumber type');
+            await sale.populate({
+                path: 'bulkSaleBlocks.blockId',
+                populate: {
+                    path: 'reference',
+                    select: 'name'
+                }
+            });
+        } else {
+            // For individual sales, populate the single block
+            await sale.populate({
+                path: 'blockId',
+                select: 'unitNumber type',
+                populate: {
+                    path: 'reference',
+                    select: 'name'
+                }
+            });
+        }
+
+        // Add unitNumbers field for consistent display
+        const response = {
+            ...sale.toObject(),
+            unitNumbers: sale.isBulkSale 
+                ? sale.blockIds?.map(block => block.unitNumber).filter(Boolean).join(', ') || 'N/A'
+                : sale.blockId?.unitNumber || 'N/A'
+        };
+
+        res.json(response);
     } catch (error) {
         console.error('Error getting sale:', error);
         res.status(500).json({ message: 'Sunucu hatası' });
@@ -608,7 +632,9 @@ const createBulkSale = asyncHandler(async (req, res) => {
             // Bulk sale specific fields
             isBulkSale: true,
             bulkSaleId,
-            bulkSaleBlocks
+            bulkSaleBlocks,
+            // Store all block IDs for easier querying and display
+            blockIds: bulkSaleBlocks.map(block => block.blockId)
         });
 
         await sale.save();

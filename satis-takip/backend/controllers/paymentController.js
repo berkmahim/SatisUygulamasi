@@ -45,17 +45,42 @@ const recordPayment = async (req, res) => {
 
         // Satışı kaydet ve populate et
         await sale.save();
-        const updatedSale = await Sale.findById(sale._id)
-            .populate('blockId', 'unitNumber type')
-            .populate('customerId', 'firstName lastName tcNo phone');
+        let updatedSale;
+        
+        // Bulk sale için farklı populate yap
+        if (sale.isBulkSale) {
+            updatedSale = await Sale.findById(sale._id)
+                .populate('customerId', 'firstName lastName tcNo phone')
+                .populate('blockIds', 'unitNumber type')  // Populate all block IDs for bulk sales
+                .populate('bulkSaleBlocks.blockId', 'unitNumber type');
+        } else {
+            updatedSale = await Sale.findById(sale._id)
+                .populate('blockId', 'unitNumber type')
+                .populate('customerId', 'firstName lastName tcNo phone');
+        }
 
         // Log kaydı oluştur
         const customer = await Customer.findById(updatedSale.customerId);
-        const block = await Block.findById(updatedSale.blockId);
+        let logDescription = '';
+        
+        if (updatedSale.isBulkSale) {
+            // Bulk sale için log mesajı - unit numbers dahil
+            const unitNumbers = updatedSale.blockIds?.map(block => block.unitNumber).filter(Boolean).join(', ') || 'N/A';
+            logDescription = `${customer.firstName} ${customer.lastName} müşterisine ait toplu satış (Birimler: ${unitNumbers}) için ${payment.amount.toLocaleString('tr-TR')} TL tutarında ödeme kaydedildi. Bulk ID: ${updatedSale.bulkSaleId?.slice(-8) || 'N/A'}`;
+        } else {
+            // Individual sale için log mesajı
+            const block = await Block.findById(updatedSale.blockId);
+            if (block) {
+                logDescription = `${customer.firstName} ${customer.lastName} müşterisine ait ${block.unitNumber} ${block.type} için ${payment.amount.toLocaleString('tr-TR')} TL tutarında ödeme kaydedildi.`;
+            } else {
+                logDescription = `${customer.firstName} ${customer.lastName} müşterisine ait birim için ${payment.amount.toLocaleString('tr-TR')} TL tutarında ödeme kaydedildi.`;
+            }
+        }
+        
         await createLog({
             type: 'payment',
             action: 'create',
-            description: `${customer.firstName} ${customer.lastName} müşterisine ait ${block.unitNumber} ${block.type} için ${payment.amount.toLocaleString('tr-TR')} TL tutarında ödeme kaydedildi.`,
+            description: logDescription,
             entityId: payment._id.toString(),
             userId: req.user._id
         }, req);
@@ -73,11 +98,20 @@ const recordPayment = async (req, res) => {
 const getPaymentDetails = async (req, res) => {
     try {
         const sale = await Sale.findById(req.params.saleId)
-            .populate('blockId', 'unitNumber type')
             .populate('customerId', 'firstName lastName tcNo phone');
-
+            
         if (!sale) {
             return res.status(404).json({ message: 'Sale not found' });
+        }
+        
+        // Populate block information based on sale type
+        if (sale.isBulkSale) {
+            // Bulk sale için tüm blockIds'leri populate et
+            await sale.populate('blockIds', 'unitNumber type');
+            await sale.populate('bulkSaleBlocks.blockId', 'unitNumber type');
+        } else if (sale.blockId) {
+            // Individual sale için blockId populate et
+            await sale.populate('blockId', 'unitNumber type');
         }
 
         // Ödemeleri sırala
@@ -88,6 +122,16 @@ const getPaymentDetails = async (req, res) => {
             totalPaidAmount: sale.payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0),
             remainingAmount: sale.totalAmount - sale.payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0),
             paymentStatus: sale.paymentStatus,
+            // Include block information for both individual and bulk sales
+            isBulkSale: sale.isBulkSale,
+            bulkSaleId: sale.bulkSaleId,
+            blockIds: sale.blockIds, // All blocks for bulk sales
+            blockId: sale.blockId,   // Single block for individual sales
+            bulkSaleBlocks: sale.bulkSaleBlocks, // Detailed block info with prices for bulk sales
+            // Generate unit numbers display
+            unitNumbers: sale.isBulkSale 
+                ? sale.blockIds?.map(block => block.unitNumber).filter(Boolean).join(', ') || 'N/A'
+                : sale.blockId?.unitNumber || 'N/A',
             payments: sale.payments.map(payment => ({
                 id: payment._id,
                 description: payment.description,
@@ -141,17 +185,36 @@ const updatePaymentDueDate = async (req, res) => {
 const getOverduePayments = async (req, res) => {
     try {
         const sales = await Sale.find({ paymentStatus: 'overdue' })
-            .populate('blockId', 'unitNumber type')
             .populate('customerId', 'firstName lastName tcNo phone');
+            
+        // Populate block information for all sales
+        for (const sale of sales) {
+            if (sale.isBulkSale) {
+                // Bulk sale için tüm blockIds'leri populate et
+                await sale.populate('blockIds', 'unitNumber type');
+                await sale.populate('bulkSaleBlocks.blockId', 'unitNumber type');
+            } else if (sale.blockId) {
+                // Individual sale için blockId populate et
+                await sale.populate('blockId', 'unitNumber type');
+            }
+        }
 
         const overduePayments = sales.map(sale => ({
             saleId: sale._id,
-            block: sale.blockId,
+            block: sale.isBulkSale ? null : sale.blockId, // Single block for individual sales
+            blocks: sale.isBulkSale ? sale.blockIds : null, // All blocks for bulk sales
             customer: sale.customerId,
             totalAmount: sale.totalAmount,
             remainingAmount: sale.remainingAmount,
             nextPaymentDate: sale.nextPaymentDate,
             nextPaymentAmount: sale.nextPaymentAmount,
+            isBulkSale: sale.isBulkSale,
+            bulkSaleId: sale.bulkSaleId,
+            bulkSaleBlocks: sale.bulkSaleBlocks,
+            // Generate unit numbers display
+            unitNumbers: sale.isBulkSale 
+                ? sale.blockIds?.map(block => block.unitNumber).filter(Boolean).join(', ') || 'N/A'
+                : sale.blockId?.unitNumber || 'N/A',
             overduePayments: sale.payments.filter(p => p.status === 'overdue').map(payment => ({
                 id: payment._id,
                 amount: payment.amount,

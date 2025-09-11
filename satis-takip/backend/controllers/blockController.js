@@ -32,7 +32,7 @@ const getBlocks = asyncHandler(async (req, res) => {
                 // Then, check for bulk sales that include this block
                 if (!hasOverduePayment) {
                     const bulkSale = await Sale.findOne({ 
-                        'bulkSaleBlocks.blockId': block._id,
+                        blockIds: block._id,  // Use the new blockIds array for faster querying
                         isBulkSale: true
                     }).populate('customerId', 'firstName lastName');
                     

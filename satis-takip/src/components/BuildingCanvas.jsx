@@ -1071,6 +1071,29 @@ const BuildingCanvas = () => {
     );
   };
 
+  // Bulk duplication handlers
+  const handleAddBulkPendingBlocks = (newPendingBlocks) => {
+    setPendingBlocks(prev => [...prev, ...newPendingBlocks]);
+  };
+
+  const handleCompleteBulkDuplication = (pendingBlocks, newBlocks) => {
+    // Remove the pending blocks
+    const pendingIds = pendingBlocks.map(block => block.id);
+    setPendingBlocks(prev => prev.filter(block => !pendingIds.includes(block.id)));
+    
+    // Add the real blocks from the backend
+    setBlocks(prev => [...prev, ...newBlocks]);
+    
+    // Add to block history for undo functionality
+    const newBlockIds = newBlocks.map(block => block._id || block.id);
+    setBlockHistory(prev => [...prev, ...newBlockIds]);
+  };
+
+  const handleCancelBulkPendingBlocks = () => {
+    // Remove all pending blocks on error
+    setPendingBlocks([]);
+  };
+
   return (
     <div 
       style={{ width: '100%', height: '100vh', position: 'relative', display: 'flex' }} 
@@ -1107,6 +1130,9 @@ const BuildingCanvas = () => {
               });
             }
           }}
+          onAddBulkPendingBlocks={handleAddBulkPendingBlocks}
+          onCompleteBulkDuplication={handleCompleteBulkDuplication}
+          onCancelBulkPendingBlocks={handleCancelBulkPendingBlocks}
         />
       </div>
       <div style={{ flex: '1', position: 'relative' }}>

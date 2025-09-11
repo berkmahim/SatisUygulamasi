@@ -65,7 +65,10 @@ const ControlPanel = ({
   onDeleteText,
   texts,
   onMoveText,
-  onProceedToBulkSale
+  onProceedToBulkSale,
+  onAddBulkPendingBlocks,
+  onCompleteBulkDuplication,
+  onCancelBulkPendingBlocks
 }) => {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
@@ -226,6 +229,54 @@ const ControlPanel = ({
         return;
       }
 
+      // Create pending blocks immediately for visual feedback
+      const pendingBlocks = [];
+      const basePosition = selectedBlockData.position;
+      const baseDimensions = selectedBlockData.dimensions;
+      
+      // Calculate current unit number for auto-increment
+      let currentUnitNumber = null;
+      if (selectedBlockData.unitNumber && !isNaN(parseInt(selectedBlockData.unitNumber))) {
+        currentUnitNumber = parseInt(selectedBlockData.unitNumber);
+      }
+
+      for (let i = 1; i <= duplicationCount; i++) {
+        let newPosition = [...basePosition];
+        
+        if (duplicationDirection === 'left') {
+          newPosition[0] = basePosition[0] - (baseDimensions.width * i);
+        } else { // right
+          newPosition[0] = basePosition[0] + (baseDimensions.width * i);
+        }
+
+        // Create new unit number if source had one
+        let newUnitNumber = selectedBlockData.unitNumber;
+        if (currentUnitNumber !== null) {
+          newUnitNumber = (currentUnitNumber + i).toString();
+        }
+
+        const pendingBlock = {
+          id: `temp-bulk-${Date.now()}-${i}`,
+          _id: `temp-bulk-${Date.now()}-${i}`,
+          position: newPosition,
+          dimensions: { ...baseDimensions },
+          unitNumber: newUnitNumber,
+          type: selectedBlockData.type,
+          squareMeters: selectedBlockData.squareMeters,
+          roomCount: selectedBlockData.roomCount,
+          reference: selectedBlockData.reference,
+          iskanPaymentDone: selectedBlockData.iskanPaymentDone,
+          isPending: true
+        };
+
+        pendingBlocks.push(pendingBlock);
+      }
+
+      // Add pending blocks to state for immediate visual feedback
+      if (typeof onAddBulkPendingBlocks === 'function') {
+        onAddBulkPendingBlocks(pendingBlocks);
+      }
+
       // Create the bulk duplication request
       const bulkDuplicationData = {
         sourceBlockId: selectedBlock,
@@ -237,16 +288,24 @@ const ControlPanel = ({
       message.loading('Bloklar oluşturuluyor...', 2);
       
       // Call backend API for bulk duplication
-      await createBulkBlocks(projectId, bulkDuplicationData);
+      const result = await createBulkBlocks(projectId, bulkDuplicationData);
+      
+      // Remove pending blocks and add real blocks
+      if (typeof onCompleteBulkDuplication === 'function') {
+        onCompleteBulkDuplication(pendingBlocks, result.blocks);
+      }
       
       setBulkDuplicationVisible(false);
       message.success(`${duplicationCount} adet blok ${duplicationDirection === 'left' ? 'sola' : 'sağa'} eklendi`);
       
-      // Refresh the blocks to show the new ones
-      window.location.reload();
     } catch (error) {
       console.error('Bulk duplication error:', error);
       message.error('Bloklar oluşturulurken hata oluştu');
+      
+      // Remove pending blocks on error
+      if (typeof onCancelBulkPendingBlocks === 'function') {
+        onCancelBulkPendingBlocks();
+      }
     }
   };
 

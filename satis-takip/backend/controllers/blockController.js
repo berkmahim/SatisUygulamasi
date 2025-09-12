@@ -265,11 +265,87 @@ const createBulkBlocks = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Create multiple blocks from builder data
+// @route   POST /api/blocks/:projectId/builder
+// @access  Private
+const createBuilderBlocks = asyncHandler(async (req, res) => {
+    try {
+        const { blocks } = req.body;
+        const { projectId } = req.params;
+
+        // Validate input
+        if (!blocks || !Array.isArray(blocks) || blocks.length === 0) {
+            return res.status(400).json({ message: 'Blok verileri gerekli' });
+        }
+
+        if (blocks.length > 100) {
+            return res.status(400).json({ message: 'Maksimum 100 blok oluşturulabilir' });
+        }
+
+        // Check if project exists
+        const project = await Project.findById(projectId);
+        if (!project) {
+            return res.status(404).json({ message: 'Proje bulunamadı' });
+        }
+
+        const createdBlocks = [];
+        
+        for (const blockData of blocks) {
+            // Validate required fields
+            if (!blockData.position || !Array.isArray(blockData.position) || blockData.position.length < 3) {
+                return res.status(400).json({ message: 'Geçersiz blok pozisyonu' });
+            }
+
+            if (!blockData.dimensions || !blockData.dimensions.width || !blockData.dimensions.height || !blockData.dimensions.depth) {
+                return res.status(400).json({ message: 'Geçersiz blok boyutları' });
+            }
+
+            if (!blockData.unitNumber || blockData.unitNumber.trim() === '') {
+                return res.status(400).json({ message: 'Birim numarası gerekli' });
+            }
+
+            // Create new block
+            const newBlockData = {
+                projectId,
+                position: blockData.position,
+                dimensions: {
+                    width: blockData.dimensions.width,
+                    height: blockData.dimensions.height,
+                    depth: blockData.dimensions.depth
+                },
+                unitNumber: blockData.unitNumber.toString(),
+                type: blockData.type || 'apartment',
+                squareMeters: blockData.squareMeters || 0,
+                roomCount: blockData.roomCount || '1+1',
+                reference: blockData.reference || null,
+                iskanPaymentDone: blockData.iskanPaymentDone || false
+            };
+
+            console.log('Creating builder block:', newBlockData);
+
+            const newBlock = await Block.create(newBlockData);
+            createdBlocks.push(newBlock);
+        }
+
+        res.status(201).json({
+            message: `${createdBlocks.length} adet blok başarıyla oluşturuldu`,
+            blocks: createdBlocks
+        });
+    } catch (error) {
+        console.error('Builder block creation error:', error);
+        res.status(500).json({ 
+            message: 'Bloklar oluşturulurken hata oluştu',
+            error: error.message 
+        });
+    }
+});
+
 export {
     getBlocks,
     getBlockById,
     createBlock,
     updateBlock,
     deleteBlock,
-    createBulkBlocks
+    createBulkBlocks,
+    createBuilderBlocks
 };

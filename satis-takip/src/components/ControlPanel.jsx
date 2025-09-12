@@ -37,7 +37,8 @@ import {
   CopyOutlined
 } from '@ant-design/icons';
 import { getAllReferences, createReference, deleteReference } from '../services/referenceService';
-import { createBulkBlocks } from '../services/blockService';
+import { createBulkBlocks, createBuilderBlocks } from '../services/blockService';
+import BuilderSimulator from './BuilderSimulator';
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -90,6 +91,10 @@ const ControlPanel = ({
   const [duplicationCount, setDuplicationCount] = useState(1);
   const [selectedSourceBlock, setSelectedSourceBlock] = useState(null);
   const userIsEditing = useRef(false);
+  
+  // Builder mode states
+  const [builderMode, setBuilderMode] = useState(false);
+  const [showBuilderModal, setShowBuilderModal] = useState(false);
 
   useEffect(() => {
     if (selectedBlock && !userIsEditing.current) {
@@ -364,6 +369,43 @@ const ControlPanel = ({
     }
   };
 
+  const handleBuilderSave = async (builderBlocks) => {
+    try {
+      message.loading('Yapı oluşturuluyor...', 0);
+      
+      // Create blocks data for API
+      const builderData = {
+        blocks: builderBlocks.map(block => ({
+          position: block.position,
+          dimensions: block.dimensions,
+          unitNumber: block.unitNumber,
+          type: block.type,
+          squareMeters: block.squareMeters,
+          roomCount: block.roomCount,
+          reference: blockDetails.reference || null
+        }))
+      };
+
+      console.log('Sending builder data:', builderData);
+
+      // Call API to create blocks
+      const result = await createBuilderBlocks(projectId, builderData);
+      
+      // Close modal and show success
+      setShowBuilderModal(false);
+      message.destroy(); // Clear loading message
+      message.success(`${result.blocks.length} birim başarıyla oluşturuldu`);
+      
+      // Refresh the page to show new blocks
+      window.location.reload();
+      
+    } catch (error) {
+      message.destroy(); // Clear loading message
+      console.error('Builder save error:', error);
+      message.error(`Yapı oluşturulurken hata oluştu: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
   return (
     <div className="control-panel" style={{ padding: '12px', height: '100%', overflow: 'auto' }}>
       <Title level={4} style={{ marginBottom: '16px', textAlign: 'center' }}>Kontrol Paneli</Title>
@@ -413,6 +455,20 @@ const ControlPanel = ({
                   </Row>
                 </>
               )}
+              
+              <Row align="middle" justify="space-between" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
+                <Col><Text strong>Yapı Oluşturucu</Text></Col>
+                <Col>
+                  <Button 
+                    type="primary" 
+                    icon={<HomeOutlined />}
+                    onClick={() => setShowBuilderModal(true)}
+                    style={{ background: '#722ed1', borderColor: '#722ed1' }}
+                  >
+                    Oluştur
+                  </Button>
+                </Col>
+              </Row>
               
               <Row align="middle" justify="space-between" style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
                 <Col><Text strong>Toplu Satış Modu</Text></Col>
@@ -996,6 +1052,13 @@ const ControlPanel = ({
           </Text>
         </div>
       </Modal>
+      
+      <BuilderSimulator
+        visible={showBuilderModal}
+        onClose={() => setShowBuilderModal(false)}
+        onSave={handleBuilderSave}
+        projectId={projectId}
+      />
     </div>
   );
 };

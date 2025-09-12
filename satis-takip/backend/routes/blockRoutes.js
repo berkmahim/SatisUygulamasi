@@ -5,7 +5,8 @@ import {
     createBlock,
     updateBlock,
     deleteBlock,
-    createBulkBlocks
+    createBulkBlocks,
+    createBuilderBlocks
 } from '../controllers/blockController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -20,6 +21,9 @@ router.route('/:projectId')
 
 router.route('/:projectId/bulk')
     .post(createBulkBlocks);
+
+router.route('/:projectId/builder')
+    .post(createBuilderBlocks);
 
 router.route('/detail/:id')
     .get(getBlockById);

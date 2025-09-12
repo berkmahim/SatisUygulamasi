@@ -31,3 +31,8 @@ export const createBulkBlocks = async (projectId, bulkData) => {
   const response = await axios.post(`${API_URL}/${projectId}/bulk`, bulkData);
   return response.data;
 };
+
+export const createBuilderBlocks = async (projectId, builderData) => {
+  const response = await axios.post(`${API_URL}/${projectId}/builder`, builderData);
+  return response.data;
+};

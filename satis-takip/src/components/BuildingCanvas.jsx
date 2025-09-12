@@ -1293,6 +1293,7 @@ const BuildingCanvas = () => {
         squareMeters: sourceBlock.squareMeters,
         roomCount: sourceBlock.roomCount,
         iskanPaymentDone: sourceBlock.iskanPaymentDone,
+        reference: sourceBlock.reference, // Also copy the reference
         // Don't copy unitNumber or owner - these should remain unique
       };
       

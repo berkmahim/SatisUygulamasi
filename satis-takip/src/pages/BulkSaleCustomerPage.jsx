@@ -209,66 +209,61 @@ const BulkSaleCustomerPage = () => {
                     </Button>
                 </div>
 
-                {/* Customer Creation Modal - Exact same as BlockSalePage */}
+                {/* Customer Creation Modal - Same as CustomersPage */}
                 <Modal
-                    title="Yeni Müşteri Oluştur"
+                    title="Yeni Müşteri"
                     open={showCustomerModal}
-                    onCancel={() => setShowCustomerModal(false)}
-                    footer={null}
+                    onOk={customerForm.submit}
+                    onCancel={() => {
+                        setShowCustomerModal(false);
+                        customerForm.resetFields();
+                    }}
+                    okText="Oluştur"
+                    cancelText="İptal"
                     width={600}
                 >
-                    <Form 
-                        form={customerForm} 
-                        onFinish={handleCreateCustomer} 
+                    <Form
+                        form={customerForm}
                         layout="vertical"
-                        size="large"
+                        onFinish={handleCreateCustomer}
                     >
-                        <Form.Item 
-                            name="firstName" 
-                            label="Ad" 
-                            rules={[{ required: true, message: 'Ad alanı zorunludur' }]}
+                        <Form.Item
+                            name="firstName"
+                            label="Ad"
+                            rules={[{ required: true, message: 'Lütfen adı giriniz' }]}
                         >
                             <Input />
                         </Form.Item>
-                        
-                        <Form.Item 
-                            name="lastName" 
-                            label="Soyad" 
-                            rules={[{ required: true, message: 'Soyad alanı zorunludur' }]}
+                        <Form.Item
+                            name="lastName"
+                            label="Soyad"
+                            rules={[{ required: true, message: 'Lütfen soyadı giriniz' }]}
                         >
                             <Input />
                         </Form.Item>
-                        
-                        <Form.Item 
-                            name="email" 
-                            label="E-posta" 
+                        <Form.Item
+                            name="tcNo"
+                            label="TC No"
+                            rules={[{ required: true, message: 'Lütfen TC No giriniz' }]}
+                        >
+                            <Input />
+                        </Form.Item>
+                        <Form.Item
+                            name="phone"
+                            label="Telefon"
+                            rules={[{ required: true, message: 'Lütfen telefon numarası giriniz' }]}
+                        >
+                            <Input />
+                        </Form.Item>
+                        <Form.Item
+                            name="email"
+                            label="E-posta"
                             rules={[
+                                { required: true, message: 'Lütfen e-posta adresi giriniz' },
                                 { type: 'email', message: 'Geçerli bir e-posta adresi giriniz' }
                             ]}
                         >
                             <Input />
-                        </Form.Item>
-                        
-                        <Form.Item name="phone" label="Telefon">
-                            <Input />
-                        </Form.Item>
-                        
-                        <Form.Item name="address" label="Adres">
-                            <Input.TextArea rows={3} />
-                        </Form.Item>
-                        
-                        <Form.Item>
-                            <Space>
-                                <Button type="primary" htmlType="submit" size="large">
-                                    Müşteri Oluştur
-                                </Button>
-                                <Button 
-                                    size="large"
-                                    onClick={() => setShowCustomerModal(false)}
-                                >
-                                    İptal
-                                </Button>
-                            </Space>
                         </Form.Item>
                     </Form>
                 </Modal>

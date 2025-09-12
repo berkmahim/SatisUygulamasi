@@ -3,6 +3,7 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { useParams, useNavigate } from 'react-router-dom';
+import { message } from 'antd';
 import BuildingBlock from './BuildingBlock';
 import Text3D from './Text3D';
 import ControlPanel from './ControlPanel';
@@ -347,6 +348,8 @@ const BuildingCanvas = () => {
   const [texts, setTexts] = useState([]);
   const [selectedText, setSelectedText] = useState(null);
   const [textMode, setTextMode] = useState(false);
+  const [transferMode, setTransferMode] = useState(false);
+  const [transferSource, setTransferSource] = useState(null); // Source block for transfer
   const [showControlPanel, setShowControlPanel] = useState(true);
   const [soldBlockPanelVisible, setSoldBlockPanelVisible] = useState(false);
   const [selectedSoldBlockId, setSelectedSoldBlockId] = useState(null);
@@ -799,6 +802,28 @@ const BuildingCanvas = () => {
     event.stopPropagation();
     
     const block = blocks.find(b => (b._id || b.id) === blockId);
+    
+    // Transfer mode - copy unit details from source to target
+    if (transferMode) {
+      if (!transferSource) {
+        // First click: Set source block
+        setTransferSource(block);
+        setSelectedBlock(blockId); // Highlight the source block
+        message.success(`Kaynak birim seçildi: ${block.unitNumber || 'Birim ' + blockId.slice(-4)}`);
+        return;
+      } else {
+        // Subsequent clicks: Transfer details from source to target
+        if (blockId === transferSource._id || blockId === transferSource.id) {
+          // Clicking the same source block - no transfer
+          message.info('Aynı birim seçildi, aktarım yapılmadı');
+          return;
+        }
+        
+        // Perform the transfer
+        handleTransferDetails(transferSource, block);
+        return;
+      }
+    }
     
     // Bulk sale mode - multi-selection
     if (bulkSaleMode) {
@@ -1255,6 +1280,35 @@ const BuildingCanvas = () => {
     );
   };
 
+  // Transfer functionality - copy unit details from source to target
+  const handleTransferDetails = async (sourceBlock, targetBlock) => {
+    if (!sourceBlock || !targetBlock) {
+      message.error('Kaynak veya hedef birim bulunamadı');
+      return;
+    }
+    
+    try {
+      const detailsToTransfer = {
+        type: sourceBlock.type,
+        squareMeters: sourceBlock.squareMeters,
+        roomCount: sourceBlock.roomCount,
+        iskanPaymentDone: sourceBlock.iskanPaymentDone,
+        // Don't copy unitNumber or owner - these should remain unique
+      };
+      
+      // Update the target block with source block's details
+      await handleUpdateBlockDetails(targetBlock._id || targetBlock.id, detailsToTransfer);
+      
+      const sourceUnitDisplay = sourceBlock.unitNumber || `Birim ${(sourceBlock._id || sourceBlock.id).slice(-4)}`;
+      const targetUnitDisplay = targetBlock.unitNumber || `Birim ${(targetBlock._id || targetBlock.id).slice(-4)}`;
+      
+      message.success(`${sourceUnitDisplay} biriminin özellikleri ${targetUnitDisplay} birimine kopyalandı`);
+    } catch (error) {
+      message.error('Birim özellikleri kopyalanırken hata oluştu');
+      console.error('Transfer error:', error);
+    }
+  };
+
   // Bulk duplication handlers
   const handleAddBulkPendingBlocks = (newPendingBlocks) => {
     setPendingBlocks(prev => [...prev, ...newPendingBlocks]);
@@ -1292,6 +1346,10 @@ const BuildingCanvas = () => {
           setAddMode={setAddMode}
           textMode={textMode}
           setTextMode={setTextMode}
+          transferMode={transferMode}
+          setTransferMode={setTransferMode}
+          transferSource={transferSource}
+          setTransferSource={setTransferSource}
           bulkSaleMode={bulkSaleMode}
           setBulkSaleMode={setBulkSaleMode}
           selectedBlock={selectedBlock}

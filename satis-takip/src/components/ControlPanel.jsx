@@ -52,6 +52,10 @@ const ControlPanel = ({
   setAddMode,
   textMode,
   setTextMode,
+  transferMode,
+  setTransferMode,
+  transferSource,
+  setTransferSource,
   bulkSaleMode,
   setBulkSaleMode,
   selectedBlock,
@@ -151,6 +155,16 @@ const ControlPanel = ({
       console.log('Updated blockDetails:', newDetails);
       return newDetails;
     });
+  };
+
+  const toggleTextMode = (checked) => {
+    setTextMode(checked);
+    if (checked) {
+      // When entering text mode, disable other modes
+      setAddMode(false);
+      setTransferMode && setTransferMode(false);
+      setTransferSource && setTransferSource(null);
+    }
   };
 
   const handleCreateReference = async (referenceName) => {
@@ -360,14 +374,6 @@ const ControlPanel = ({
     }
   };
 
-  const toggleTextMode = () => {
-    if (editMode) {
-      setTextMode(!textMode);
-      if (!textMode) {
-        setAddMode(false);
-      }
-    }
-  };
 
   const handleBuilderSave = async (builderBlocks) => {
     try {
@@ -433,8 +439,16 @@ const ControlPanel = ({
                     <Col>
                       <Switch 
                         checked={addMode} 
-                        onChange={() => setAddMode(!addMode)} 
-                        disabled={textMode}
+                        onChange={(checked) => {
+                          setAddMode(checked);
+                          if (checked) {
+                            // When entering add mode, disable other modes
+                            setTextMode(false);
+                            setTransferMode && setTransferMode(false);
+                            setTransferSource && setTransferSource(null);
+                          }
+                        }} 
+                        disabled={textMode || transferMode}
                         checkedChildren="Aktif" 
                         unCheckedChildren="Kapalı"
                       />
@@ -447,12 +461,65 @@ const ControlPanel = ({
                       <Switch 
                         checked={textMode} 
                         onChange={toggleTextMode} 
-                        disabled={addMode}
+                        disabled={addMode || transferMode}
                         checkedChildren="Aktif" 
                         unCheckedChildren="Kapalı"
                       />
                     </Col>
                   </Row>
+                  
+                  <Row align="middle" justify="space-between" style={{ marginTop: '12px' }}>
+                    <Col><Text>Transfer Modu</Text></Col>
+                    <Col>
+                      <Switch 
+                        checked={transferMode} 
+                        onChange={(checked) => {
+                          setTransferMode(checked);
+                          if (checked) {
+                            // When entering transfer mode, disable other modes
+                            setAddMode(false);
+                            setTextMode(false);
+                          } else {
+                            // Clear transfer source when exiting transfer mode
+                            setTransferSource(null);
+                          }
+                        }} 
+                        disabled={addMode || textMode}
+                        checkedChildren="Aktif" 
+                        unCheckedChildren="Kapalı"
+                      />
+                    </Col>
+                  </Row>
+                  
+                  {transferMode && (
+                    <Card size="small" style={{ marginTop: '12px', backgroundColor: '#fff7e6', border: '1px solid #ffd591' }}>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        <Text style={{ fontSize: '12px' }}>
+                          <CopyOutlined style={{ marginRight: '4px' }} />
+                          {transferSource 
+                            ? `Kaynak: ${transferSource.unitNumber || 'Birim ' + (transferSource._id || transferSource.id).slice(-4)}`
+                            : 'Önce kaynak birim seçin'}
+                        </Text>
+                        {transferSource && (
+                          <>
+                            <Text style={{ fontSize: '11px', color: '#666' }}>
+                              • Diğer birimleri tıklayarak kaynak birimin özelliklerini kopyalayın
+                            </Text>
+                            <Button 
+                              size="small" 
+                              onClick={() => {
+                                setTransferSource(null);
+                                message.info('Kaynak birim seçimi temizlendi');
+                              }}
+                              style={{ width: '100%' }}
+                            >
+                              Kaynak Seçimini Temizle
+                            </Button>
+                          </>
+                        )}
+                      </Space>
+                    </Card>
+                  )}
                 </>
               )}
               
@@ -482,6 +549,8 @@ const ControlPanel = ({
                         setEditMode(false);
                         setAddMode(false);
                         setTextMode(false);
+                        setTransferMode(false);
+                        setTransferSource(null);
                         setSelectedBlocks([]);
                       } else {
                         // Clear selections when exiting bulk sale mode

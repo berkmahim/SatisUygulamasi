@@ -142,7 +142,13 @@ const Scene = ({ onAddBlock, blocks, pendingBlocks, selectedBlock, selectedBlock
           onPointerDown={handleBlockPointerDown}
           onSelect={(e) => onBlockClick(block._id || block.id, e)}
           onContextMenu={(e) => onBlockContextMenu(block._id || block.id, e)}
-          isSelected={bulkSaleMode ? selectedBlocks.includes(block._id || block.id) : selectedBlock === (block._id || block.id)}
+          isSelected={
+            bulkSaleMode 
+              ? selectedBlocks.includes(block._id || block.id)
+              : editMode && selectedBlocks.length > 0
+                ? selectedBlocks.includes(block._id || block.id)
+                : selectedBlock === (block._id || block.id)
+          }
           editMode={editMode}
           addMode={addMode}
           owner={block.owner}
@@ -513,17 +519,46 @@ const BuildingCanvas = () => {
         return;
       }
 
-      // Delete key: Delete selected block (existing functionality)
-      if (editMode && e.key === 'Delete' && selectedBlock !== null) {
+      // Delete key: Delete selected block(s)
+      if (editMode && e.key === 'Delete') {
+        console.log('Delete key pressed', { selectedBlocks: selectedBlocks.length, selectedBlock });
         try {
-          const blockToDelete = blocks.find(b => (b._id || b.id) === selectedBlock);
-          if (blockToDelete._id) {
-            await deleteBlock(selectedBlock);
+          // Handle multi-selection deletion
+          if (selectedBlocks.length > 0) {
+            console.log('Deleting multiple blocks:', selectedBlocks);
+            const deletePromises = [];
+            const blocksToDelete = blocks.filter(b => selectedBlocks.includes(b._id || b.id));
+            
+            // Delete all selected blocks
+            for (const block of blocksToDelete) {
+              if (block._id) {
+                deletePromises.push(deleteBlock(block._id));
+              }
+            }
+            
+            // Wait for all deletions to complete
+            await Promise.all(deletePromises);
+            
+            // Update blocks state
+            setBlocks(prevBlocks => prevBlocks.filter(block => !selectedBlocks.includes(block._id || block.id)));
+            
+            // Remove from history
+            setBlockHistory(prevHistory => prevHistory.filter(id => !selectedBlocks.includes(id)));
+            
+            // Clear selection
+            setSelectedBlocks([]);
+            
+          } else if (selectedBlock !== null) {
+            // Handle single selection deletion (existing functionality)
+            const blockToDelete = blocks.find(b => (b._id || b.id) === selectedBlock);
+            if (blockToDelete._id) {
+              await deleteBlock(selectedBlock);
+            }
+            setBlocks(prevBlocks => prevBlocks.filter(block => (block._id || block.id) !== selectedBlock));
+            // Remove from history if it exists
+            setBlockHistory(prevHistory => prevHistory.filter(id => id !== selectedBlock));
+            setSelectedBlock(null);
           }
-          setBlocks(prevBlocks => prevBlocks.filter(block => (block._id || block.id) !== selectedBlock));
-          // Remove from history if it exists
-          setBlockHistory(prevHistory => prevHistory.filter(id => id !== selectedBlock));
-          setSelectedBlock(null);
         } catch (error) {
           // Hata durumunda sessizce devam et
         }
@@ -573,7 +608,7 @@ const BuildingCanvas = () => {
         clearTimeout(undoIntervalRef.current);
       }
     };
-  }, [selectedBlock, editMode, blocks, blockHistory, undoInProgress]);
+  }, [selectedBlock, selectedBlocks, editMode, blocks, blockHistory, undoInProgress]);
 
   const addBlock = async (position) => {
     // Check if block already exists at this position (including pending blocks)
@@ -666,8 +701,30 @@ const BuildingCanvas = () => {
       }
     }
     
-    // In edit mode, select/deselect the block
-    setSelectedBlock(blockId === selectedBlock ? null : blockId);
+    // In edit mode - check for Ctrl+Click for multi-selection
+    if (editMode) {
+      if (event.ctrlKey) {
+        // Ctrl+Click: Multi-selection mode
+        setSelectedBlocks(prev => {
+          if (prev.includes(blockId)) {
+            // Deselect block
+            return prev.filter(id => id !== blockId);
+          } else {
+            // Add block to selection
+            return [...prev, blockId];
+          }
+        });
+        // Clear single selection when multi-selecting
+        setSelectedBlock(null);
+      } else {
+        // Normal click: Single selection
+        if (selectedBlocks.length > 0) {
+          // Clear multi-selection when doing single selection
+          setSelectedBlocks([]);
+        }
+        setSelectedBlock(blockId === selectedBlock ? null : blockId);
+      }
+    }
   };
 
   const handleBlockContextMenu = (blockId, event) => {
@@ -1098,7 +1155,7 @@ const BuildingCanvas = () => {
     <div 
       style={{ width: '100%', height: '100vh', position: 'relative', display: 'flex' }} 
       tabIndex={0}
-      title="Kısayollar: Ctrl+E (Düzenleme), Ctrl+A (Blok Ekleme), Ctrl+Z (Geri Al)"
+      title="Kısayollar: Ctrl+E (Düzenleme), Ctrl+A (Blok Ekleme), Ctrl+Z (Geri Al), Ctrl+Tık (Çoklu Seçim), Delete (Silme)"
     >
       <div style={{ width: '300px', height: '100%', overflow: 'auto', borderRight: '1px solid #e8e8e8' }}>
         <ControlPanel 

@@ -120,10 +120,10 @@ const BulkSaleCustomerPage = () => {
                         renderItem={(block) => (
                             <List.Item>
                                 <Text strong>Birim {block.unitNumber || block._id.slice(-6)}</Text>
-                                <span style={{ marginLeft: 16, color: '#666' }}>
+                               {/* <span style={{ marginLeft: 16, color: '#666' }}>
                                     {block.type === 'apartment' ? 'Daire' : 'Ofis'}
                                     {block.squareMeters && ` - ${block.squareMeters} m²`}
-                                </span>
+                                </span> */}
                             </List.Item>
                         )}
                     />

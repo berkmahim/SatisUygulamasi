@@ -255,14 +255,29 @@ const cancelSaleAndRefund = asyncHandler(async (req, res) => {
 
         // Satışı bul
         const sale = await Sale.findById(req.params.id)
-            .populate({
+            .populate('customerId');
+
+        // Individual or bulk sale handling
+        if (sale.isBulkSale) {
+            // For bulk sales, populate blockIds
+            await sale.populate('blockIds', 'unitNumber projectId');
+            await sale.populate({
+                path: 'blockIds',
+                populate: {
+                    path: 'projectId',
+                    select: 'name'
+                }
+            });
+        } else {
+            // For individual sales, populate blockId
+            await sale.populate({
                 path: 'blockId',
                 populate: {
                     path: 'projectId',
                     select: 'name'
                 }
-            })
-            .populate('customerId');
+            });
+        }
 
         if (!sale) {
             res.status(404);
@@ -275,11 +290,14 @@ const cancelSaleAndRefund = asyncHandler(async (req, res) => {
         }
 
         // Blok bilgilerini al
-        const block = sale.blockId;
         const customer = sale.customerId;
-
-        // Proje adını blok nesnesine ekle
-        block.projectName = block.projectId?.name || 'Belirtilmemiş';
+        let projectName = 'Belirtilmemiş';
+        
+        if (sale.isBulkSale && sale.blockIds && sale.blockIds.length > 0) {
+            projectName = sale.blockIds[0].projectId?.name || 'Belirtilmemiş';
+        } else if (sale.blockId) {
+            projectName = sale.blockId.projectId?.name || 'Belirtilmemiş';
+        }
 
         // Toplam ödenen miktarı hesapla (bu değer daha önce hesaplanmışsa tekrar hesaplamaya gerek yok)
         let totalPaid = 0;
@@ -298,8 +316,16 @@ const cancelSaleAndRefund = asyncHandler(async (req, res) => {
             // Ödeme sistemi entegrasyonu burada yapılabilir
         }
 
-        // Birim durumunu "available" olarak güncelle
-        await Block.findByIdAndUpdate(sale.blockId, { status: 'available', owner: null, saleId: null });
+        // Birim(ler) durumunu "available" olarak güncelle
+        if (sale.isBulkSale && sale.blockIds) {
+            // Bulk sale: update all blocks
+            await Promise.all(sale.blockIds.map(blockId => 
+                Block.findByIdAndUpdate(blockId, { status: 'available', owner: null, saleId: null })
+            ));
+        } else if (sale.blockId) {
+            // Individual sale: update single block
+            await Block.findByIdAndUpdate(sale.blockId, { status: 'available', owner: null, saleId: null });
+        }
 
         // Satış durumunu "cancelled" olarak güncelle
         sale.status = 'cancelled';
@@ -321,14 +347,33 @@ const cancelSaleAndRefund = asyncHandler(async (req, res) => {
         
         // İptal e-postası gönder
         if (adminUsers && adminUsers.length > 0) {
-            await sendSaleEmail(sale, block, customer, req.user, adminUsers, true); // true -> iptal için
+            try {
+                if (sale.isBulkSale && sale.blockIds && sale.blockIds.length > 0) {
+                    // For bulk sales, use the first block as representative
+                    await sendSaleEmail(sale, sale.blockIds[0], customer, req.user, adminUsers, true); // true -> iptal için
+                } else if (sale.blockId) {
+                    // For individual sales, use the single block
+                    await sendSaleEmail(sale, sale.blockId, customer, req.user, adminUsers, true); // true -> iptal için
+                }
+            } catch (emailError) {
+                console.warn('İptal e-posta gönderimi hatası:', emailError);
+            }
         }
 
         // Log kaydı oluştur
+        let logDescription;
+        if (sale.isBulkSale) {
+            const unitCount = sale.blockIds?.length || 0;
+            logDescription = `${customer.firstName} ${customer.lastName} müşterisine satılan ${projectName} projesinden ${unitCount} birimin toplu satışı iptal edildi. ${hasRefund ? `${refundAmount.toLocaleString('tr-TR')} TL iade yapıldı.` : 'İade yapılmadı.'}`;
+        } else {
+            const unitNumber = sale.blockId?.unitNumber || 'Bilinmiyor';
+            logDescription = `${customer.firstName} ${customer.lastName} müşterisine satılan ${projectName} projesinden ${unitNumber} nolu birimin satışı iptal edildi. ${hasRefund ? `${refundAmount.toLocaleString('tr-TR')} TL iade yapıldı.` : 'İade yapılmadı.'}`;
+        }
+        
         await createLog({
             type: 'sale-cancel',
             action: 'delete',
-            description: `${customer.firstName} ${customer.lastName} müşterisine satılan ${block.projectName || 'Belirtilmemiş'} projesinden ${block.unitNumber} nolu birimin satışı iptal edildi. ${hasRefund ? `${refundAmount.toLocaleString('tr-TR')} TL iade yapıldı.` : 'İade yapılmadı.'}`,
+            description: logDescription,
             entityId: sale._id.toString(),
             userId: req.user._id
         }, req);
@@ -436,6 +481,8 @@ const getCancelledSales = asyncHandler(async (req, res) => {
         
         const cancelledSales = await Sale.find(filter)
             .populate('blockId', 'unitNumber type projectId')
+            .populate('blockIds', 'unitNumber type projectId')
+            .populate('bulkSaleBlocks.blockId', 'unitNumber type projectId')
             .populate('customerId', 'firstName lastName tcNo phone')
             .sort('-cancellationDetails.cancelledAt');
 
@@ -460,6 +507,8 @@ const getSalesByProject = asyncHandler(async (req, res) => {
         
         const sales = await Sale.find(filter)
             .populate('blockId', 'unitNumber type')
+            .populate('blockIds', 'unitNumber type')
+            .populate('bulkSaleBlocks.blockId', 'unitNumber type')
             .populate('customerId', 'firstName lastName tcNo phone')
             .sort('-createdAt');
 

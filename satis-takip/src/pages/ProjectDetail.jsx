@@ -159,11 +159,18 @@ const ProjectDetail = () => {
             key: 'units',
             render: (_, record) => {
                 if (record.isBulkSale) {
+                    const unitNumbers = record.bulkSaleBlocks?.map(block => block.blockId?.unitNumber || block.unitNumber).filter(Boolean) || 
+                                       record.blockIds?.map(block => block.unitNumber).filter(Boolean) || [];
+                    
                     return (
                         <div>
                             <strong style={{ color: '#1890ff' }}>
-                                Toplu Satış ({record.bulkSaleBlocks?.length || 0} birim)
+                                Toplu Satış ({unitNumbers.length} birim)
                             </strong>
+                            <br />
+                            <small style={{ color: '#666' }}>
+                                Birimler: {unitNumbers.join(', ') || 'N/A'}
+                            </small>
                             <br />
                             <small style={{ color: '#666' }}>
                                 ID: {record.bulkSaleId?.slice(-8)}
@@ -238,10 +245,40 @@ const ProjectDetail = () => {
     // İptal edilmiş satışlar için sütunlar
     const cancelledColumns = [
         {
-            title: 'Blok/Daire',
-            dataIndex: ['blockId', 'unitNumber'],
-            key: 'unitNumber',
-            sorter: (a, b) => a.blockId.unitNumber.localeCompare(b.blockId.unitNumber),
+            title: 'Birim(ler)',
+            key: 'units',
+            render: (_, record) => {
+                if (record.isBulkSale) {
+                    const unitNumbers = record.bulkSaleBlocks?.map(block => block.blockId?.unitNumber || block.unitNumber).filter(Boolean) || 
+                                       record.blockIds?.map(block => block.unitNumber).filter(Boolean) || [];
+                    
+                    return (
+                        <div>
+                            <strong style={{ color: '#1890ff' }}>
+                                Toplu Satış ({unitNumbers.length} birim)
+                            </strong>
+                            <br />
+                            <small style={{ color: '#666' }}>
+                                Birimler: {unitNumbers.join(', ') || 'N/A'}
+                            </small>
+                            <br />
+                            <small style={{ color: '#666' }}>
+                                ID: {record.bulkSaleId?.slice(-8)}
+                            </small>
+                        </div>
+                    );
+                } else {
+                    return record.blockId?.unitNumber || 'N/A';
+                }
+            },
+            sorter: (a, b) => {
+                if (a.isBulkSale && b.isBulkSale) {
+                    return (a.bulkSaleBlocks?.length || 0) - (b.bulkSaleBlocks?.length || 0);
+                }
+                if (a.isBulkSale) return 1;
+                if (b.isBulkSale) return -1;
+                return (a.blockId?.unitNumber || '').localeCompare(b.blockId?.unitNumber || '');
+            },
         },
         {
             title: 'Müşteri',
@@ -458,7 +495,22 @@ const ProjectDetail = () => {
                     <div>
                         <p>Bu satışı iptal etmek istediğinizden emin misiniz?</p>
                         <div style={{ marginBottom: 16 }}>
-                            <p><strong>Blok/Daire:</strong> {selectedSale.blockId.unitNumber}</p>
+                            {selectedSale.isBulkSale ? (
+                                <>
+                                    <p><strong>Toplu Satış:</strong> {selectedSale.bulkSaleBlocks?.length || selectedSale.blockIds?.length || 0} birim</p>
+                                    <p><strong>Satış ID:</strong> {selectedSale.bulkSaleId?.slice(-8)}</p>
+                                    <p><strong>Birimler:</strong></p>
+                                    <ul style={{ marginLeft: 20, marginBottom: 10 }}>
+                                        {selectedSale.bulkSaleBlocks?.map((block, index) => (
+                                            <li key={index}>{block.blockId?.unitNumber || block.unitNumber || 'N/A'}</li>
+                                        )) || selectedSale.blockIds?.map((block, index) => (
+                                            <li key={index}>{block.unitNumber || 'N/A'}</li>
+                                        )) || []}
+                                    </ul>
+                                </>
+                            ) : (
+                                <p><strong>Blok/Daire:</strong> {selectedSale.blockId?.unitNumber}</p>
+                            )}
                             <p><strong>Müşteri:</strong> {selectedSale.customerId.firstName} {selectedSale.customerId.lastName}</p>
                             <p><strong>Toplam Tutar:</strong> {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(selectedSale.totalAmount)}</p>
                         </div>

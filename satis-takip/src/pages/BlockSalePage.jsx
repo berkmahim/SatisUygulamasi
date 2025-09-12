@@ -4,10 +4,12 @@ import { Card, Input, Button, Modal, Form, message, Space } from 'antd';
 import { PlusOutlined, UserOutlined } from '@ant-design/icons';
 import { getBlockById } from '../services/blockService';
 import { searchCustomers, createCustomer } from '../services/customerService';
+import { useTheme } from '../context/ThemeContext';
 
 const BlockSalePage = () => {
     const { projectId, blockId } = useParams();
     const navigate = useNavigate();
+    const { isDarkMode } = useTheme();
     const [block, setBlock] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [customers, setCustomers] = useState([]);
@@ -84,32 +86,44 @@ const BlockSalePage = () => {
                 <h1 className="text-3xl font-bold mb-8">Blok Satış/Rezervasyon</h1>
 
                 {/* Blok Bilgileri */}
-                <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-                    <h2 className="text-xl font-semibold mb-4">Blok Bilgileri</h2>
+                <div className={`rounded-lg shadow-md p-6 mb-8 ${isDarkMode ? 'bg-black' : 'bg-white'}`}>
+                    <h2 className={`text-xl font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Blok Bilgileri
+                    </h2>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <p className="text-gray-600">Blok ID:</p>
-                            <p className="font-medium">{block?._id}</p>
+                            <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Blok ID:</p>
+                            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {block?._id}
+                            </p>
                         </div>
                         <div>
-                            <p className="text-gray-600">Tipi:</p>
-                            <p className="font-medium">{block?.type || 'Belirtilmemiş'}</p>
+                            <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Tipi:</p>
+                            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {block?.type || 'Belirtilmemiş'}
+                            </p>
                         </div>
                         <div>
-                            <p className="text-gray-600">Birim No:</p>
-                            <p className="font-medium">{block?.unitNumber || 'Belirtilmemiş'}</p>
+                            <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Birim No:</p>
+                            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {block?.unitNumber || 'Belirtilmemiş'}
+                            </p>
                         </div>
                         <div>
-                            <p className="text-gray-600">Metrekare:</p>
-                            <p className="font-medium">{block?.squareMeters || 'Belirtilmemiş'}</p>
+                            <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Metrekare:</p>
+                            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {block?.squareMeters || 'Belirtilmemiş'}
+                            </p>
                         </div>
                     </div>
                 </div>
 
                 {/* Müşteri Arama */}
-                <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div className={`rounded-lg shadow-md p-6 mb-8 ${isDarkMode ? 'bg-black' : 'bg-white'}`}>
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-semibold">Müşteri Seçimi</h2>
+                        <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            Müşteri Seçimi
+                        </h2>
                         <Button 
                             type="primary"
                             icon={<PlusOutlined />}
@@ -124,22 +138,32 @@ const BlockSalePage = () => {
                             value={searchTerm}
                             onChange={handleSearch}
                             placeholder="Müşteri ara (TC, telefon veya isim)"
-                            className="w-full p-3 border rounded-lg"
-                            style={{ backgroundColor: 'white' }}
-                            color="black"
+                            className={`w-full p-3 border rounded-lg ${
+                                isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                                    : 'bg-white border-gray-300 text-black placeholder-gray-500'
+                            }`}
                         />
                         {customers.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg">
+                            <div className={`absolute z-10 w-full mt-1 border rounded-lg shadow-lg ${
+                                isDarkMode 
+                                    ? 'bg-gray-700 border-gray-600' 
+                                    : 'bg-white border-gray-300'
+                            }`}>
                                 {customers.map((customer) => (
                                     <div
                                         key={customer._id}
                                         onClick={() => handleCustomerSelect(customer)}
-                                        className="p-3 hover:bg-gray-100 cursor-pointer"
+                                        className={`p-3 cursor-pointer ${
+                                            isDarkMode 
+                                                ? 'hover:bg-gray-600 text-white' 
+                                                : 'hover:bg-gray-100 text-gray-900'
+                                        }`}
                                     >
                                         <p className="font-medium">
                                             {customer.firstName} {customer.lastName}
                                         </p>
-                                        <p className="text-sm text-gray-600">
+                                        <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                                             TC: {customer.tcNo} | Tel: {customer.phone}
                                         </p>
                                     </div>
@@ -149,12 +173,16 @@ const BlockSalePage = () => {
                     </div>
 
                     {selectedCustomer && (
-                        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                            <h3 className="font-medium mb-2">Seçilen Müşteri:</h3>
-                            <p>
+                        <div className={`mt-4 p-4 rounded-lg ${
+                            isDarkMode ? 'bg-gray-700' : 'bg-gray-50'
+                        }`}>
+                            <h3 className={`font-medium mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                Seçilen Müşteri:
+                            </h3>
+                            <p className={isDarkMode ? 'text-white' : 'text-gray-900'}>
                                 {selectedCustomer.firstName} {selectedCustomer.lastName}
                             </p>
-                            <p className="text-sm text-gray-600">
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                                 TC: {selectedCustomer.tcNo} | Tel: {selectedCustomer.phone}
                             </p>
                         </div>

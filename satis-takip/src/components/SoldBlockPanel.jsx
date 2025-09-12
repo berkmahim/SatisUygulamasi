@@ -180,12 +180,12 @@ const SoldBlockPanel = ({ visible, onClose, blockId }) => {
               <Descriptions.Item label="Oda Sayısı">
                 {blockData.roomCount || '-'}
               </Descriptions.Item>
-              <Descriptions.Item label="Boyutlar">
+             {/* <Descriptions.Item label="Boyutlar">
                 {blockData.dimensions ? 
                   `${blockData.dimensions.width} × ${blockData.dimensions.depth} × ${blockData.dimensions.height}` 
                   : '-'
-                }
-              </Descriptions.Item>
+                } 
+              </Descriptions.Item> */}
               <Descriptions.Item label="Referans">
                 {blockData.reference?.name || 'Referanssız'}
               </Descriptions.Item>

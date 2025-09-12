@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -9,6 +9,132 @@ import ControlPanel from './ControlPanel';
 import SoldBlockPanel from './SoldBlockPanel';
 import BlockContextMenu from './BlockContextMenu';
 import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '../services/blockService';
+
+// WASD Camera Controls Component
+const CameraControls = () => {
+  const { camera, gl } = useThree();
+  const isPressed = useRef({
+    w: false,
+    a: false,
+    s: false,
+    d: false,
+    shift: false,
+    space: false
+  });
+  const velocity = useRef(new THREE.Vector3());
+  const direction = useRef(new THREE.Vector3());
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Don't activate movement if user is typing in an input field
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      switch (event.code) {
+        case 'KeyW':
+          isPressed.current.w = true;
+          break;
+        case 'KeyA':
+          isPressed.current.a = true;
+          break;
+        case 'KeyS':
+          isPressed.current.s = true;
+          break;
+        case 'KeyD':
+          isPressed.current.d = true;
+          break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          isPressed.current.shift = true;
+          break;
+        case 'Space':
+          event.preventDefault(); // Prevent page scroll
+          isPressed.current.space = true;
+          break;
+      }
+    };
+
+    const handleKeyUp = (event) => {
+      switch (event.code) {
+        case 'KeyW':
+          isPressed.current.w = false;
+          break;
+        case 'KeyA':
+          isPressed.current.a = false;
+          break;
+        case 'KeyS':
+          isPressed.current.s = false;
+          break;
+        case 'KeyD':
+          isPressed.current.d = false;
+          break;
+        case 'ShiftLeft':
+        case 'ShiftRight':
+          isPressed.current.shift = false;
+          break;
+        case 'Space':
+          isPressed.current.space = false;
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  useFrame((state, delta) => {
+    // Calculate movement speed (faster when moving horizontally with Shift)
+    const isMovingHorizontally = isPressed.current.w || isPressed.current.a || isPressed.current.s || isPressed.current.d;
+    const speed = (isPressed.current.shift && isMovingHorizontally) ? 15 : 8;
+    const moveSpeed = speed * delta;
+
+    // Reset velocity
+    velocity.current.set(0, 0, 0);
+
+    // Get camera direction vectors
+    camera.getWorldDirection(direction.current);
+    const right = new THREE.Vector3().crossVectors(camera.up, direction.current).normalize();
+    const forward = direction.current.clone().normalize();
+    
+    // Forward/Backward (W/S)
+    if (isPressed.current.w) {
+      velocity.current.addScaledVector(forward, moveSpeed);
+    }
+    if (isPressed.current.s) {
+      velocity.current.addScaledVector(forward, -moveSpeed);
+    }
+
+    // Left/Right (A/D)
+    if (isPressed.current.a) {
+      velocity.current.addScaledVector(right, moveSpeed);
+    }
+    if (isPressed.current.d) {
+      velocity.current.addScaledVector(right, -moveSpeed);
+    }
+
+    // Up/Down (Space for up, Shift+Space for down)
+    if (isPressed.current.space) {
+      if (isPressed.current.shift) {
+        velocity.current.y -= moveSpeed; // Shift+Space = move down
+      } else {
+        velocity.current.y += moveSpeed; // Space = move up
+      }
+    }
+
+    // Apply movement to camera
+    if (velocity.current.length() > 0) {
+      camera.position.add(velocity.current);
+    }
+  });
+
+  return null;
+};
 
 const Scene = ({ onAddBlock, blocks, pendingBlocks, selectedBlock, selectedBlocks, bulkSaleMode, onBlockClick, onBlockContextMenu, editMode, addMode, onBlockHover, texts, onAddText, onTextClick, selectedText, onTextHover, textMode }) => {
   const { camera } = useThree();
@@ -191,6 +317,7 @@ const Scene = ({ onAddBlock, blocks, pendingBlocks, selectedBlock, selectedBlock
         />
       ))}
 
+      <CameraControls />
       <OrbitControls makeDefault />
       <mesh 
         ref={groundRef}
@@ -1155,7 +1282,7 @@ const BuildingCanvas = () => {
     <div 
       style={{ width: '100%', height: '100vh', position: 'relative', display: 'flex' }} 
       tabIndex={0}
-      title="Kısayollar: Ctrl+E (Düzenleme), Ctrl+A (Blok Ekleme), Ctrl+Z (Geri Al), Ctrl+Tık (Çoklu Seçim), Delete (Silme)"
+      title="Kısayollar: Ctrl+E (Düzenleme), Ctrl+A (Blok Ekleme), Ctrl+Z (Geri Al), Ctrl+Tık (Çoklu Seçim), Delete (Silme), WASD (Hareket), Shift+WASD (Hızlı), Space (Yukarı), Shift+Space (Aşağı)"
     >
       <div style={{ width: '300px', height: '100%', overflow: 'auto', borderRight: '1px solid #e8e8e8' }}>
         <ControlPanel 

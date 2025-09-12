@@ -33,7 +33,8 @@ import {
   SaveOutlined,
   HomeOutlined,
   SettingOutlined,
-  EyeOutlined
+  EyeOutlined,
+  CopyOutlined
 } from '@ant-design/icons';
 import { getAllReferences, createReference, deleteReference } from '../services/referenceService';
 import { createBulkBlocks } from '../services/blockService';
@@ -87,6 +88,7 @@ const ControlPanel = ({
   const [bulkDuplicationVisible, setBulkDuplicationVisible] = useState(false);
   const [duplicationDirection, setDuplicationDirection] = useState('left'); // 'left' or 'right'
   const [duplicationCount, setDuplicationCount] = useState(1);
+  const [selectedSourceBlock, setSelectedSourceBlock] = useState(null);
   const userIsEditing = useRef(false);
 
   useEffect(() => {
@@ -108,6 +110,11 @@ const ControlPanel = ({
   // Reset editing flag when a different block is selected
   useEffect(() => {
     userIsEditing.current = false;
+  }, [selectedBlock]);
+
+  // Clear selected source block when selected block changes
+  useEffect(() => {
+    setSelectedSourceBlock(null);
   }, [selectedBlock]);
 
   // selectedBlockDimensions değiştiğinde dimensions state'ini güncelle
@@ -208,6 +215,45 @@ const ControlPanel = ({
   const handleSellBlock = () => {
     // Navigate to the block sale page
     navigate(`/projects/${projectId}/blocks/${selectedBlock}/sell`);
+  };
+
+  const handleCopyBlockInfo = () => {
+    if (!selectedSourceBlock || !selectedBlock) {
+      message.error('Lütfen kaynak birim seçin');
+      return;
+    }
+
+    const sourceBlock = blocks.find(b => (b._id || b.id) === selectedSourceBlock);
+    if (!sourceBlock) {
+      message.error('Kaynak birim bulunamadı');
+      return;
+    }
+
+    try {
+      // Copy dimensions
+      const newDimensions = { ...sourceBlock.dimensions };
+      setDimensions(newDimensions);
+      onUpdateBlockDimensions(newDimensions);
+
+      // Copy block details
+      const newDetails = {
+        unitNumber: blockDetails.unitNumber, // Keep current unit number
+        type: sourceBlock.type || 'apartment',
+        squareMeters: sourceBlock.squareMeters || 0,
+        roomCount: sourceBlock.roomCount || '',
+        reference: sourceBlock.reference?._id || '',
+        iskanPaymentDone: sourceBlock.iskanPaymentDone || false
+      };
+      
+      setBlockDetails(newDetails);
+      onUpdateBlockDetails(selectedBlock, newDetails);
+
+      message.success('Birim bilgileri başarıyla kopyalandı');
+      setSelectedSourceBlock(null); // Clear selection after copying
+    } catch (error) {
+      console.error('Copy block info error:', error);
+      message.error('Bilgiler kopyalanırken hata oluştu');
+    }
   };
 
   const handleBulkDuplicate = (direction) => {
@@ -435,8 +481,49 @@ const ControlPanel = ({
       </Tabs>
       
       {selectedBlock && (
-        <Collapse defaultActiveKey={['1']} style={{ marginBottom: '16px' }}>
-          <Panel header="Blok Boyutları" key="1">
+        <>
+          {/* Bilgileri Getir Section */}
+          <Card style={{ marginBottom: '16px' }} title="Bilgileri Getir" size="small">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div>
+                <Text strong>Mevcut Birimlerden Kopyala:</Text>
+                <Select
+                  placeholder="Birim seçin"
+                  style={{ width: '100%', marginTop: '5px' }}
+                  value={selectedSourceBlock}
+                  onChange={setSelectedSourceBlock}
+                  allowClear
+                >
+                  {blocks
+                    .filter(block => 
+                      (block._id || block.id) !== selectedBlock && // Don't show current block
+                      block.unitNumber && 
+                      block.unitNumber.trim() !== '' // Only show blocks with unit numbers
+                    )
+                    .map(block => (
+                      <Option key={block._id || block.id} value={block._id || block.id}>
+                        {`${block.unitNumber} - ${block.type || 'Bilinmiyor'} (${block.dimensions?.width || 1}x${block.dimensions?.height || 1}x${block.dimensions?.depth || 1})`}
+                      </Option>
+                    ))
+                  }
+                </Select>
+              </div>
+              
+              {selectedSourceBlock && (
+                <Button 
+                  type="primary" 
+                  icon={<CopyOutlined />}
+                  onClick={handleCopyBlockInfo}
+                  style={{ width: '100%' }}
+                >
+                  Bilgileri Kopyala
+                </Button>
+              )}
+            </Space>
+          </Card>
+          
+          <Collapse defaultActiveKey={['1']} style={{ marginBottom: '16px' }}>
+            <Panel header="Blok Boyutları" key="1">
             <Row gutter={16}>
               <Col span={24}>
                 <Text strong>Genişlik:</Text>
@@ -681,6 +768,7 @@ const ControlPanel = ({
             </Row>
           </Panel>
         </Collapse>
+        </>
       )}
       
       {selectedText && (

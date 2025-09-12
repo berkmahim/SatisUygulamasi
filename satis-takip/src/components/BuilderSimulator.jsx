@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Text as Text3D } from '@react-three/drei';
 import { Button, Input, InputNumber, Select, Card, Space, Typography, Row, Col, message, Radio } from 'antd';
@@ -10,6 +10,13 @@ const { Option } = Select;
 // 3D Block component for the simulator
 const SimulatorBlock = ({ position, dimensions, color, isSelected, onClick, onSurfaceClick, unitNumber, mode }) => {
   const meshRef = useRef();
+
+  // Calculate center position like in the main canvas
+  const centerPosition = [
+    position[0] + dimensions.width / 2,
+    position[1] + dimensions.height / 2,
+    position[2] + dimensions.depth / 2
+  ];
 
   const handleClick = (e) => {
     e.stopPropagation();
@@ -24,18 +31,28 @@ const SimulatorBlock = ({ position, dimensions, color, isSelected, onClick, onSu
         // Transform normal to world space
         normal.transformDirection(meshRef.current.matrixWorld);
         
-        // Calculate new block position based on the clicked face
+        // Calculate new block position based on the clicked face and snap to grid
         let newPosition = [...position];
         
         if (Math.abs(normal.x) > 0.9) {
           // Side face (left/right)
           newPosition[0] += normal.x > 0 ? dimensions.width : -dimensions.width;
+          // Snap to grid
+          newPosition[0] = Math.round(newPosition[0]);
         } else if (Math.abs(normal.y) > 0.9) {
           // Top/bottom face
           newPosition[1] += normal.y > 0 ? dimensions.height : -dimensions.height;
+          // For Y, don't snap to grid, keep precise stacking
         } else if (Math.abs(normal.z) > 0.9) {
           // Front/back face
           newPosition[2] += normal.z > 0 ? dimensions.depth : -dimensions.depth;
+          // Snap to grid
+          newPosition[2] = Math.round(newPosition[2]);
+        }
+        
+        // Ensure minimum Y position (ground level)
+        if (newPosition[1] < dimensions.height / 2) {
+          newPosition[1] = dimensions.height / 2;
         }
         
         onSurfaceClick(newPosition);
@@ -50,7 +67,7 @@ const SimulatorBlock = ({ position, dimensions, color, isSelected, onClick, onSu
     <group>
       <mesh
         ref={meshRef}
-        position={position}
+        position={centerPosition}
         onClick={handleClick}
         castShadow
         receiveShadow
@@ -66,7 +83,7 @@ const SimulatorBlock = ({ position, dimensions, color, isSelected, onClick, onSu
       {/* Display unit number as 3D text */}
       {unitNumber && (
         <Text3D
-          position={[position[0], position[1] + dimensions.height/2 + 0.2, position[2]]}
+          position={[centerPosition[0], centerPosition[1] + dimensions.height/2 + 0.2, centerPosition[2]]}
           fontSize={Math.min(dimensions.width * 0.3, 0.5)}
           color="black"
           anchorX="center"
@@ -99,7 +116,8 @@ const SimulatorScene = ({
       if (point) {
         const gridX = Math.round(point.x);
         const gridZ = Math.round(point.z);
-        onAddBlock([gridX, 0.5, gridZ]); // Y will be calculated in handleAddBlock for stacking
+        // Place at ground level (Y = 0, will be adjusted in handleAddBlock)
+        onAddBlock([gridX, 0, gridZ]);
       }
     }
   };
@@ -178,7 +196,7 @@ const SimulatorScene = ({
 const BuilderSimulator = ({ visible, onClose, onSave, projectId }) => {
   const [blocks, setBlocks] = useState([]);
   const [selectedBlockPosition, setSelectedBlockPosition] = useState(null);
-  const [mode, setMode] = useState('placing'); // 'placing', 'numbering'
+  const [mode, setMode] = useState('viewing'); // 'viewing', 'placing', 'numbering'
   const [numberingIndex, setNumberingIndex] = useState(1);
   const [blockDimensions, setBlockDimensions] = useState({
     width: 2,
@@ -190,29 +208,116 @@ const BuilderSimulator = ({ visible, onClose, onSave, projectId }) => {
     squareMeters: 100,
     roomCount: '3+1'
   });
+  const [actionHistory, setActionHistory] = useState([]);
+
+  // Keyboard event handlers
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!visible) return; // Only handle keys when modal is visible
+
+      if (e.ctrlKey && e.key === 'e') {
+        e.preventDefault();
+        if (mode === 'placing') {
+          setMode('viewing');
+          message.info('Görüntüleme moduna geçildi');
+        } else {
+          setMode('placing');
+          message.info('Yerleştirme moduna geçildi');
+        }
+        setSelectedBlockPosition(null);
+      }
+
+      if (e.ctrlKey && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+      }
+    };
+
+    if (visible) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [visible, mode, actionHistory]);
+
+  const handleUndo = () => {
+    if (actionHistory.length === 0) {
+      message.warning('Geri alınacak işlem yok');
+      return;
+    }
+
+    const lastAction = actionHistory[actionHistory.length - 1];
+    
+    if (lastAction.type === 'addBlock') {
+      // Remove the last added block
+      setBlocks(prev => prev.filter(block => 
+        !(Math.abs(block.position[0] - lastAction.data.position[0]) < 0.1 &&
+          Math.abs(block.position[1] - lastAction.data.position[1]) < 0.1 &&
+          Math.abs(block.position[2] - lastAction.data.position[2]) < 0.1)
+      ));
+      message.success('Blok ekleme işlemi geri alındı');
+    } else if (lastAction.type === 'addNumber') {
+      // Remove the number from the block
+      setBlocks(prev => prev.map(block => 
+        Math.abs(block.position[0] - lastAction.data.position[0]) < 0.1 &&
+        Math.abs(block.position[1] - lastAction.data.position[1]) < 0.1 &&
+        Math.abs(block.position[2] - lastAction.data.position[2]) < 0.1
+          ? { ...block, unitNumber: null }
+          : block
+      ));
+      setNumberingIndex(lastAction.data.previousIndex);
+      message.success('Numara ekleme işlemi geri alındı');
+    }
+
+    // Remove the last action from history
+    setActionHistory(prev => prev.slice(0, -1));
+  };
 
   const handleAddBlock = (position) => {
     if (mode !== 'placing') return;
     
-    // Check if there's already a block at this exact position
-    const existingBlock = blocks.find(block => 
-      Math.abs(block.position[0] - position[0]) < 0.1 &&
-      Math.abs(block.position[1] - position[1]) < 0.1 &&
-      Math.abs(block.position[2] - position[2]) < 0.1
-    );
+    let finalPosition = [...position];
     
-    if (existingBlock) {
-      message.warning('Bu pozisyonda zaten bir blok var');
-      return;
+    // Ground level blocks should have Y = height/2 so their bottom touches the ground
+    if (position[1] <= blockDimensions.height / 2) {
+      finalPosition[1] = blockDimensions.height / 2;
+      
+      // Find all blocks at this X,Z position for stacking
+      const blocksAtPosition = blocks.filter(block => 
+        Math.round(block.position[0]) === Math.round(finalPosition[0]) && 
+        Math.round(block.position[2]) === Math.round(finalPosition[2])
+      );
+      
+      if (blocksAtPosition.length > 0) {
+        // Stack on top of the highest block
+        const highestBlock = blocksAtPosition.reduce((highest, current) => 
+          current.position[1] > highest.position[1] ? current : highest
+        );
+        finalPosition[1] = highestBlock.position[1] + highestBlock.dimensions.height;
+      }
+    } else {
+      // For surface placement, check if position is already occupied
+      const existingBlock = blocks.find(block => 
+        Math.abs(block.position[0] - position[0]) < 0.1 &&
+        Math.abs(block.position[1] - position[1]) < 0.1 &&
+        Math.abs(block.position[2] - position[2]) < 0.1
+      );
+      
+      if (existingBlock) {
+        message.warning('Bu pozisyonda zaten bir blok var');
+        return;
+      }
     }
     
     // Use different colors based on height
-    const heightLevel = Math.floor(position[1] / 1); // Assuming standard block height of 1
+    const heightLevel = Math.floor((finalPosition[1] - blockDimensions.height / 2) / blockDimensions.height);
     const colors = ['#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#fab1a0'];
     const blockColor = colors[heightLevel % colors.length];
     
     const newBlock = {
-      position: [...position],
+      position: finalPosition,
       dimensions: { ...blockDimensions },
       color: blockColor,
       unitNumber: null,
@@ -220,7 +325,23 @@ const BuilderSimulator = ({ visible, onClose, onSave, projectId }) => {
     };
     
     setBlocks(prev => [...prev, newBlock]);
-    message.success(`Blok eklendi (${position[0]}, ${position[1]}, ${position[2]})`);
+    
+    // Record action in history for undo
+    setActionHistory(prev => [...prev, {
+      type: 'addBlock',
+      data: {
+        position: finalPosition,
+        block: newBlock
+      },
+      timestamp: Date.now()
+    }]);
+    
+    const gridPos = `(${Math.round(finalPosition[0])}, ${Math.round(finalPosition[2])})`;
+    if (heightLevel > 0) {
+      message.success(`Blok üst üste eklendi ${gridPos}, kat: ${heightLevel + 1}`);
+    } else {
+      message.success(`Blok eklendi ${gridPos}`);
+    }
   };
 
   // Handle surface clicking for precise placement
@@ -229,9 +350,27 @@ const BuilderSimulator = ({ visible, onClose, onSave, projectId }) => {
   };
 
   const handleBlockClick = (position) => {
-    if (mode === 'placing') {
+    if (mode === 'viewing') {
+      // In viewing mode, just show block info or do nothing
+      return;
+    } else if (mode === 'placing') {
       setSelectedBlockPosition(position);
     } else if (mode === 'numbering') {
+      // Check if block already has a number
+      const targetBlock = blocks.find(block =>
+        Math.abs(block.position[0] - position[0]) < 0.1 &&
+        Math.abs(block.position[1] - position[1]) < 0.1 &&
+        Math.abs(block.position[2] - position[2]) < 0.1
+      );
+
+      if (targetBlock && targetBlock.unitNumber) {
+        message.warning('Bu blok zaten numaralandırılmış');
+        return;
+      }
+
+      // Record current state for undo
+      const previousIndex = numberingIndex;
+      
       setBlocks(prev => prev.map(block => 
         Math.abs(block.position[0] - position[0]) < 0.1 &&
         Math.abs(block.position[1] - position[1]) < 0.1 &&
@@ -239,6 +378,18 @@ const BuilderSimulator = ({ visible, onClose, onSave, projectId }) => {
           ? { ...block, unitNumber: numberingIndex.toString() }
           : block
       ));
+      
+      // Record action in history for undo
+      setActionHistory(prev => [...prev, {
+        type: 'addNumber',
+        data: {
+          position: position,
+          number: numberingIndex.toString(),
+          previousIndex: previousIndex
+        },
+        timestamp: Date.now()
+      }]);
+
       setNumberingIndex(prev => prev + 1);
       message.success(`Birim ${numberingIndex} numarası atandı`);
     }
@@ -321,15 +472,16 @@ const BuilderSimulator = ({ visible, onClose, onSave, projectId }) => {
               value={mode} 
               onChange={(e) => {
                 setMode(e.target.value);
-                if (e.target.value === 'numbering') {
+                if (e.target.value === 'numbering' || e.target.value === 'viewing') {
                   setSelectedBlockPosition(null);
                 }
               }}
               buttonStyle="solid"
               style={{ width: '100%' }}
             >
-              <Radio.Button value="placing" style={{ width: '50%' }}>Yerleştir</Radio.Button>
-              <Radio.Button value="numbering" style={{ width: '50%' }}>Numaralandır</Radio.Button>
+              <Radio.Button value="viewing" style={{ width: '33.33%' }}>Görüntüle</Radio.Button>
+              <Radio.Button value="placing" style={{ width: '33.33%' }}>Yerleştir</Radio.Button>
+              <Radio.Button value="numbering" style={{ width: '33.33%' }}>Numaralandır</Radio.Button>
             </Radio.Group>
             
             {mode === 'numbering' && (
@@ -341,6 +493,25 @@ const BuilderSimulator = ({ visible, onClose, onSave, projectId }) => {
                 </Text>
               </div>
             )}
+            
+            {mode === 'viewing' && (
+              <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#f0f0f0', borderRadius: '4px' }}>
+                <Text strong style={{ color: '#666' }}>Görüntüleme Modu</Text>
+                <br />
+                <Text type="secondary" style={{ fontSize: '12px' }}>
+                  Bloklar ve numaralar değiştirilemez
+                </Text>
+              </div>
+            )}
+            
+            <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#e6f7ff', borderRadius: '4px' }}>
+              <Text strong style={{ fontSize: '12px', color: '#1890ff' }}>Kısayollar:</Text>
+              <br />
+              <Text style={{ fontSize: '11px', color: '#666' }}>
+                Ctrl + E: Yerleştir/Görüntüle değiştir<br />
+                Ctrl + Z: Son işlemi geri al
+              </Text>
+            </div>
           </Card>
 
           {mode === 'placing' && (
@@ -422,6 +593,7 @@ const BuilderSimulator = ({ visible, onClose, onSave, projectId }) => {
               <Text strong>Toplam Blok: {blocks.length}</Text>
               <Text>Numaralandırılan: {blocks.filter(b => b.unitNumber).length}</Text>
               <Text type="secondary">En Yüksek Kat: {blocks.length > 0 ? Math.max(...blocks.map(b => b.floor || 1)) : 0}</Text>
+              <Text type="secondary">İşlem Geçmişi: {actionHistory.length}</Text>
               
               <Button 
                 danger 
@@ -460,14 +632,16 @@ const BuilderSimulator = ({ visible, onClose, onSave, projectId }) => {
         {/* Right Panel - 3D Canvas */}
         <div style={{ flex: 1, position: 'relative' }}>
           <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 100, backgroundColor: 'rgba(255,255,255,0.95)', padding: '12px', borderRadius: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-            <Text strong style={{ color: mode === 'placing' ? '#52c41a' : '#1890ff' }}>
-              {mode === 'placing' ? 'Yerleştirme Modu' : 'Numaralandırma Modu'}
+            <Text strong style={{ color: mode === 'viewing' ? '#666' : mode === 'placing' ? '#52c41a' : '#1890ff' }}>
+              {mode === 'viewing' ? 'Görüntüleme Modu' : mode === 'placing' ? 'Yerleştirme Modu' : 'Numaralandırma Modu'}
             </Text>
             <br />
             <Text type="secondary" style={{ fontSize: '12px' }}>
-              {mode === 'placing' 
-                ? 'Gri zemine tıklayarak blok ekleyin. Grid çizgileri pozisyon gösterir.' 
-                : 'Blokları tıklayarak numara verin'
+              {mode === 'viewing' 
+                ? 'Sadece görüntüleme. Ctrl+E ile yerleştir moduna geçin.'
+                : mode === 'placing' 
+                  ? 'Gri zemine tıklayarak blok ekleyin. Grid çizgileri pozisyon gösterir.' 
+                  : 'Blokları tıklayarak numara verin'
               }
             </Text>
             {mode === 'placing' && (
@@ -475,6 +649,14 @@ const BuilderSimulator = ({ visible, onClose, onSave, projectId }) => {
                 <br />
                 <Text style={{ fontSize: '11px', color: '#666' }}>
                   Boyut: {blockDimensions.width}x{blockDimensions.height}x{blockDimensions.depth}
+                </Text>
+              </>
+            )}
+            {mode === 'numbering' && (
+              <>
+                <br />
+                <Text style={{ fontSize: '11px', color: '#666' }}>
+                  Sıradaki: {numberingIndex}
                 </Text>
               </>
             )}

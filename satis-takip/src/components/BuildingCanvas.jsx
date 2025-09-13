@@ -253,7 +253,7 @@ const Scene = ({ onAddBlock, blocks, pendingBlocks, selectedBlock, selectedBlock
       <directionalLight position={[5, 5, 5]} intensity={0.5} />
       
       <Grid
-        args={[100, 100]}
+        args={[25, 25]}
         position={[0, 0, 0]}
         cellSize={1}
         cellThickness={0.5}
@@ -326,7 +326,7 @@ const Scene = ({ onAddBlock, blocks, pendingBlocks, selectedBlock, selectedBlock
         rotation={[-Math.PI / 2, 0, 0]} 
         onPointerDown={handleGroundPointerDown}
       >
-        <planeGeometry args={[100, 100]} />
+        <planeGeometry args={[25, 25]} />
         <meshBasicMaterial visible={false} />
       </mesh>
     </>
